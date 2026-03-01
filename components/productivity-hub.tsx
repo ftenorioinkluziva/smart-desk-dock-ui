@@ -1,11 +1,46 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Play, Pause, RotateCcw, Square } from "lucide-react"
+import { useState } from "react"
+import { Play, Pause, RotateCcw, Square, Plus, Minus } from "lucide-react"
 
 type Tab = "pomodoro" | "timer" | "stopwatch"
 
-export function ProductivityHub() {
+type ProductivityHubProps = {
+  // Pomodoro
+  pomodoroSeconds: number
+  pomodoroIsRunning: boolean
+  onPomodoroToggle: () => void
+  onPomodoroReset: () => void
+  // Free Timer
+  timerSeconds: number
+  timerIsRunning: boolean
+  timerInitial: number
+  onTimerToggle: () => void
+  onTimerReset: () => void
+  onTimerChange: (seconds: number) => void
+  // Stopwatch
+  stopwatchElapsed: number
+  stopwatchIsRunning: boolean
+  onStopwatchToggle: () => void
+  onStopwatchReset: () => void
+}
+
+export function ProductivityHub({
+  pomodoroSeconds,
+  pomodoroIsRunning,
+  onPomodoroToggle,
+  onPomodoroReset,
+  timerSeconds,
+  timerIsRunning,
+  timerInitial,
+  onTimerToggle,
+  onTimerReset,
+  onTimerChange,
+  stopwatchElapsed,
+  stopwatchIsRunning,
+  onStopwatchToggle,
+  onStopwatchReset,
+}: ProductivityHubProps) {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
   return (
@@ -28,120 +63,179 @@ export function ProductivityHub() {
       </div>
 
       {/* Content */}
-      {activeTab === "pomodoro" && <PomodoroView />}
-      {activeTab === "timer" && <TimerView />}
-      {activeTab === "stopwatch" && <StopwatchView />}
+      {activeTab === "pomodoro" && (
+        <PomodoroView
+          seconds={pomodoroSeconds}
+          isRunning={pomodoroIsRunning}
+          onToggle={onPomodoroToggle}
+          onReset={onPomodoroReset}
+        />
+      )}
+      {activeTab === "timer" && (
+        <TimerView
+          seconds={timerSeconds}
+          isRunning={timerIsRunning}
+          initial={timerInitial}
+          onToggle={onTimerToggle}
+          onReset={onTimerReset}
+          onChange={onTimerChange}
+        />
+      )}
+      {activeTab === "stopwatch" && (
+        <StopwatchView
+          elapsed={stopwatchElapsed}
+          isRunning={stopwatchIsRunning}
+          onToggle={onStopwatchToggle}
+          onReset={onStopwatchReset}
+        />
+      )}
     </div>
   )
 }
 
-function PomodoroView() {
-  const [totalSeconds, setTotalSeconds] = useState(25 * 60)
-  const [isRunning, setIsRunning] = useState(false)
+// --- Pomodoro with circular SVG ring ---
+const POMODORO_DURATION = 25 * 60
+const RING_RADIUS = 44
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
-  useEffect(() => {
-    if (!isRunning || totalSeconds <= 0) return
-    const interval = setInterval(() => {
-      setTotalSeconds((prev) => prev - 1)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [isRunning, totalSeconds])
-
-  const reset = useCallback(() => {
-    setIsRunning(false)
-    setTotalSeconds(25 * 60)
-  }, [])
-
-  const togglePlay = useCallback(() => {
-    setIsRunning((prev) => !prev)
-  }, [])
-
-  const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
-  const secs = (totalSeconds % 60).toString().padStart(2, "0")
-  const progress = ((25 * 60 - totalSeconds) / (25 * 60)) * 100
+function PomodoroView({
+  seconds,
+  isRunning,
+  onToggle,
+  onReset,
+}: {
+  seconds: number
+  isRunning: boolean
+  onToggle: () => void
+  onReset: () => void
+}) {
+  const mins = Math.floor(seconds / 60).toString().padStart(2, "0")
+  const secs = (seconds % 60).toString().padStart(2, "0")
+  const progress = (POMODORO_DURATION - seconds) / POMODORO_DURATION
+  const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress)
 
   return (
     <>
-      <div className="flex flex-col items-center gap-2">
+      {/* Circular ring with time centered */}
+      <div className="relative flex items-center justify-center">
+        <svg
+          viewBox="0 0 100 100"
+          className="size-36"
+          aria-hidden="true"
+        >
+          {/* Track */}
+          <circle
+            cx="50"
+            cy="50"
+            r={RING_RADIUS}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            className="text-secondary"
+          />
+          {/* Progress arc */}
+          <circle
+            cx="50"
+            cy="50"
+            r={RING_RADIUS}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={RING_CIRCUMFERENCE}
+            strokeDashoffset={strokeDashoffset}
+            transform="rotate(-90 50 50)"
+            className="text-accent"
+            style={{ transition: "stroke-dashoffset 1s linear" }}
+          />
+        </svg>
+        {/* Time overlay */}
+        <div className="absolute flex flex-col items-center gap-0.5">
+          <span className="text-4xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+            {mins}:{secs}
+          </span>
+          <span className="text-[9px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+            {seconds > 0 ? "focus" : "done"}
+          </span>
+        </div>
+      </div>
+
+      <ControlButtons isRunning={isRunning} onToggle={onToggle} onReset={onReset} />
+    </>
+  )
+}
+
+// --- Free Timer with +/- duration adjustment ---
+const TIMER_STEP = 5 * 60 // 5-minute steps
+const TIMER_MIN = 1 * 60
+const TIMER_MAX = 120 * 60
+
+function TimerView({
+  seconds,
+  isRunning,
+  initial,
+  onToggle,
+  onReset,
+  onChange,
+}: {
+  seconds: number
+  isRunning: boolean
+  initial: number
+  onToggle: () => void
+  onReset: () => void
+  onChange: (seconds: number) => void
+}) {
+  const mins = Math.floor(seconds / 60).toString().padStart(2, "0")
+  const secs = (seconds % 60).toString().padStart(2, "0")
+
+  // Show adjustment controls only when timer is in setup state (paused and at initial value)
+  const isSetup = !isRunning && seconds === initial
+
+  return (
+    <>
+      <div className="flex items-center gap-5">
+        {isSetup && (
+          <button
+            onClick={() => onChange(Math.max(TIMER_MIN, initial - TIMER_STEP))}
+            aria-label="Decrease 5 minutes"
+            className="flex items-center justify-center size-8 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <Minus className="size-3.5" />
+          </button>
+        )}
+
         <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
           {mins}:{secs}
         </div>
-        <div className="h-0.5 w-40 rounded-full bg-secondary overflow-hidden">
-          <div
-            className="h-full rounded-full bg-accent transition-all duration-1000 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+
+        {isSetup && (
+          <button
+            onClick={() => onChange(Math.min(TIMER_MAX, initial + TIMER_STEP))}
+            aria-label="Increase 5 minutes"
+            className="flex items-center justify-center size-8 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <Plus className="size-3.5" />
+          </button>
+        )}
       </div>
-      <ControlButtons
-        isRunning={isRunning}
-        onToggle={togglePlay}
-        onReset={reset}
-      />
+
+      <ControlButtons isRunning={isRunning} onToggle={onToggle} onReset={onReset} />
     </>
   )
 }
 
-function TimerView() {
-  const [totalSeconds, setTotalSeconds] = useState(5 * 60)
-  const [isRunning, setIsRunning] = useState(false)
-  const initialRef = useRef(5 * 60)
-
-  useEffect(() => {
-    if (!isRunning || totalSeconds <= 0) return
-    const interval = setInterval(() => {
-      setTotalSeconds((prev) => prev - 1)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [isRunning, totalSeconds])
-
-  const reset = useCallback(() => {
-    setIsRunning(false)
-    setTotalSeconds(initialRef.current)
-  }, [])
-
-  const togglePlay = useCallback(() => {
-    setIsRunning((prev) => !prev)
-  }, [])
-
-  const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
-  const secs = (totalSeconds % 60).toString().padStart(2, "0")
-
-  return (
-    <>
-      <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
-        {mins}:{secs}
-      </div>
-      <ControlButtons
-        isRunning={isRunning}
-        onToggle={togglePlay}
-        onReset={reset}
-      />
-    </>
-  )
-}
-
-function StopwatchView() {
-  const [elapsed, setElapsed] = useState(0)
-  const [isRunning, setIsRunning] = useState(false)
-
-  useEffect(() => {
-    if (!isRunning) return
-    const interval = setInterval(() => {
-      setElapsed((prev) => prev + 1)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [isRunning])
-
-  const reset = useCallback(() => {
-    setIsRunning(false)
-    setElapsed(0)
-  }, [])
-
-  const togglePlay = useCallback(() => {
-    setIsRunning((prev) => !prev)
-  }, [])
-
+// --- Stopwatch ---
+function StopwatchView({
+  elapsed,
+  isRunning,
+  onToggle,
+  onReset,
+}: {
+  elapsed: number
+  isRunning: boolean
+  onToggle: () => void
+  onReset: () => void
+}) {
   const mins = Math.floor(elapsed / 60).toString().padStart(2, "0")
   const secs = (elapsed % 60).toString().padStart(2, "0")
 
@@ -152,15 +246,15 @@ function StopwatchView() {
       </div>
       <div className="flex items-center gap-3">
         <button
-          onClick={togglePlay}
+          onClick={onToggle}
           aria-label={isRunning ? "Pause" : "Start"}
           className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
         >
           {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
         </button>
         <button
-          onClick={reset}
-          aria-label="Stop"
+          onClick={onReset}
+          aria-label="Reset"
           className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
           <Square className="size-4" />
@@ -170,6 +264,7 @@ function StopwatchView() {
   )
 }
 
+// --- Shared control buttons ---
 function ControlButtons({
   isRunning,
   onToggle,

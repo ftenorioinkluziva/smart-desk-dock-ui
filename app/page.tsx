@@ -14,10 +14,6 @@ import type { Alarm, DayOfWeek } from "@/lib/alarms"
 const PAGES = 4
 const TIMER_DEFAULT = 5 * 60
 
-// Tiny silent WAV — played silently on first touch to unlock iOS audio
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"
-
 export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
@@ -79,20 +75,6 @@ export default function Page() {
     }, 1000)
     return () => clearInterval(id)
   }, [alarms, firingAlarm, snoozed])
-
-  // --- iOS audio unlock: play silent audio on first user interaction ---
-  useEffect(() => {
-    const unlock = () => {
-      const a = new Audio(SILENT_WAV)
-      a.play().catch(() => {})
-    }
-    window.addEventListener("touchstart", unlock, { once: true, passive: true })
-    window.addEventListener("click", unlock, { once: true })
-    return () => {
-      window.removeEventListener("touchstart", unlock)
-      window.removeEventListener("click", unlock)
-    }
-  }, [])
 
   // --- Carousel ---
   const handleScroll = useCallback(() => {

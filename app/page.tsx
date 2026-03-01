@@ -5,15 +5,16 @@ import { ClockWeather } from "@/components/clock-weather"
 import { WeatherForecast } from "@/components/weather-forecast"
 import { ProductivityHub } from "@/components/productivity-hub"
 import { CalendarPage } from "@/components/agenda"
+import { AlarmsPage } from "@/components/alarms-page"
 import { SpotifyBar } from "@/components/spotify-bar"
-import { Clock, CloudSun, Timer, Calendar, Music } from "lucide-react"
+import { Clock, CloudSun, Timer, Calendar, AlarmClock } from "lucide-react"
 
 const PAGE_ICONS = [
   { icon: Clock, label: "Clock" },
   { icon: CloudSun, label: "Weather" },
   { icon: Timer, label: "Pomodoro" },
   { icon: Calendar, label: "Calendar" },
-  { icon: Music, label: "Spotify" },
+  { icon: AlarmClock, label: "Alarms" },
 ]
 
 const PAGES = PAGE_ICONS.length
@@ -44,7 +45,7 @@ export default function Page() {
 
   return (
     <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col">
-      {/* Carousel */}
+      {/* Carousel content area */}
       <div
         ref={scrollRef}
         className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
@@ -70,38 +71,40 @@ export default function Page() {
           <CalendarPage />
         </section>
 
-        {/* Page 5: Spotify */}
+        {/* Page 5: Alarms */}
         <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
-          <SpotifyFullPage />
+          <AlarmsPage />
         </section>
       </div>
 
-      {/* Pagination - Icon based nav */}
-      <nav className="flex items-center justify-center gap-3 py-1.5" aria-label="Page navigation">
-        {PAGE_ICONS.map(({ icon: Icon, label }, i) => (
-          <button
-            key={label}
-            onClick={() => scrollToPage(i)}
-            aria-label={label}
-            aria-current={activePage === i ? "page" : undefined}
-            className={`flex items-center justify-center size-6 rounded-full transition-all duration-300 ${
-              activePage === i
-                ? "text-foreground bg-secondary/60"
-                : "text-muted-foreground/40 hover:text-muted-foreground"
-            }`}
-          >
-            <Icon className="size-3.5" />
-          </button>
-        ))}
-      </nav>
-    </div>
-  )
-}
+      {/* Persistent Spotify Bar - always visible as footer */}
+      <div className="w-full border-t border-border/30 bg-background/90 backdrop-blur-sm shrink-0">
+        <SpotifyBar />
+      </div>
 
-function SpotifyFullPage() {
-  return (
-    <div className="flex flex-col items-center justify-center w-full h-full px-4">
-      <SpotifyBar />
+      {/* Bottom Navigation */}
+      <nav className="w-full border-t border-border/20 bg-background shrink-0" aria-label="Page navigation">
+        <div className="flex items-center justify-around px-2 py-1.5">
+          {PAGE_ICONS.map(({ icon: Icon, label }, i) => (
+            <button
+              key={label}
+              onClick={() => scrollToPage(i)}
+              aria-label={label}
+              aria-current={activePage === i ? "page" : undefined}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all duration-200 ${
+                activePage === i
+                  ? "text-accent"
+                  : "text-muted-foreground/50 hover:text-muted-foreground"
+              }`}
+            >
+              <Icon className="size-4" />
+              <span className="text-[8px] font-medium tracking-wider uppercase">
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   )
 }

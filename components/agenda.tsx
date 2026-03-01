@@ -140,20 +140,18 @@ export function CalendarPage() {
   const dayOfWeek = WEEKDAY_PT_SHORT[today.getDay()] || "DOM."
 
   return (
-    <div className="flex flex-col h-full px-5 py-4 gap-3 overflow-hidden">
-      {/* Header: date + mini calendar */}
-      <div className="flex gap-4 items-start">
-        {/* Left: day events */}
-        <div className="flex-1 min-w-0">
-          <div className="text-lg font-bold text-foreground tracking-tight leading-tight">
-            {dayOfWeek}{" "}
-            <span className="uppercase">
-              {MONTH_NAMES_PT[currentMonth]} {selectedDay}
-            </span>
-          </div>
+    <div className="flex h-full w-full px-5 py-3 gap-5 overflow-hidden">
+      {/* Left: date header + events */}
+      <div className="flex flex-col flex-1 min-w-0 gap-2 justify-center">
+        <div className="text-base font-bold text-foreground tracking-tight leading-tight">
+          {dayOfWeek}{" "}
+          <span className="uppercase">
+            {MONTH_NAMES_PT[currentMonth]} {selectedDay}
+          </span>
+        </div>
 
-          {/* Events list */}
-          <div className="flex flex-col gap-1.5 mt-2.5">
+        {/* Events list */}
+        <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto scrollbar-hide">
             {events.length === 0 && (
               <span className="text-xs text-muted-foreground">{"No events"}</span>
             )}
@@ -245,119 +243,116 @@ export function CalendarPage() {
                 )}
               </div>
             ))}
-          </div>
         </div>
 
-        {/* Right: mini calendar */}
-        <div className="shrink-0 w-[170px]">
-          <div className="flex items-center justify-between mb-1.5">
-            <button onClick={prevMonth} aria-label="Previous month" className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground">
-              <ChevronLeft className="size-3" />
-            </button>
-            <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
-              {MONTH_NAMES_PT[currentMonth]}
-            </span>
-            <button onClick={nextMonth} aria-label="Next month" className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground">
-              <ChevronRight className="size-3" />
-            </button>
-          </div>
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-0">
-            {WEEKDAY_LABELS.map((label, i) => (
-              <span key={i} className="text-center text-[9px] text-muted-foreground/60 font-medium py-0.5">
-                {label}
-              </span>
-            ))}
-          </div>
-          {/* Days grid */}
-          <div className="grid grid-cols-7 gap-0">
-            {Array.from({ length: firstDay }).map((_, i) => (
-              <span key={`empty-${i}`} className="size-5" />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1
-              const selected = day === selectedDay
-              const todayMark = isToday(day)
-              return (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={`size-5 flex items-center justify-center text-[10px] rounded-full transition-colors ${
-                    selected
-                      ? "bg-foreground text-background font-bold"
-                      : todayMark
-                      ? "text-accent font-semibold"
-                      : "text-foreground/70 hover:text-foreground"
-                  }`}
-                >
-                  {day}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Add event section */}
-      {showAdd ? (
-        <div className="flex flex-col gap-1.5 p-2.5 rounded-lg bg-secondary/40 border border-border/50">
-          <div className="flex items-center gap-1.5">
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Event title"
-              className="flex-1 bg-secondary/80 text-foreground text-xs rounded px-2 py-1.5 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && addEvent()}
-            />
-            <input
-              type="text"
-              value={newTime}
-              onChange={(e) => setNewTime(e.target.value)}
-              placeholder="Time"
-              className="w-16 bg-secondary/80 text-foreground text-xs rounded px-2 py-1.5 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
-              onKeyDown={(e) => e.key === "Enter" && addEvent()}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              {EVENT_COLORS.map((color, i) => (
-                <button
-                  key={color}
-                  onClick={() => setNewColorIdx(i)}
-                  className={`size-3.5 rounded-full ${color} transition-transform ${
-                    newColorIdx === i ? "scale-125 ring-1 ring-foreground/50" : "opacity-50 hover:opacity-80"
-                  }`}
-                  aria-label={`Color ${i + 1}`}
-                />
-              ))}
+        {/* Add event inline */}
+        {showAdd ? (
+          <div className="flex flex-col gap-1 p-2 rounded-lg bg-secondary/40 border border-border/50 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Event title"
+                className="flex-1 bg-secondary/80 text-foreground text-xs rounded px-2 py-1 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && addEvent()}
+              />
+              <input
+                type="text"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                placeholder="Time"
+                className="w-14 bg-secondary/80 text-foreground text-xs rounded px-2 py-1 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
+                onKeyDown={(e) => e.key === "Enter" && addEvent()}
+              />
             </div>
-            <div className="flex items-center gap-1 ml-auto">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
+                {EVENT_COLORS.map((color, i) => (
+                  <button
+                    key={color}
+                    onClick={() => setNewColorIdx(i)}
+                    className={`size-3 rounded-full ${color} transition-transform ${
+                      newColorIdx === i ? "scale-125 ring-1 ring-foreground/50" : "opacity-50 hover:opacity-80"
+                    }`}
+                    aria-label={`Color ${i + 1}`}
+                  />
+                ))}
+              </div>
               <button
                 onClick={addEvent}
-                className="text-[10px] font-medium text-accent hover:text-accent/80 px-2 py-0.5"
+                className="ml-auto text-[10px] font-medium text-accent hover:text-accent/80 px-2"
               >
                 {"Add"}
               </button>
               <button
                 onClick={() => { setShowAdd(false); setNewTitle(""); setNewTime("") }}
-                className="text-[10px] text-muted-foreground hover:text-foreground px-1 py-0.5"
+                className="text-[10px] text-muted-foreground hover:text-foreground"
               >
                 {"Cancel"}
               </button>
             </div>
           </div>
+        ) : (
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            <Plus className="size-3" />
+            <span>{"Add event"}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Right: mini calendar */}
+      <div className="shrink-0 w-[170px] flex flex-col justify-center">
+        <div className="flex items-center justify-between mb-1.5">
+          <button onClick={prevMonth} aria-label="Previous month" className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="size-3" />
+          </button>
+          <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
+            {MONTH_NAMES_PT[currentMonth]}
+          </span>
+          <button onClick={nextMonth} aria-label="Next month" className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground">
+            <ChevronRight className="size-3" />
+          </button>
         </div>
-      ) : (
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors self-start"
-        >
-          <Plus className="size-3" />
-          <span>{"Add event"}</span>
-        </button>
-      )}
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 gap-0">
+          {WEEKDAY_LABELS.map((label, i) => (
+            <span key={i} className="text-center text-[9px] text-muted-foreground/60 font-medium py-0.5">
+              {label}
+            </span>
+          ))}
+        </div>
+        {/* Days grid */}
+        <div className="grid grid-cols-7 gap-0">
+          {Array.from({ length: firstDay }).map((_, i) => (
+            <span key={`empty-${i}`} className="size-5" />
+          ))}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1
+            const selected = day === selectedDay
+            const todayMark = isToday(day)
+            return (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(day)}
+                className={`size-5 flex items-center justify-center text-[10px] rounded-full transition-colors ${
+                  selected
+                    ? "bg-foreground text-background font-bold"
+                    : todayMark
+                    ? "text-accent font-semibold"
+                    : "text-foreground/70 hover:text-foreground"
+                }`}
+              >
+                {day}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

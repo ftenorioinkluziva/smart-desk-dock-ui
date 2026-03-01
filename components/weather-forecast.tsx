@@ -34,19 +34,19 @@ function WeatherIcon({ type, className }: { type: ForecastDay["iconType"]; class
 
 export function WeatherForecast() {
   return (
-    <div className="flex items-stretch h-full px-6 py-5 gap-6">
+    <div className="flex items-center justify-center h-full w-full px-8 gap-10">
       {/* Left: current weather */}
-      <div className="flex flex-col justify-center gap-1 min-w-0 flex-1">
-        <span className="text-base font-semibold text-foreground tracking-tight leading-tight">
+      <div className="flex flex-col items-center gap-1.5 shrink-0">
+        <span className="text-sm font-semibold text-foreground tracking-tight leading-tight">
           {"S\u00e3o Paulo"}
         </span>
-        <div className="flex items-center gap-2.5 mt-1">
-          <Sun className="size-7 text-chart-4 shrink-0" />
-          <span className="text-5xl font-light text-foreground tabular-nums font-mono leading-none tracking-tighter">
+        <div className="flex items-center gap-3 mt-1">
+          <Sun className="size-9 text-chart-4 shrink-0" />
+          <span className="text-6xl font-light text-foreground tabular-nums font-mono leading-none tracking-tighter">
             {"20\u00B0"}
           </span>
         </div>
-        <div className="flex items-center gap-2.5 mt-1.5 text-xs text-muted-foreground font-mono tabular-nums">
+        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground font-mono tabular-nums">
           <span className="flex items-center gap-0.5">
             <svg width="10" height="10" viewBox="0 0 10 10" className="text-muted-foreground" aria-hidden="true">
               <path d="M5 7L5 3M5 7L3 5M5 7L7 5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -62,8 +62,8 @@ export function WeatherForecast() {
         </div>
       </div>
 
-      {/* Right: 5-day forecast */}
-      <div className="flex flex-col justify-center gap-1.5 shrink-0">
+      {/* Center-right: 5-day forecast */}
+      <div className="flex flex-col justify-center gap-2 shrink-0">
         {FORECAST_DATA.map((day) => (
           <div key={day.day} className="flex items-center gap-2.5">
             <span className="text-[11px] font-semibold text-foreground w-9 tracking-tight">

@@ -64,129 +64,138 @@ export function AlarmsPage() {
   }, [newTime, newLabel, newDays])
 
   return (
-    <div className="flex flex-col h-full px-5 py-4 gap-3 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-muted-foreground">
-          {"Alarms"}
-        </h2>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          aria-label={showAdd ? "Cancel" : "Add alarm"}
-          className="size-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-        >
-          {showAdd ? <X className="size-3.5" /> : <Plus className="size-3.5" />}
-        </button>
+    <div className="flex h-full w-full px-5 py-3 gap-4 overflow-hidden">
+      {/* Left: header + add form */}
+      <div className="flex flex-col gap-2.5 shrink-0 w-[200px] justify-center">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-muted-foreground">
+            {"Alarms"}
+          </h2>
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            aria-label={showAdd ? "Cancel" : "Add alarm"}
+            className="size-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+          >
+            {showAdd ? <X className="size-3.5" /> : <Plus className="size-3.5" />}
+          </button>
+        </div>
+
+        {/* Add alarm form */}
+        {showAdd && (
+          <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border/50">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="bg-secondary/80 text-foreground text-sm font-mono tabular-nums rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring appearance-none w-[80px]"
+                style={{ colorScheme: "dark" }}
+              />
+              <input
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Label"
+                className="flex-1 bg-secondary/80 text-foreground text-xs rounded px-2 py-1 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
+                onKeyDown={(e) => e.key === "Enter" && addAlarm()}
+              />
+            </div>
+            <div className="flex items-center gap-0.5">
+              {WEEKDAY_FULL.map((day, i) => (
+                <button
+                  key={day}
+                  onClick={() => toggleDay(day)}
+                  className={`size-5 flex items-center justify-center rounded-full text-[8px] font-medium transition-colors ${
+                    newDays.includes(day)
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {WEEKDAYS[i]}
+                </button>
+              ))}
+              <button
+                onClick={addAlarm}
+                className="ml-auto text-[10px] font-medium text-accent hover:text-accent/80 px-2 py-0.5"
+              >
+                {"Save"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!showAdd && (
+          <p className="text-[10px] text-muted-foreground/50">
+            {alarms.length} {alarms.length === 1 ? "alarm" : "alarms"} {"set"}
+          </p>
+        )}
       </div>
 
-      {/* Add alarm form */}
-      {showAdd && (
-        <div className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/40 border border-border/50">
-          <div className="flex items-center gap-2">
-            <input
-              type="time"
-              value={newTime}
-              onChange={(e) => setNewTime(e.target.value)}
-              className="bg-secondary/80 text-foreground text-lg font-mono tabular-nums rounded px-3 py-1.5 outline-none focus:ring-1 focus:ring-ring appearance-none"
-              style={{ colorScheme: "dark" }}
-            />
-            <input
-              type="text"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="Label"
-              className="flex-1 bg-secondary/80 text-foreground text-xs rounded px-2.5 py-2 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
-              onKeyDown={(e) => e.key === "Enter" && addAlarm()}
-            />
-          </div>
-          {/* Day selector */}
-          <div className="flex items-center gap-1">
-            {WEEKDAY_FULL.map((day, i) => (
-              <button
-                key={day}
-                onClick={() => toggleDay(day)}
-                className={`size-6 flex items-center justify-center rounded-full text-[9px] font-medium transition-colors ${
-                  newDays.includes(day)
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-secondary/60 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {WEEKDAYS[i]}
-              </button>
-            ))}
-            <button
-              onClick={addAlarm}
-              className="ml-auto text-[10px] font-medium text-accent hover:text-accent/80 px-2.5 py-1"
-            >
-              {"Save"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Alarm list */}
-      <div className="flex flex-col gap-2 flex-1 overflow-y-auto scrollbar-hide">
+      {/* Right: alarm cards in a scrollable horizontal/grid layout */}
+      <div className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-hide justify-center min-w-0">
         {alarms.length === 0 && (
           <div className="flex items-center justify-center flex-1">
             <span className="text-xs text-muted-foreground">{"No alarms set"}</span>
           </div>
         )}
-        {alarms.map((alarm) => (
-          <div
-            key={alarm.id}
-            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-              alarm.enabled
-                ? "border-border/50 bg-secondary/20"
-                : "border-border/20 bg-secondary/5 opacity-50"
-            }`}
-          >
-            {/* Time */}
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-2xl font-light text-foreground font-mono tabular-nums leading-tight">
-                {alarm.time}
-              </span>
-              <span className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
-                {alarm.label}
-              </span>
-              <div className="flex items-center gap-0.5 mt-1">
-                {WEEKDAY_FULL.map((day, i) => (
+        <div className="grid grid-cols-2 gap-2">
+          {alarms.map((alarm) => (
+            <div
+              key={alarm.id}
+              className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-colors ${
+                alarm.enabled
+                  ? "border-border/50 bg-secondary/20"
+                  : "border-border/20 bg-secondary/5 opacity-50"
+              }`}
+            >
+              {/* Time + info */}
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-xl font-light text-foreground font-mono tabular-nums leading-tight">
+                  {alarm.time}
+                </span>
+                <span className="text-[9px] text-muted-foreground truncate leading-tight mt-0.5">
+                  {alarm.label}
+                </span>
+                <div className="flex items-center gap-0.5 mt-0.5">
+                  {WEEKDAY_FULL.map((day, i) => (
+                    <span
+                      key={day}
+                      className={`text-[7px] font-medium ${
+                        alarm.days.includes(day) ? "text-accent" : "text-muted-foreground/30"
+                      }`}
+                    >
+                      {WEEKDAYS[i]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Toggle + delete */}
+              <div className="flex flex-col items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => toggleAlarm(alarm.id)}
+                  aria-label={alarm.enabled ? "Disable alarm" : "Enable alarm"}
+                  className={`relative w-8 h-[18px] rounded-full transition-colors ${
+                    alarm.enabled ? "bg-accent" : "bg-secondary"
+                  }`}
+                >
                   <span
-                    key={day}
-                    className={`text-[8px] font-medium ${
-                      alarm.days.includes(day) ? "text-accent" : "text-muted-foreground/30"
+                    className={`absolute top-[2px] left-[2px] size-[14px] rounded-full bg-foreground transition-transform ${
+                      alarm.enabled ? "translate-x-[14px]" : "translate-x-0"
                     }`}
-                  >
-                    {WEEKDAYS[i]}
-                  </span>
-                ))}
+                  />
+                </button>
+                <button
+                  onClick={() => deleteAlarm(alarm.id)}
+                  aria-label="Delete alarm"
+                  className="size-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors"
+                >
+                  <Trash2 className="size-2.5" />
+                </button>
               </div>
             </div>
-
-            {/* Toggle + delete */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => toggleAlarm(alarm.id)}
-                aria-label={alarm.enabled ? "Disable alarm" : "Enable alarm"}
-                className={`relative w-9 h-5 rounded-full transition-colors ${
-                  alarm.enabled ? "bg-accent" : "bg-secondary"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-foreground transition-transform ${
-                    alarm.enabled ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
-              <button
-                onClick={() => deleteAlarm(alarm.id)}
-                aria-label="Delete alarm"
-                className="size-6 flex items-center justify-center text-muted-foreground/50 hover:text-destructive transition-colors"
-              >
-                <Trash2 className="size-3" />
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -41,34 +41,34 @@ export function ClockWeather() {
   })
 
   return (
-    <div className="flex flex-col items-center justify-center gap-2.5 w-full px-6">
-      {/* Large clock */}
-      <div className="flex items-baseline">
-        <span className="text-8xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
-          {hours}
-          <span className="animate-pulse">:</span>
-          {minutes}
-        </span>
-        <span className="text-2xl font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none">
-          {seconds}
-        </span>
+    <div className="flex items-center justify-center gap-8 w-full px-8">
+      {/* Left: Large clock */}
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex items-baseline">
+          <span className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+            {hours}
+            <span className="animate-pulse">:</span>
+            {minutes}
+          </span>
+          <span className="text-xl font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none">
+            {seconds}
+          </span>
+        </div>
+        <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+          {dateStr.toUpperCase()}
+        </div>
       </div>
 
-      {/* Date */}
-      <div className="text-[11px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
-        {dateStr.toUpperCase()}
-      </div>
-
-      {/* Quick weather summary */}
-      <div className="flex items-center gap-2.5 mt-1 px-4 py-2 rounded-full bg-secondary/40">
-        <Sun className="size-4 text-chart-4" />
-        <span className="text-sm text-foreground font-light tabular-nums font-mono">
-          {"20\u00B0C"}
+      {/* Right: Quick weather summary (vertical) */}
+      <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-2xl bg-secondary/30">
+        <Sun className="size-6 text-chart-4" />
+        <span className="text-2xl font-light text-foreground tabular-nums font-mono leading-none">
+          {"20\u00B0"}
         </span>
-        <span className="text-[10px] text-muted-foreground font-medium">
+        <span className="text-[9px] text-muted-foreground font-medium tracking-wide">
           {"S\u00e3o Paulo"}
         </span>
-        <span className="text-xs text-muted-foreground font-mono tabular-nums">
+        <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
           {"13\u00B0 / 27\u00B0"}
         </span>
       </div>

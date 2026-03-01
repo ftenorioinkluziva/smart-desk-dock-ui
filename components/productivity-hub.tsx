@@ -38,21 +38,24 @@ export function ProductivityHub({
 }: ProductivityHubProps) {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
+  // Short labels so the pill fits on a landscape phone screen
+  const TAB_LABELS: Record<Tab, string> = { pomodoro: "Pomo", timer: "Timer", stopwatch: "Watch" }
+
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
+    <div className="flex flex-col items-center justify-center h-full gap-2 px-6">
       {/* Segmented Control */}
-      <div className="flex items-center rounded-full bg-secondary/60 p-0.5">
+      <div className="flex items-center rounded-full bg-secondary/60 p-0.5 shrink-0">
         {(["pomodoro", "timer", "stopwatch"] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1 text-[11px] font-medium tracking-wide uppercase rounded-full transition-all ${
+            className={`px-3 py-0.5 text-[11px] font-medium uppercase rounded-full transition-all ${
               activeTab === tab
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab}
+            {TAB_LABELS[tab]}
           </button>
         ))}
       </div>
@@ -82,6 +85,7 @@ export function ProductivityHub({
 }
 
 // ── Pomodoro ──────────────────────────────────────────────────────────────────
+// Ring sized for landscape phone (~303 px usable height)
 const RING_RADIUS = 44
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
@@ -115,7 +119,8 @@ function PomodoroView({ pomodoro }: { pomodoro: PomodoroReturn }) {
   const isDone    = status === "finished"
 
   return (
-    <>
+    // Own flex column with tight gap so the whole view fits in ~260 px
+    <div className="flex flex-col items-center gap-2">
       {/* Round progress dots — 4 circles, filled as focus rounds complete */}
       <div className="flex items-center gap-2">
         {[1, 2, 3, 4].map((r) => {
@@ -134,19 +139,19 @@ function PomodoroView({ pomodoro }: { pomodoro: PomodoroReturn }) {
         })}
       </div>
 
-      {/* Circular ring with time centred */}
+      {/* Circular ring with time centred — size-36 = 144 px fits landscape */}
       <div className="relative flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="size-48" aria-hidden="true">
+        <svg viewBox="0 0 100 100" className="size-36" aria-hidden="true">
           {/* Track */}
           <circle
             cx="50" cy="50" r={RING_RADIUS}
-            fill="none" stroke="currentColor" strokeWidth="4"
+            fill="none" stroke="currentColor" strokeWidth="5"
             className="text-secondary"
           />
           {/* Progress arc */}
           <circle
             cx="50" cy="50" r={RING_RADIUS}
-            fill="none" stroke="currentColor" strokeWidth="4"
+            fill="none" stroke="currentColor" strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={RING_CIRCUMFERENCE}
             strokeDashoffset={dashOffset}
@@ -158,7 +163,7 @@ function PomodoroView({ pomodoro }: { pomodoro: PomodoroReturn }) {
 
         {/* Time + phase label */}
         <div className="absolute flex flex-col items-center gap-0.5">
-          <span className="text-5xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+          <span className="text-4xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
             {mins}:{secs}
           </span>
           <span className="text-[9px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
@@ -170,20 +175,20 @@ function PomodoroView({ pomodoro }: { pomodoro: PomodoroReturn }) {
       {/* Controls */}
       {isDone ? (
         /* Phase finished: user confirms what to do next */
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={beginNextPhase}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-background text-xs font-semibold hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-accent text-background text-xs font-semibold hover:opacity-90 transition-opacity"
           >
-            <Play className="size-3.5 ml-0.5" />
+            <Play className="size-3 ml-0.5" />
             {nextPhaseLabel(phase, focusRound)}
           </button>
           <button
             onClick={reset}
             aria-label="Reset cycle"
-            className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
-            <RotateCcw className="size-4" />
+            <RotateCcw className="size-3.5" />
           </button>
         </div>
       ) : (
@@ -192,20 +197,20 @@ function PomodoroView({ pomodoro }: { pomodoro: PomodoroReturn }) {
           <button
             onClick={isRunning ? pause : start}
             aria-label={isRunning ? "Pause" : "Start"}
-            className="flex items-center justify-center size-12 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
+            className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
           >
-            {isRunning ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
+            {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
           </button>
           <button
             onClick={reset}
             aria-label="Reset"
-            className="flex items-center justify-center size-12 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
-            <RotateCcw className="size-5" />
+            <RotateCcw className="size-4" />
           </button>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
@@ -236,7 +241,7 @@ function TimerView({
             <Minus className="size-3.5" />
           </button>
         )}
-        <div className="text-8xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+        <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
           {mins}:{secs}
         </div>
         {isSetup && (
@@ -264,23 +269,23 @@ function StopwatchView({
   const secs = (elapsed % 60).toString().padStart(2, "0")
   return (
     <>
-      <div className="text-8xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+      <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
         {mins}:{secs}
       </div>
       <div className="flex items-center gap-3">
         <button
           onClick={onToggle}
           aria-label={isRunning ? "Pause" : "Start"}
-          className="flex items-center justify-center size-12 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
         >
-          {isRunning ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
+          {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
         </button>
         <button
           onClick={onReset}
           aria-label="Reset"
-          className="flex items-center justify-center size-12 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
-          <Square className="size-5" />
+          <Square className="size-4" />
         </button>
       </div>
     </>
@@ -298,16 +303,16 @@ function ControlButtons({
       <button
         onClick={onToggle}
         aria-label={isRunning ? "Pause" : "Start"}
-        className="flex items-center justify-center size-12 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
+        className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
       >
-        {isRunning ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
+        {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
       </button>
       <button
         onClick={onReset}
         aria-label="Reset"
-        className="flex items-center justify-center size-12 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+        className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
       >
-        <RotateCcw className="size-5" />
+        <RotateCcw className="size-4" />
       </button>
     </div>
   )

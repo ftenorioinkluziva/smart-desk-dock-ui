@@ -13,11 +13,11 @@ export function ClockDate() {
 
   if (!time) {
     return (
-      <div className="flex flex-col items-center justify-center gap-1 py-4">
-        <div className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
+      <div className="flex flex-col items-center justify-center gap-0.5">
+        <div className="text-5xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
           {"--:--"}
         </div>
-        <div className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">
+        <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
           {"loading..."}
         </div>
       </div>
@@ -34,13 +34,13 @@ export function ClockDate() {
   })
 
   return (
-    <div className="flex flex-col items-center justify-center gap-1 py-4">
-      <div className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
+    <div className="flex flex-col items-center justify-center gap-0.5">
+      <div className="text-5xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
         {hours}
         <span className="animate-pulse">:</span>
         {minutes}
       </div>
-      <div className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">
+      <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
         {dateStr.toUpperCase()}
       </div>
     </div>

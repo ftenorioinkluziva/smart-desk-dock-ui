@@ -6,35 +6,27 @@ import './globals.css'
 const _inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const _jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' })
 
-export const metadata: Metadata = {
-  title: 'Smart Display',
-  description: 'Minimalist desk dock smart display',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
-}
-
 export const viewport: Viewport = {
-  themeColor: '#09090b',
-  userScalable: false,
-  width: 375,
+  width: 667,
   initialScale: 1,
-}
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#000000",
+};
+
+export const metadata: Metadata = {
+  title: "Focus Dock",
+  description: "Minimalist Desk Dock",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Focus Dock",
+  },
+  icons: {
+    apple: "/icon-192.png", // Isso garante o ícone no iOS
+  },
+};
 
 export default function RootLayout({
   children,

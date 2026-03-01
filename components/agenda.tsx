@@ -6,21 +6,21 @@ export function Agenda() {
   ]
 
   return (
-    <div className="flex flex-col gap-3 px-5 py-4">
+    <div className="flex flex-col gap-2 px-4 py-3">
       <h2 className="text-[10px] font-semibold tracking-[0.2em] uppercase text-muted-foreground">
         {"Next Up"}
       </h2>
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-1.5">
         {events.map((event) => (
           <div key={event.title} className="flex items-center gap-3">
             <span
               className={`size-2 shrink-0 rounded-full ${event.color}`}
               aria-hidden="true"
             />
-            <span className="text-xs text-muted-foreground w-16 shrink-0 font-mono tabular-nums">
+            <span className="text-[11px] text-muted-foreground w-14 shrink-0 font-mono tabular-nums">
               {event.time}
             </span>
-            <span className="text-sm text-foreground truncate">
+            <span className="text-xs text-foreground truncate">
               {event.title}
             </span>
           </div>

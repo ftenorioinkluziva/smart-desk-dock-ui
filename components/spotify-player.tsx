@@ -7,19 +7,19 @@ export function SpotifyPlayer() {
   const [isPlaying, setIsPlaying] = useState(false)
 
   return (
-    <div className="flex flex-col gap-3 px-5 py-4">
+    <div className="flex flex-col gap-2.5 px-4 py-3">
       <div className="flex items-center gap-3">
         {/* Album Art */}
-        <div className="size-11 shrink-0 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
+        <div className="size-10 shrink-0 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
           <svg
-            viewBox="0 0 44 44"
+            viewBox="0 0 40 40"
             className="size-full"
             aria-hidden="true"
           >
-            <rect width="44" height="44" fill="currentColor" className="text-secondary" />
-            <circle cx="22" cy="22" r="8" fill="none" stroke="currentColor" strokeWidth="1" className="text-muted-foreground opacity-30" />
-            <circle cx="22" cy="22" r="14" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground opacity-20" />
-            <circle cx="22" cy="22" r="3" fill="currentColor" className="text-muted-foreground opacity-40" />
+            <rect width="40" height="40" fill="currentColor" className="text-secondary" />
+            <circle cx="20" cy="20" r="7" fill="none" stroke="currentColor" strokeWidth="1" className="text-muted-foreground opacity-30" />
+            <circle cx="20" cy="20" r="12" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground opacity-20" />
+            <circle cx="20" cy="20" r="2.5" fill="currentColor" className="text-muted-foreground opacity-40" />
           </svg>
         </div>
 

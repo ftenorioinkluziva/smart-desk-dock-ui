@@ -32,9 +32,9 @@ export function PomodoroTimer() {
   const progress = ((25 * 60 - totalSeconds) / (25 * 60)) * 100
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-4">
+    <div className="flex flex-col items-center justify-center gap-3">
       <div className="relative">
-        <div className="text-5xl font-extralight text-foreground tabular-nums font-mono tracking-tight">
+        <div className="text-4xl font-extralight text-foreground tabular-nums font-mono tracking-tight">
           {minutes}:{seconds}
         </div>
         <div className="mt-2 h-0.5 w-full rounded-full bg-secondary overflow-hidden">
@@ -44,11 +44,11 @@ export function PomodoroTimer() {
           />
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <button
           onClick={togglePlay}
           aria-label={isRunning ? "Pause timer" : "Start timer"}
-          className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center justify-center size-9 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
         >
           {isRunning ? (
             <Pause className="size-4" />
@@ -59,7 +59,7 @@ export function PomodoroTimer() {
         <button
           onClick={reset}
           aria-label="Reset timer"
-          className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
           <RotateCcw className="size-4" />
         </button>

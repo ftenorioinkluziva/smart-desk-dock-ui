@@ -8,10 +8,10 @@ import { AlarmsView } from "@/components/alarms-view"
 import { AlarmOverlay } from "@/components/alarm-overlay"
 import { SpotifyBar } from "@/components/spotify-bar"
 import { useAlarms } from "@/hooks/use-alarms"
+import { usePomodoro } from "@/hooks/use-pomodoro"
 import type { Alarm, DayOfWeek } from "@/lib/alarms"
 
 const PAGES = 4
-const POMODORO_DURATION = 25 * 60
 const TIMER_DEFAULT = 5 * 60
 
 // Tiny silent WAV — played silently on first touch to unlock iOS audio
@@ -22,9 +22,10 @@ export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
 
-  // --- Timer state (lifted so timers persist across page swipes) ---
-  const [pomodoroSeconds, setPomodoroSeconds] = useState(POMODORO_DURATION)
-  const [pomodoroIsRunning, setPomodoroIsRunning] = useState(false)
+  // --- Pomodoro (full sequence state machine, runs across page swipes) ---
+  const pomodoro = usePomodoro()
+
+  // --- Free Timer / Stopwatch state ---
   const [timerInitial, setTimerInitial] = useState(TIMER_DEFAULT)
   const [timerSeconds, setTimerSeconds] = useState(TIMER_DEFAULT)
   const [timerIsRunning, setTimerIsRunning] = useState(false)
@@ -38,12 +39,6 @@ export default function Page() {
   const lastFiredRef = useRef<string>("")
 
   // --- Timer effects (keep running while user browses other pages) ---
-  useEffect(() => {
-    if (!pomodoroIsRunning || pomodoroSeconds <= 0) return
-    const id = setInterval(() => setPomodoroSeconds((p) => p - 1), 1000)
-    return () => clearInterval(id)
-  }, [pomodoroIsRunning, pomodoroSeconds])
-
   useEffect(() => {
     if (!timerIsRunning || timerSeconds <= 0) return
     const id = setInterval(() => setTimerSeconds((p) => p - 1), 1000)
@@ -163,10 +158,7 @@ export default function Page() {
         {/* View 2 — Productivity Hub */}
         <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
           <ProductivityHub
-            pomodoroSeconds={pomodoroSeconds}
-            pomodoroIsRunning={pomodoroIsRunning}
-            onPomodoroToggle={() => setPomodoroIsRunning((p) => !p)}
-            onPomodoroReset={() => { setPomodoroIsRunning(false); setPomodoroSeconds(POMODORO_DURATION) }}
+            pomodoro={pomodoro}
             timerSeconds={timerSeconds}
             timerIsRunning={timerIsRunning}
             timerInitial={timerInitial}

@@ -60,10 +60,10 @@ export function ClockWeather() {
   if (!time) {
     return (
       <div className="flex flex-col items-center justify-center gap-1">
-        <div className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
+        <div className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
           {"--:--"}
         </div>
-        <div className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">
+        <div className="text-sm font-medium tracking-[0.2em] uppercase text-muted-foreground">
           {"loading..."}
         </div>
       </div>
@@ -84,14 +84,14 @@ export function ClockWeather() {
   return (
     <div className="flex flex-col items-center justify-center gap-2">
       {/* Massive clock */}
-      <div className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+      <div className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
         {hours}
         <span className="animate-pulse">:</span>
         {minutes}
       </div>
 
       {/* Date */}
-      <div className="text-[11px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+      <div className="text-sm font-medium tracking-[0.2em] uppercase text-muted-foreground">
         {dateStr}
       </div>
 
@@ -99,12 +99,12 @@ export function ClockWeather() {
       <div className="flex items-center gap-2 mt-1">
         <WeatherIcon
           condition={weather?.condition ?? "clear"}
-          className="size-4 text-muted-foreground"
+          className="size-5 text-muted-foreground"
         />
-        <span className="text-sm text-foreground font-light tabular-nums">
+        <span className="text-lg text-foreground font-light tabular-nums">
           {weather ? `${weather.temp}\u00B0C` : "--\u00B0C"}
         </span>
-        <span className="text-xs text-muted-foreground font-mono tabular-nums">
+        <span className="text-sm text-muted-foreground font-mono tabular-nums">
           {weather
             ? `H: ${weather.high}\u00B0 L: ${weather.low}\u00B0`
             : "H: --\u00B0 L: --\u00B0"}

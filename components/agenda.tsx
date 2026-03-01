@@ -46,7 +46,7 @@ export function Agenda() {
         {"Daily Agenda"}
       </h2>
 
-      <div className="flex flex-col gap-3 w-full max-w-xs">
+      <div className="flex flex-col gap-4 w-full max-w-lg">
         {MOCK_EVENTS.map((event, idx) => {
           const isNext = idx === nextIdx
           const isPast = nowMinutes >= 0 && toMinutes(event.time) < nowMinutes
@@ -60,14 +60,14 @@ export function Agenda() {
             >
               {/* Color dot — accent ring on next event */}
               <span
-                className={`size-2 shrink-0 rounded-full ${event.color} ${
+                className={`size-2.5 shrink-0 rounded-full ${event.color} ${
                   isNext ? "ring-1 ring-offset-1 ring-offset-background ring-current" : ""
                 }`}
                 aria-hidden="true"
               />
 
               {/* Time */}
-              <span className="text-xs text-muted-foreground w-11 shrink-0 font-mono tabular-nums">
+              <span className="text-sm text-muted-foreground w-12 shrink-0 font-mono tabular-nums">
                 {event.time}
               </span>
 
@@ -75,8 +75,8 @@ export function Agenda() {
               <span
                 className={`truncate ${
                   isNext
-                    ? "text-sm font-medium text-foreground"
-                    : "text-sm text-foreground/70"
+                    ? "text-base font-medium text-foreground"
+                    : "text-base text-foreground/70"
                 }`}
               >
                 {event.title}

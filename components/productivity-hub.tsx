@@ -120,7 +120,7 @@ function PomodoroView({
       <div className="relative flex items-center justify-center">
         <svg
           viewBox="0 0 100 100"
-          className="size-36"
+          className="size-48"
           aria-hidden="true"
         >
           {/* Track */}
@@ -151,7 +151,7 @@ function PomodoroView({
         </svg>
         {/* Time overlay */}
         <div className="absolute flex flex-col items-center gap-0.5">
-          <span className="text-4xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+          <span className="text-5xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
             {mins}:{secs}
           </span>
           <span className="text-[9px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
@@ -204,7 +204,7 @@ function TimerView({
           </button>
         )}
 
-        <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+        <div className="text-8xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
           {mins}:{secs}
         </div>
 
@@ -241,23 +241,23 @@ function StopwatchView({
 
   return (
     <>
-      <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+      <div className="text-8xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
         {mins}:{secs}
       </div>
       <div className="flex items-center gap-3">
         <button
           onClick={onToggle}
           aria-label={isRunning ? "Pause" : "Start"}
-          className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center justify-center size-12 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
         >
-          {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
+          {isRunning ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
         </button>
         <button
           onClick={onReset}
           aria-label="Reset"
-          className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center justify-center size-12 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
-          <Square className="size-4" />
+          <Square className="size-5" />
         </button>
       </div>
     </>
@@ -279,16 +279,16 @@ function ControlButtons({
       <button
         onClick={onToggle}
         aria-label={isRunning ? "Pause" : "Start"}
-        className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
+        className="flex items-center justify-center size-12 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
       >
-        {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
+        {isRunning ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
       </button>
       <button
         onClick={onReset}
         aria-label="Reset"
-        className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+        className="flex items-center justify-center size-12 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
       >
-        <RotateCcw className="size-4" />
+        <RotateCcw className="size-5" />
       </button>
     </div>
   )

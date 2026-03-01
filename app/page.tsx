@@ -2,11 +2,21 @@
 
 import { useRef, useState, useEffect, useCallback } from "react"
 import { ClockWeather } from "@/components/clock-weather"
+import { WeatherForecast } from "@/components/weather-forecast"
 import { ProductivityHub } from "@/components/productivity-hub"
-import { Agenda } from "@/components/agenda"
+import { CalendarPage } from "@/components/agenda"
 import { SpotifyBar } from "@/components/spotify-bar"
+import { Clock, CloudSun, Timer, Calendar, Music } from "lucide-react"
 
-const PAGES = 3
+const PAGE_ICONS = [
+  { icon: Clock, label: "Clock" },
+  { icon: CloudSun, label: "Weather" },
+  { icon: Timer, label: "Pomodoro" },
+  { icon: Calendar, label: "Calendar" },
+  { icon: Music, label: "Spotify" },
+]
+
+const PAGES = PAGE_ICONS.length
 
 export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -26,6 +36,12 @@ export default function Page() {
     return () => el.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
 
+  const scrollToPage = useCallback((index: number) => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" })
+  }, [])
+
   return (
     <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col">
       {/* Carousel */}
@@ -34,41 +50,58 @@ export default function Page() {
         className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
       >
-        {/* Page 1: Clock & Weather */}
+        {/* Page 1: Clock */}
         <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
           <ClockWeather />
         </section>
 
-        {/* Page 2: Productivity Hub */}
+        {/* Page 2: Weather Forecast */}
+        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+          <WeatherForecast />
+        </section>
+
+        {/* Page 3: Pomodoro / Productivity Hub */}
         <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
           <ProductivityHub />
         </section>
 
-        {/* Page 3: Daily Agenda */}
-        <section className="w-full h-full flex-shrink-0 snap-center">
-          <Agenda />
+        {/* Page 4: Calendar */}
+        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+          <CalendarPage />
+        </section>
+
+        {/* Page 5: Spotify */}
+        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+          <SpotifyFullPage />
         </section>
       </div>
 
-      {/* Pagination Dots */}
-      <div className="flex items-center justify-center gap-1.5 pb-1">
-        {Array.from({ length: PAGES }).map((_, i) => (
-          <span
-            key={i}
-            className={`rounded-full transition-all duration-300 ${
+      {/* Pagination - Icon based nav */}
+      <nav className="flex items-center justify-center gap-3 py-1.5" aria-label="Page navigation">
+        {PAGE_ICONS.map(({ icon: Icon, label }, i) => (
+          <button
+            key={label}
+            onClick={() => scrollToPage(i)}
+            aria-label={label}
+            aria-current={activePage === i ? "page" : undefined}
+            className={`flex items-center justify-center size-6 rounded-full transition-all duration-300 ${
               activePage === i
-                ? "w-1.5 h-1.5 bg-foreground"
-                : "w-1 h-1 bg-muted-foreground/40"
+                ? "text-foreground bg-secondary/60"
+                : "text-muted-foreground/40 hover:text-muted-foreground"
             }`}
-            aria-hidden="true"
-          />
+          >
+            <Icon className="size-3.5" />
+          </button>
         ))}
-      </div>
+      </nav>
+    </div>
+  )
+}
 
-      {/* Persistent Spotify Bar */}
-      <div className="w-full border-t border-border/50 bg-background/80 backdrop-blur-sm z-50">
-        <SpotifyBar />
-      </div>
+function SpotifyFullPage() {
+  return (
+    <div className="flex flex-col items-center justify-center w-full h-full px-4">
+      <SpotifyBar />
     </div>
   )
 }

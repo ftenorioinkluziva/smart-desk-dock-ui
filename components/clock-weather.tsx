@@ -5,17 +5,23 @@ import { Sun } from "lucide-react"
 
 export function ClockWeather() {
   const [time, setTime] = useState<Date | null>(null)
+  const [seconds, setSeconds] = useState("")
 
   useEffect(() => {
-    setTime(new Date())
-    const interval = setInterval(() => setTime(new Date()), 1000)
+    const update = () => {
+      const now = new Date()
+      setTime(now)
+      setSeconds(now.getSeconds().toString().padStart(2, "0"))
+    }
+    update()
+    const interval = setInterval(update, 1000)
     return () => clearInterval(interval)
   }, [])
 
   if (!time) {
     return (
       <div className="flex flex-col items-center justify-center gap-1">
-        <div className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
+        <div className="text-8xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
           {"--:--"}
         </div>
         <div className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">
@@ -28,19 +34,24 @@ export function ClockWeather() {
   const hours = time.getHours().toString().padStart(2, "0")
   const minutes = time.getMinutes().toString().padStart(2, "0")
 
-  const dateStr = time.toLocaleDateString("en-US", {
+  const dateStr = time.toLocaleDateString("pt-BR", {
     weekday: "long",
-    month: "short",
+    month: "long",
     day: "numeric",
   })
 
   return (
-    <div className="flex flex-col items-center justify-center gap-2">
-      {/* Massive clock */}
-      <div className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
-        {hours}
-        <span className="animate-pulse">:</span>
-        {minutes}
+    <div className="flex flex-col items-center justify-center gap-2.5 w-full px-6">
+      {/* Large clock */}
+      <div className="flex items-baseline">
+        <span className="text-8xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+          {hours}
+          <span className="animate-pulse">:</span>
+          {minutes}
+        </span>
+        <span className="text-2xl font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none">
+          {seconds}
+        </span>
       </div>
 
       {/* Date */}
@@ -48,14 +59,17 @@ export function ClockWeather() {
         {dateStr.toUpperCase()}
       </div>
 
-      {/* Weather */}
-      <div className="flex items-center gap-2 mt-1">
-        <Sun className="size-4 text-muted-foreground" />
-        <span className="text-sm text-foreground font-light tabular-nums">
-          {"28\u00B0C"}
+      {/* Quick weather summary */}
+      <div className="flex items-center gap-2.5 mt-1 px-4 py-2 rounded-full bg-secondary/40">
+        <Sun className="size-4 text-chart-4" />
+        <span className="text-sm text-foreground font-light tabular-nums font-mono">
+          {"20\u00B0C"}
+        </span>
+        <span className="text-[10px] text-muted-foreground font-medium">
+          {"S\u00e3o Paulo"}
         </span>
         <span className="text-xs text-muted-foreground font-mono tabular-nums">
-          {"H: 30\u00B0 L: 22\u00B0"}
+          {"13\u00B0 / 27\u00B0"}
         </span>
       </div>
     </div>

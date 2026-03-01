@@ -1,41 +1,24 @@
 "use client"
 
-import { useState } from "react"
-import { Play, Pause, RotateCcw, Square, Plus, Minus } from "lucide-react"
-import type { PomodoroReturn } from "@/hooks/use-pomodoro"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { Play, Pause, RotateCcw, Square, Coffee, Brain } from "lucide-react"
 
 type Tab = "pomodoro" | "timer" | "stopwatch"
+type PomodoroMode = "focus" | "short-break" | "long-break"
 
-type ProductivityHubProps = {
-  // Pomodoro — full hook result
-  pomodoro: PomodoroReturn
-  // Free Timer
-  timerSeconds: number
-  timerIsRunning: boolean
-  timerInitial: number
-  onTimerToggle: () => void
-  onTimerReset: () => void
-  onTimerChange: (seconds: number) => void
-  // Stopwatch
-  stopwatchElapsed: number
-  stopwatchIsRunning: boolean
-  onStopwatchToggle: () => void
-  onStopwatchReset: () => void
+const POMODORO_DURATIONS: Record<PomodoroMode, number> = {
+  "focus": 25 * 60,
+  "short-break": 5 * 60,
+  "long-break": 15 * 60,
 }
 
-export function ProductivityHub({
-  pomodoro,
-  timerSeconds,
-  timerIsRunning,
-  timerInitial,
-  onTimerToggle,
-  onTimerReset,
-  onTimerChange,
-  stopwatchElapsed,
-  stopwatchIsRunning,
-  onStopwatchToggle,
-  onStopwatchReset,
-}: ProductivityHubProps) {
+const MODE_LABELS: Record<PomodoroMode, string> = {
+  "focus": "Focus",
+  "short-break": "Short Break",
+  "long-break": "Long Break",
+}
+
+export function ProductivityHub() {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
   return (
@@ -59,215 +42,285 @@ export function ProductivityHub({
 
       {/* Right: Content area */}
       <div className="flex-1 flex items-center justify-center min-w-0">
-        {activeTab === "pomodoro" && <PomodoroView pomodoro={pomodoro} />}
-        {activeTab === "timer" && (
-          <TimerView
-            seconds={timerSeconds}
-            isRunning={timerIsRunning}
-            initial={timerInitial}
-            onToggle={onTimerToggle}
-            onReset={onTimerReset}
-            onChange={onTimerChange}
-          />
-        )}
-        {activeTab === "stopwatch" && (
-          <StopwatchView
-            elapsed={stopwatchElapsed}
-            isRunning={stopwatchIsRunning}
-            onToggle={onStopwatchToggle}
-            onReset={onStopwatchReset}
-          />
-        )}
+        {activeTab === "pomodoro" && <PomodoroView />}
+        {activeTab === "timer" && <TimerView />}
+        {activeTab === "stopwatch" && <StopwatchView />}
       </div>
     </div>
   )
 }
 
-// ── Pomodoro ──────────────────────────────────────────────────────────────────
-const RING_RADIUS = 58
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+function PomodoroView() {
+  const [mode, setMode] = useState<PomodoroMode>("focus")
+  const [totalSeconds, setTotalSeconds] = useState(POMODORO_DURATIONS["focus"])
+  const [isRunning, setIsRunning] = useState(false)
+  const [isAlarm, setIsAlarm] = useState(false)
+  const [sessions, setSessions] = useState(0)
+  const alarmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-const PHASE_LABEL: Record<string, string> = {
-  focus:         "Focus",
-  "short-break": "Short Break",
-  "long-break":  "Long Break",
-}
+  const duration = POMODORO_DURATIONS[mode]
+  const progress = ((duration - totalSeconds) / duration) * 100
 
-function nextPhaseLabel(phase: string, focusRound: number): string {
-  if (phase === "long-break")  return "Start Over"
-  if (phase === "focus")       return focusRound >= 4 ? "Start Long Break (30 min)" : "Start Short Break"
-  return "Start Focus"
-}
+  useEffect(() => {
+    if (!isRunning || totalSeconds <= 0) {
+      if (totalSeconds <= 0 && isRunning) {
+        setIsRunning(false)
+        setIsAlarm(true)
+        if (mode === "focus") {
+          setSessions((prev) => prev + 1)
+        }
+        alarmTimeoutRef.current = setTimeout(() => {
+          setIsAlarm(false)
+        }, 8000)
+      }
+      return
+    }
+    const interval = setInterval(() => {
+      setTotalSeconds((prev) => prev - 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [isRunning, totalSeconds, mode])
 
-function PomodoroView({ pomodoro }: { pomodoro: PomodoroReturn }) {
-  const { phase, status, focusRound, seconds, maxSeconds,
-          start, pause, beginNextPhase, reset } = pomodoro
+  useEffect(() => {
+    return () => {
+      if (alarmTimeoutRef.current) {
+        clearTimeout(alarmTimeoutRef.current)
+      }
+    }
+  }, [])
 
-  const mins = Math.floor(seconds / 60).toString().padStart(2, "0")
-  const secs = (seconds % 60).toString().padStart(2, "0")
+  const switchMode = useCallback((newMode: PomodoroMode) => {
+    setMode(newMode)
+    setTotalSeconds(POMODORO_DURATIONS[newMode])
+    setIsRunning(false)
+    setIsAlarm(false)
+  }, [])
 
-  const progress = maxSeconds > 0 ? (maxSeconds - seconds) / maxSeconds : 1
-  const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress)
+  const reset = useCallback(() => {
+    setIsRunning(false)
+    setTotalSeconds(POMODORO_DURATIONS[mode])
+    setIsAlarm(false)
+  }, [mode])
 
-  const ringClass = phase === "focus" ? "text-accent" : "text-emerald-400"
-  const isRunning = status === "running"
-  const isDone    = status === "finished"
+  const togglePlay = useCallback(() => {
+    setIsAlarm(false)
+    setIsRunning((prev) => !prev)
+  }, [])
+
+  const dismissAlarm = useCallback(() => {
+    setIsAlarm(false)
+  }, [])
+
+  const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
+  const secs = (totalSeconds % 60).toString().padStart(2, "0")
+
+  const radius = 58
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (progress / 100) * circumference
 
   return (
     <div className="flex items-center gap-6 w-full">
-      {/* Left: circular timer */}
-      <div className="relative flex items-center justify-center shrink-0">
+      {/* Left side: circular timer */}
+      <div
+        className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${
+          isAlarm ? "animate-pomodoro-alarm" : ""
+        }`}
+      >
+        {isAlarm && (
+          <div className="absolute inset-[-6px] rounded-full animate-pomodoro-pulse">
+            <div className="w-full h-full rounded-full border-2 border-destructive/60" />
+          </div>
+        )}
+
         <svg
           width="140"
           height="140"
           viewBox="0 0 140 140"
           className="transform -rotate-90"
-          aria-hidden="true"
         >
           <circle
-            cx="70" cy="70" r={RING_RADIUS}
-            fill="none" stroke="currentColor" strokeWidth="3"
+            cx="70"
+            cy="70"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
             className="text-secondary"
           />
           <circle
-            cx="70" cy="70" r={RING_RADIUS}
-            fill="none" stroke="currentColor" strokeWidth="3"
+            cx="70"
+            cy="70"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
             strokeLinecap="round"
-            strokeDasharray={RING_CIRCUMFERENCE}
+            strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className={`transition-all duration-1000 ease-linear ${ringClass}`}
+            className={`transition-all duration-1000 ease-linear ${
+              isAlarm
+                ? "text-destructive animate-pomodoro-blink"
+                : mode === "focus"
+                ? "text-accent"
+                : "text-chart-2"
+            }`}
           />
         </svg>
 
-        <div className="absolute flex flex-col items-center gap-0.5">
-          <span className="text-4xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+        <div className={`absolute flex flex-col items-center gap-0.5 ${
+          isAlarm ? "animate-pomodoro-blink" : ""
+        }`}>
+          <span className={`text-4xl font-extralight tabular-nums font-mono tracking-tight leading-none ${
+            isAlarm ? "text-destructive" : "text-foreground"
+          }`}>
             {mins}:{secs}
           </span>
           <span className="text-[8px] uppercase tracking-[0.15em] text-muted-foreground font-medium">
-            {isDone ? "done \u2713" : PHASE_LABEL[phase]}
+            {isAlarm ? "Time's up!" : MODE_LABELS[mode]}
           </span>
         </div>
       </div>
 
-      {/* Right: progress dots + controls */}
+      {/* Right side: mode selector, controls, sessions */}
       <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
-        {/* Round progress dots */}
-        <div className="flex items-center gap-1.5">
-          {[1, 2, 3, 4].map((r) => {
-            const done    = r < focusRound || (r === focusRound && (phase !== "focus" || isDone))
-            const current = r === focusRound && phase === "focus" && !isDone
-            return (
-              <span
-                key={r}
-                className={`rounded-full transition-all duration-500 ${
-                  done    ? "size-2 bg-accent" :
-                  current ? "size-2 bg-accent/40 ring-1 ring-accent" :
-                            "size-1.5 bg-secondary"
-                }`}
-              />
-            )
-          })}
+        {/* Mode selector - horizontal */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {(Object.keys(POMODORO_DURATIONS) as PomodoroMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => switchMode(m)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-medium uppercase tracking-wider transition-all ${
+                mode === m
+                  ? "bg-accent/20 text-accent"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {m === "focus" ? (
+                <Brain className="size-2.5" />
+              ) : (
+                <Coffee className="size-2.5" />
+              )}
+              {MODE_LABELS[m]}
+            </button>
+          ))}
         </div>
 
         {/* Controls */}
-        {isDone ? (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          {isAlarm ? (
             <button
-              onClick={beginNextPhase}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-accent text-background text-xs font-semibold hover:opacity-90 transition-opacity"
+              onClick={dismissAlarm}
+              aria-label="Dismiss alarm"
+              className="flex items-center justify-center h-9 px-5 rounded-full bg-destructive text-destructive-foreground font-medium text-xs hover:opacity-90 transition-opacity animate-pomodoro-blink"
             >
-              <Play className="size-3 ml-0.5" />
-              {nextPhaseLabel(phase, focusRound)}
+              {"Dismiss"}
             </button>
-            <button
-              onClick={reset}
-              aria-label="Reset cycle"
-              className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              <RotateCcw className="size-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={isRunning ? pause : start}
-              aria-label={isRunning ? "Pause" : "Start"}
-              className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
-            >
-              {isRunning ? (
-                <Pause className="size-4" fill="currentColor" />
-              ) : (
-                <Play className="size-4 ml-0.5" fill="currentColor" />
-              )}
-            </button>
-            <button
-              onClick={reset}
-              aria-label="Reset"
-              className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              <RotateCcw className="size-3.5" />
-            </button>
-          </div>
-        )}
+          ) : (
+            <>
+              <button
+                onClick={togglePlay}
+                aria-label={isRunning ? "Pause" : "Start"}
+                className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
+              >
+                {isRunning ? (
+                  <Pause className="size-4" fill="currentColor" />
+                ) : (
+                  <Play className="size-4 ml-0.5" fill="currentColor" />
+                )}
+              </button>
+              <button
+                onClick={reset}
+                aria-label="Reset timer"
+                className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <RotateCcw className="size-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Session counter */}
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <span
+              key={i}
+              className={`size-2 rounded-full transition-colors ${
+                i < sessions % 4 ? "bg-accent" : "bg-secondary"
+              }`}
+              aria-hidden="true"
+            />
+          ))}
+          <span className="text-[9px] text-muted-foreground ml-1 font-mono tabular-nums">
+            {sessions} {"sessions"}
+          </span>
+        </div>
       </div>
     </div>
   )
 }
 
-// ── Free Timer ────────────────────────────────────────────────────────────────
-const TIMER_STEP = 5 * 60
-const TIMER_MIN  = 1 * 60
-const TIMER_MAX  = 120 * 60
+function TimerView() {
+  const [totalSeconds, setTotalSeconds] = useState(5 * 60)
+  const [isRunning, setIsRunning] = useState(false)
+  const [isAlarm, setIsAlarm] = useState(false)
+  const initialRef = useRef(5 * 60)
 
-function TimerView({
-  seconds, isRunning, initial, onToggle, onReset, onChange,
-}: {
-  seconds: number; isRunning: boolean; initial: number
-  onToggle: () => void; onReset: () => void; onChange: (s: number) => void
-}) {
-  const mins = Math.floor(seconds / 60).toString().padStart(2, "0")
-  const secs = (seconds % 60).toString().padStart(2, "0")
-  const isSetup = !isRunning && seconds === initial
+  useEffect(() => {
+    if (!isRunning || totalSeconds <= 0) {
+      if (totalSeconds <= 0 && isRunning) {
+        setIsRunning(false)
+        setIsAlarm(true)
+        setTimeout(() => setIsAlarm(false), 6000)
+      }
+      return
+    }
+    const interval = setInterval(() => {
+      setTotalSeconds((prev) => prev - 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [isRunning, totalSeconds])
+
+  const reset = useCallback(() => {
+    setIsRunning(false)
+    setTotalSeconds(initialRef.current)
+    setIsAlarm(false)
+  }, [])
+
+  const togglePlay = useCallback(() => {
+    setIsAlarm(false)
+    setIsRunning((prev) => !prev)
+  }, [])
+
+  const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
+  const secs = (totalSeconds % 60).toString().padStart(2, "0")
 
   return (
     <div className="flex items-center gap-6 w-full justify-center">
-      <div className="flex items-center gap-3">
-        {isSetup && (
-          <button
-            onClick={() => onChange(Math.max(TIMER_MIN, initial - TIMER_STEP))}
-            aria-label="Decrease 5 minutes"
-            className="flex items-center justify-center size-8 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <Minus className="size-3.5" />
-          </button>
-        )}
-        <span className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+      {/* Timer display */}
+      <div className="flex flex-col items-center gap-1">
+        <span className={`text-6xl font-extralight tabular-nums font-mono tracking-tight leading-none ${
+          isAlarm ? "text-destructive animate-pomodoro-blink" : "text-foreground"
+        }`}>
           {mins}:{secs}
         </span>
-        {isSetup && (
-          <button
-            onClick={() => onChange(Math.min(TIMER_MAX, initial + TIMER_STEP))}
-            aria-label="Increase 5 minutes"
-            className="flex items-center justify-center size-8 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <Plus className="size-3.5" />
-          </button>
+        {isAlarm && (
+          <span className="text-[10px] text-destructive font-medium uppercase tracking-widest animate-pomodoro-blink">
+            {"Time's up!"}
+          </span>
         )}
       </div>
+
+      {/* Controls to the right */}
       <div className="flex items-center gap-2.5">
         <button
-          onClick={onToggle}
+          onClick={togglePlay}
           aria-label={isRunning ? "Pause" : "Start"}
           className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
         >
-          {isRunning ? (
-            <Pause className="size-4" fill="currentColor" />
-          ) : (
-            <Play className="size-4 ml-0.5" fill="currentColor" />
-          )}
+          {isRunning ? <Pause className="size-4" fill="currentColor" /> : <Play className="size-4 ml-0.5" fill="currentColor" />}
         </button>
         <button
-          onClick={onReset}
+          onClick={reset}
           aria-label="Reset"
           className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
@@ -278,33 +331,48 @@ function TimerView({
   )
 }
 
-// ── Stopwatch ─────────────────────────────────────────────────────────────────
-function StopwatchView({
-  elapsed, isRunning, onToggle, onReset,
-}: {
-  elapsed: number; isRunning: boolean; onToggle: () => void; onReset: () => void
-}) {
+function StopwatchView() {
+  const [elapsed, setElapsed] = useState(0)
+  const [isRunning, setIsRunning] = useState(false)
+
+  useEffect(() => {
+    if (!isRunning) return
+    const interval = setInterval(() => {
+      setElapsed((prev) => prev + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [isRunning])
+
+  const reset = useCallback(() => {
+    setIsRunning(false)
+    setElapsed(0)
+  }, [])
+
+  const togglePlay = useCallback(() => {
+    setIsRunning((prev) => !prev)
+  }, [])
+
   const mins = Math.floor(elapsed / 60).toString().padStart(2, "0")
   const secs = (elapsed % 60).toString().padStart(2, "0")
+
   return (
     <div className="flex items-center gap-6 w-full justify-center">
+      {/* Time display */}
       <span className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
         {mins}:{secs}
       </span>
+
+      {/* Controls to the right */}
       <div className="flex items-center gap-2.5">
         <button
-          onClick={onToggle}
+          onClick={togglePlay}
           aria-label={isRunning ? "Pause" : "Start"}
           className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
         >
-          {isRunning ? (
-            <Pause className="size-4" fill="currentColor" />
-          ) : (
-            <Play className="size-4 ml-0.5" fill="currentColor" />
-          )}
+          {isRunning ? <Pause className="size-4" fill="currentColor" /> : <Play className="size-4 ml-0.5" fill="currentColor" />}
         </button>
         <button
-          onClick={onReset}
+          onClick={reset}
           aria-label="Stop"
           className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >

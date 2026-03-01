@@ -2,8 +2,9 @@
 
 import { useRef, useState, useEffect, useCallback } from "react"
 import { ClockWeather } from "@/components/clock-weather"
+import { WeatherForecast } from "@/components/weather-forecast"
 import { ProductivityHub } from "@/components/productivity-hub"
-import { Agenda } from "@/components/agenda"
+import { CalendarPage } from "@/components/agenda"
 import { AlarmsView } from "@/components/alarms-view"
 import { AlarmOverlay } from "@/components/alarm-overlay"
 import { SpotifyBar } from "@/components/spotify-bar"
@@ -11,7 +12,7 @@ import { useAlarms } from "@/hooks/use-alarms"
 import { usePomodoro } from "@/hooks/use-pomodoro"
 import type { Alarm, DayOfWeek } from "@/lib/alarms"
 
-const PAGES = 4
+const PAGES = 5
 const TIMER_DEFAULT = 5 * 60
 
 export default function Page() {
@@ -63,9 +64,7 @@ export default function Page() {
       for (const alarm of alarms) {
         if (!alarm.enabled) continue
         if (alarm.hour !== h || alarm.minute !== m) continue
-        // days=[]=every day; otherwise check the day
         if (alarm.days.length > 0 && !alarm.days.includes(day)) continue
-        // respect per-alarm snooze
         if (snoozed?.id === alarm.id && Date.now() < snoozed.until) continue
 
         lastFiredRef.current = key
@@ -132,12 +131,17 @@ export default function Page() {
         className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
       >
-        {/* View 1 — Clock & Weather */}
+        {/* Page 1: Clock & Weather */}
         <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
           <ClockWeather />
         </section>
 
-        {/* View 2 — Productivity Hub */}
+        {/* Page 2: Weather Forecast */}
+        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+          <WeatherForecast />
+        </section>
+
+        {/* Page 3: Productivity Hub */}
         <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
           <ProductivityHub
             pomodoro={pomodoro}
@@ -154,12 +158,12 @@ export default function Page() {
           />
         </section>
 
-        {/* View 3 — Daily Agenda */}
-        <section className="w-full h-full flex-shrink-0 snap-center">
-          <Agenda />
+        {/* Page 4: Calendar */}
+        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+          <CalendarPage />
         </section>
 
-        {/* View 4 — Alarms */}
+        {/* Page 5: Alarms */}
         <section className="w-full h-full flex-shrink-0 snap-center">
           <AlarmsView
             alarms={alarms}
@@ -172,7 +176,7 @@ export default function Page() {
       </div>
 
       {/* Pagination dots */}
-      <div className="flex items-center justify-center gap-1.5 pb-1">
+      <div className="flex items-center justify-center gap-1.5 py-1.5 shrink-0">
         {Array.from({ length: PAGES }).map((_, i) => (
           <span
             key={i}
@@ -185,7 +189,7 @@ export default function Page() {
       </div>
 
       {/* Persistent Spotify bar */}
-      <div className="w-full border-t border-border/50 bg-background/80 backdrop-blur-sm z-50">
+      <div className="w-full border-t border-border/30 bg-background/90 backdrop-blur-sm shrink-0">
         <SpotifyBar />
       </div>
     </div>

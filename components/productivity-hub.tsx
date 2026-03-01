@@ -38,55 +38,53 @@ export function ProductivityHub({
 }: ProductivityHubProps) {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
-  // Short labels so the pill fits on a landscape phone screen
-  const TAB_LABELS: Record<Tab, string> = { pomodoro: "Pomo", timer: "Timer", stopwatch: "Watch" }
-
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-2 px-6">
-      {/* Segmented Control */}
-      <div className="flex items-center rounded-full bg-secondary/60 p-0.5 shrink-0">
+    <div className="flex items-center justify-center h-full w-full px-5 gap-5">
+      {/* Left: Segmented Control (vertical) */}
+      <div className="flex flex-col items-center gap-1.5 shrink-0">
         {(["pomodoro", "timer", "stopwatch"] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-0.5 text-[11px] font-medium uppercase rounded-full transition-all ${
+            className={`w-full px-3.5 py-1.5 text-[10px] font-medium tracking-wide uppercase rounded-full transition-all text-center ${
               activeTab === tab
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {TAB_LABELS[tab]}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      {activeTab === "pomodoro" && <PomodoroView pomodoro={pomodoro} />}
-      {activeTab === "timer" && (
-        <TimerView
-          seconds={timerSeconds}
-          isRunning={timerIsRunning}
-          initial={timerInitial}
-          onToggle={onTimerToggle}
-          onReset={onTimerReset}
-          onChange={onTimerChange}
-        />
-      )}
-      {activeTab === "stopwatch" && (
-        <StopwatchView
-          elapsed={stopwatchElapsed}
-          isRunning={stopwatchIsRunning}
-          onToggle={onStopwatchToggle}
-          onReset={onStopwatchReset}
-        />
-      )}
+      {/* Right: Content area */}
+      <div className="flex-1 flex items-center justify-center min-w-0">
+        {activeTab === "pomodoro" && <PomodoroView pomodoro={pomodoro} />}
+        {activeTab === "timer" && (
+          <TimerView
+            seconds={timerSeconds}
+            isRunning={timerIsRunning}
+            initial={timerInitial}
+            onToggle={onTimerToggle}
+            onReset={onTimerReset}
+            onChange={onTimerChange}
+          />
+        )}
+        {activeTab === "stopwatch" && (
+          <StopwatchView
+            elapsed={stopwatchElapsed}
+            isRunning={stopwatchIsRunning}
+            onToggle={onStopwatchToggle}
+            onReset={onStopwatchReset}
+          />
+        )}
+      </div>
     </div>
   )
 }
 
 // ── Pomodoro ──────────────────────────────────────────────────────────────────
-// Ring sized for landscape phone (~303 px usable height)
-const RING_RADIUS = 44
+const RING_RADIUS = 58
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
 const PHASE_LABEL: Record<string, string> = {
@@ -95,7 +93,6 @@ const PHASE_LABEL: Record<string, string> = {
   "long-break":  "Long Break",
 }
 
-/** Label of the button that starts the NEXT phase */
 function nextPhaseLabel(phase: string, focusRound: number): string {
   if (phase === "long-break")  return "Start Over"
   if (phase === "focus")       return focusRound >= 4 ? "Start Long Break (30 min)" : "Start Short Break"
@@ -110,106 +107,109 @@ function PomodoroView({ pomodoro }: { pomodoro: PomodoroReturn }) {
   const secs = (seconds % 60).toString().padStart(2, "0")
 
   const progress = maxSeconds > 0 ? (maxSeconds - seconds) / maxSeconds : 1
-  const dashOffset = RING_CIRCUMFERENCE * (1 - progress)
+  const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress)
 
-  // Ring colour: warm for focus, cool-green for breaks
   const ringClass = phase === "focus" ? "text-accent" : "text-emerald-400"
-
   const isRunning = status === "running"
   const isDone    = status === "finished"
 
   return (
-    // Own flex column with tight gap so the whole view fits in ~260 px
-    <div className="flex flex-col items-center gap-2">
-      {/* Round progress dots — 4 circles, filled as focus rounds complete */}
-      <div className="flex items-center gap-2">
-        {[1, 2, 3, 4].map((r) => {
-          const done    = r < focusRound || (r === focusRound && (phase !== "focus" || isDone))
-          const current = r === focusRound && phase === "focus" && !isDone
-          return (
-            <span
-              key={r}
-              className={`rounded-full transition-all duration-500 ${
-                done    ? "size-2 bg-accent" :
-                current ? "size-2 bg-accent/40 ring-1 ring-accent" :
-                          "size-1.5 bg-secondary"
-              }`}
-            />
-          )
-        })}
-      </div>
-
-      {/* Circular ring with time centred — size-36 = 144 px fits landscape */}
-      <div className="relative flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="size-36" aria-hidden="true">
-          {/* Track */}
+    <div className="flex items-center gap-6 w-full">
+      {/* Left: circular timer */}
+      <div className="relative flex items-center justify-center shrink-0">
+        <svg
+          width="140"
+          height="140"
+          viewBox="0 0 140 140"
+          className="transform -rotate-90"
+          aria-hidden="true"
+        >
           <circle
-            cx="50" cy="50" r={RING_RADIUS}
-            fill="none" stroke="currentColor" strokeWidth="5"
+            cx="70" cy="70" r={RING_RADIUS}
+            fill="none" stroke="currentColor" strokeWidth="3"
             className="text-secondary"
           />
-          {/* Progress arc */}
           <circle
-            cx="50" cy="50" r={RING_RADIUS}
-            fill="none" stroke="currentColor" strokeWidth="5"
+            cx="70" cy="70" r={RING_RADIUS}
+            fill="none" stroke="currentColor" strokeWidth="3"
             strokeLinecap="round"
             strokeDasharray={RING_CIRCUMFERENCE}
-            strokeDashoffset={dashOffset}
-            transform="rotate(-90 50 50)"
-            className={ringClass}
-            style={{ transition: "stroke-dashoffset 1s linear" }}
+            strokeDashoffset={strokeDashoffset}
+            className={`transition-all duration-1000 ease-linear ${ringClass}`}
           />
         </svg>
 
-        {/* Time + phase label */}
         <div className="absolute flex flex-col items-center gap-0.5">
           <span className="text-4xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
             {mins}:{secs}
           </span>
-          <span className="text-[9px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
-            {isDone ? "done ✓" : PHASE_LABEL[phase]}
+          <span className="text-[8px] uppercase tracking-[0.15em] text-muted-foreground font-medium">
+            {isDone ? "done \u2713" : PHASE_LABEL[phase]}
           </span>
         </div>
       </div>
 
-      {/* Controls */}
-      {isDone ? (
-        /* Phase finished: user confirms what to do next */
-        <div className="flex items-center gap-2">
-          <button
-            onClick={beginNextPhase}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-accent text-background text-xs font-semibold hover:opacity-90 transition-opacity"
-          >
-            <Play className="size-3 ml-0.5" />
-            {nextPhaseLabel(phase, focusRound)}
-          </button>
-          <button
-            onClick={reset}
-            aria-label="Reset cycle"
-            className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <RotateCcw className="size-3.5" />
-          </button>
+      {/* Right: progress dots + controls */}
+      <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
+        {/* Round progress dots */}
+        <div className="flex items-center gap-1.5">
+          {[1, 2, 3, 4].map((r) => {
+            const done    = r < focusRound || (r === focusRound && (phase !== "focus" || isDone))
+            const current = r === focusRound && phase === "focus" && !isDone
+            return (
+              <span
+                key={r}
+                className={`rounded-full transition-all duration-500 ${
+                  done    ? "size-2 bg-accent" :
+                  current ? "size-2 bg-accent/40 ring-1 ring-accent" :
+                            "size-1.5 bg-secondary"
+                }`}
+              />
+            )
+          })}
         </div>
-      ) : (
-        /* Running or idle: play/pause + reset */
-        <div className="flex items-center gap-3">
-          <button
-            onClick={isRunning ? pause : start}
-            aria-label={isRunning ? "Pause" : "Start"}
-            className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
-          >
-            {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
-          </button>
-          <button
-            onClick={reset}
-            aria-label="Reset"
-            className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <RotateCcw className="size-4" />
-          </button>
-        </div>
-      )}
+
+        {/* Controls */}
+        {isDone ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={beginNextPhase}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-accent text-background text-xs font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Play className="size-3 ml-0.5" />
+              {nextPhaseLabel(phase, focusRound)}
+            </button>
+            <button
+              onClick={reset}
+              aria-label="Reset cycle"
+              className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={isRunning ? pause : start}
+              aria-label={isRunning ? "Pause" : "Start"}
+              className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
+            >
+              {isRunning ? (
+                <Pause className="size-4" fill="currentColor" />
+              ) : (
+                <Play className="size-4 ml-0.5" fill="currentColor" />
+              )}
+            </button>
+            <button
+              onClick={reset}
+              aria-label="Reset"
+              className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -230,8 +230,8 @@ function TimerView({
   const isSetup = !isRunning && seconds === initial
 
   return (
-    <>
-      <div className="flex items-center gap-5">
+    <div className="flex items-center gap-6 w-full justify-center">
+      <div className="flex items-center gap-3">
         {isSetup && (
           <button
             onClick={() => onChange(Math.max(TIMER_MIN, initial - TIMER_STEP))}
@@ -241,9 +241,9 @@ function TimerView({
             <Minus className="size-3.5" />
           </button>
         )}
-        <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+        <span className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
           {mins}:{secs}
-        </div>
+        </span>
         {isSetup && (
           <button
             onClick={() => onChange(Math.min(TIMER_MAX, initial + TIMER_STEP))}
@@ -254,8 +254,27 @@ function TimerView({
           </button>
         )}
       </div>
-      <ControlButtons isRunning={isRunning} onToggle={onToggle} onReset={onReset} />
-    </>
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={onToggle}
+          aria-label={isRunning ? "Pause" : "Start"}
+          className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
+        >
+          {isRunning ? (
+            <Pause className="size-4" fill="currentColor" />
+          ) : (
+            <Play className="size-4 ml-0.5" fill="currentColor" />
+          )}
+        </button>
+        <button
+          onClick={onReset}
+          aria-label="Reset"
+          className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+        >
+          <RotateCcw className="size-3.5" />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -268,52 +287,30 @@ function StopwatchView({
   const mins = Math.floor(elapsed / 60).toString().padStart(2, "0")
   const secs = (elapsed % 60).toString().padStart(2, "0")
   return (
-    <>
-      <div className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+    <div className="flex items-center gap-6 w-full justify-center">
+      <span className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
         {mins}:{secs}
-      </div>
-      <div className="flex items-center gap-3">
+      </span>
+      <div className="flex items-center gap-2.5">
         <button
           onClick={onToggle}
           aria-label={isRunning ? "Pause" : "Start"}
-          className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
+          className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
         >
-          {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
+          {isRunning ? (
+            <Pause className="size-4" fill="currentColor" />
+          ) : (
+            <Play className="size-4 ml-0.5" fill="currentColor" />
+          )}
         </button>
         <button
           onClick={onReset}
-          aria-label="Reset"
-          className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          aria-label="Stop"
+          className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
-          <Square className="size-4" />
+          <Square className="size-3.5" />
         </button>
       </div>
-    </>
-  )
-}
-
-// ── Shared play/pause + reset row ─────────────────────────────────────────────
-function ControlButtons({
-  isRunning, onToggle, onReset,
-}: {
-  isRunning: boolean; onToggle: () => void; onReset: () => void
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <button
-        onClick={onToggle}
-        aria-label={isRunning ? "Pause" : "Start"}
-        className="flex items-center justify-center size-10 rounded-full border border-border text-foreground hover:bg-secondary transition-colors"
-      >
-        {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
-      </button>
-      <button
-        onClick={onReset}
-        aria-label="Reset"
-        className="flex items-center justify-center size-10 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-      >
-        <RotateCcw className="size-4" />
-      </button>
     </div>
   )
 }

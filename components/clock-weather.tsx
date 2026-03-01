@@ -29,16 +29,20 @@ function WeatherIcon({ condition, className }: { condition: string; className?: 
 
 export function ClockWeather() {
   const [time, setTime] = useState<Date | null>(null)
+  const [seconds, setSeconds] = useState("")
   const [weather, setWeather] = useState<WeatherData | null>(null)
 
-  // Clock — update every second
   useEffect(() => {
-    setTime(new Date())
-    const interval = setInterval(() => setTime(new Date()), 1000)
+    const update = () => {
+      const now = new Date()
+      setTime(now)
+      setSeconds(now.getSeconds().toString().padStart(2, "0"))
+    }
+    update()
+    const interval = setInterval(update, 1000)
     return () => clearInterval(interval)
   }, [])
 
-  // Weather — fetch on mount then poll every 15 minutes
   const fetchWeather = useCallback(async () => {
     try {
       const res = await fetch("/api/weather")
@@ -60,10 +64,10 @@ export function ClockWeather() {
   if (!time) {
     return (
       <div className="flex flex-col items-center justify-center gap-1">
-        <div className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
+        <div className="text-8xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
           {"--:--"}
         </div>
-        <div className="text-sm font-medium tracking-[0.2em] uppercase text-muted-foreground">
+        <div className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">
           {"loading..."}
         </div>
       </div>
@@ -73,41 +77,39 @@ export function ClockWeather() {
   const hours = time.getHours().toString().padStart(2, "0")
   const minutes = time.getMinutes().toString().padStart(2, "0")
 
-  const dateStr = time
-    .toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-    })
-    .toUpperCase()
+  const dateStr = time.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  })
 
   return (
-    <div className="flex flex-col items-center justify-center gap-2">
-      {/* Massive clock */}
-      <div className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
-        {hours}
-        <span className="animate-pulse">:</span>
-        {minutes}
+    <div className="flex items-center justify-center gap-8 w-full px-8">
+      {/* Left: Large clock */}
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex items-baseline">
+          <span className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+            {hours}
+            <span className="animate-pulse">:</span>
+            {minutes}
+          </span>
+          <span className="text-xl font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none">
+            {seconds}
+          </span>
+        </div>
+        <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+          {dateStr.toUpperCase()}
+        </div>
       </div>
 
-      {/* Date */}
-      <div className="text-sm font-medium tracking-[0.2em] uppercase text-muted-foreground">
-        {dateStr}
-      </div>
-
-      {/* Weather */}
-      <div className="flex items-center gap-2 mt-1">
-        <WeatherIcon
-          condition={weather?.condition ?? "clear"}
-          className="size-5 text-muted-foreground"
-        />
-        <span className="text-lg text-foreground font-light tabular-nums">
-          {weather ? `${weather.temp}\u00B0C` : "--\u00B0C"}
+      {/* Right: Weather summary card */}
+      <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-2xl bg-secondary/30">
+        <WeatherIcon condition={weather?.condition ?? "clear"} className="size-6 text-chart-4" />
+        <span className="text-2xl font-light text-foreground tabular-nums font-mono leading-none">
+          {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
         </span>
-        <span className="text-sm text-muted-foreground font-mono tabular-nums">
-          {weather
-            ? `H: ${weather.high}\u00B0 L: ${weather.low}\u00B0`
-            : "H: --\u00B0 L: --\u00B0"}
+        <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
+          {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
         </span>
       </div>
     </div>

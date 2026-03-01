@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Play, Pause, SkipForward, SkipBack } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat } from "lucide-react"
 
 type NowPlaying = {
   isPlaying: boolean
@@ -46,16 +46,13 @@ export function SpotifyBar() {
 
   async function handlePlayPause() {
     const action = nowPlaying.isPlaying ? "pause" : "play"
-    // Optimistic: flip local state immediately
     setNowPlaying((p) => ({ ...p, isPlaying: !p.isPlaying }))
     await sendControl(action)
-    // Confirm with server after Spotify processes the command
     setTimeout(fetchNowPlaying, 1500)
   }
 
   async function handleNext() {
     await sendControl("next")
-    // New track needs a moment to appear in the API
     setTimeout(fetchNowPlaying, 1500)
   }
 
@@ -69,8 +66,8 @@ export function SpotifyBar() {
   const artist = nowPlaying.artist
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 w-full">
-      {/* Album art or vinyl placeholder */}
+    <div className="flex items-center w-full px-4 py-1.5 gap-3">
+      {/* Album art */}
       <div className="size-8 shrink-0 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
         {nowPlaying.albumArt ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -90,13 +87,13 @@ export function SpotifyBar() {
       </div>
 
       {/* Track info */}
-      <div className="flex flex-col min-w-0 flex-1">
+      <div className="flex flex-col min-w-0 w-[120px] shrink-0">
         {track ? (
           <>
-            <span className="text-xs font-medium text-foreground truncate leading-tight">
+            <span className="text-[11px] font-medium text-foreground truncate leading-tight">
               {track}
             </span>
-            <span className="text-[10px] text-muted-foreground truncate leading-tight">
+            <span className="text-[9px] text-muted-foreground truncate leading-tight">
               {artist}
             </span>
           </>
@@ -107,17 +104,26 @@ export function SpotifyBar() {
         )}
       </div>
 
+      {/* Spacer */}
+      <div className="flex-1" />
+
       {/* Playback controls */}
       <div className="flex items-center gap-0.5 shrink-0">
+        <button
+          aria-label="Shuffle"
+          disabled={isMock}
+          className="flex items-center justify-center size-6 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Shuffle className="size-2.5" />
+        </button>
         <button
           onClick={handlePrevious}
           aria-label="Previous track"
           disabled={isMock}
-          className="flex items-center justify-center size-7 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          className="flex items-center justify-center size-6 text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
         >
-          <SkipBack className="size-3" />
+          <SkipBack className="size-3" fill="currentColor" />
         </button>
-
         <button
           onClick={handlePlayPause}
           aria-label={nowPlaying.isPlaying ? "Pause" : "Play"}
@@ -125,19 +131,25 @@ export function SpotifyBar() {
           className="flex items-center justify-center size-7 rounded-full bg-spotify text-background hover:opacity-90 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
         >
           {nowPlaying.isPlaying ? (
-            <Pause className="size-3" />
+            <Pause className="size-3" fill="currentColor" />
           ) : (
-            <Play className="size-3 ml-px" />
+            <Play className="size-3 ml-px" fill="currentColor" />
           )}
         </button>
-
         <button
           onClick={handleNext}
           aria-label="Next track"
           disabled={isMock}
-          className="flex items-center justify-center size-7 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          className="flex items-center justify-center size-6 text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
         >
-          <SkipForward className="size-3" />
+          <SkipForward className="size-3" fill="currentColor" />
+        </button>
+        <button
+          aria-label="Repeat"
+          disabled={isMock}
+          className="flex items-center justify-center size-6 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Repeat className="size-2.5" />
         </button>
       </div>
     </div>

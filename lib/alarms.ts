@@ -10,11 +10,11 @@ export type Alarm = {
 }
 
 export const SOUNDS = [
-  { id: "beep",    label: "Beep",    file: "/sounds/beep.mp3" },
-  { id: "chime",   label: "Chime",   file: "/sounds/chime.mp3" },
-  { id: "digital", label: "Digital", file: "/sounds/digital.mp3" },
-  { id: "bell",    label: "Bell",    file: "/sounds/bell.mp3" },
-  { id: "birds",   label: "Nature",  file: "/sounds/birds.mp3" },
+  { id: "Sound 1",    label: "S",    file: "/sounds/Chill_Hip_Hop_Alarm_#2-1772333237359.mp3" },
+  { id: "Sound 2",   label: "C",   file: "/sounds/Chill_Hip_Hop_Alarm_#4-1772333273660.mp3" },
+  { id: "Sound 3", label: "D", file: "/sounds/Lo_fi,_alarm_for_wak_#1-1772333105129.mp3" },
+  { id: "Sound 4",    label: "B",    file: "/sounds/Lo_fi,_alarm_for_wak_#3-1772333105131.mp3" },
+  { id: "Sound 5",   label: "N",  file: "/sounds/Lo_fi,_alarm_for_wak_#4-1772333105132.mp3" },
 ] as const
 
 export const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const

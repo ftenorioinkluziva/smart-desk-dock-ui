@@ -7,10 +7,9 @@ const _inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const _jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' })
 
 export const viewport: Viewport = {
-  width: 667,
+  width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  viewportFit: "cover",
   themeColor: "#000000",
 };
 

@@ -22,13 +22,13 @@ export function ProductivityHub() {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
   return (
-    <div className="flex items-center h-full w-full px-10 gap-8">
+    <div className="flex items-center h-full w-full dock-px" style={{ gap: "var(--dock-gap)" }}>
       <div className="flex flex-col items-center gap-1.5 shrink-0">
         {(["pomodoro", "timer", "stopwatch"] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`w-full px-3.5 py-1.5 text-[10px] font-medium tracking-wide uppercase rounded-full transition-all text-center ${
+            className={`w-full px-[clamp(0.6rem,1.8vw,0.875rem)] py-[clamp(0.3rem,0.8vh,0.375rem)] text-[clamp(0.5rem,1.2vw,0.625rem)] font-medium tracking-wide uppercase rounded-full transition-all text-center ${
               activeTab === tab
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
@@ -117,7 +117,7 @@ function PomodoroView() {
   const strokeDashoffset = circumference - (progress / 100) * circumference
 
   return (
-    <div className="flex items-center justify-between gap-8 w-full">
+    <div className="flex items-center justify-between w-full" style={{ gap: "var(--dock-gap)" }}>
       <div
         className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${
           isAlarm ? "animate-pomodoro-alarm" : ""
@@ -133,7 +133,7 @@ function PomodoroView() {
           width="140"
           height="140"
           viewBox="0 0 140 140"
-          className="transform -rotate-90"
+          className="w-[clamp(5.8rem,16vw,8.75rem)] h-[clamp(5.8rem,16vw,8.75rem)] transform -rotate-90"
         >
           <circle
             cx="70"
@@ -167,9 +167,9 @@ function PomodoroView() {
         <div className={`absolute flex flex-col items-center gap-0.5 ${
           isAlarm ? "animate-pomodoro-blink" : ""
         }`}>
-          <span className={`text-4xl font-extralight tabular-nums font-mono tracking-tight leading-none ${
+          <span className={`font-extralight tabular-nums font-mono tracking-tight leading-none ${
             isAlarm ? "text-destructive" : "text-foreground"
-          }`}>
+          }`} style={{ fontSize: "var(--dock-big-number-size)" }}>
             {mins}:{secs}
           </span>
           <span className="text-[8px] uppercase tracking-[0.15em] text-muted-foreground font-medium">
@@ -288,11 +288,11 @@ function TimerView() {
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
 
   return (
-    <div className="flex items-center gap-6 w-full justify-between">
+    <div className="flex items-center gap-[clamp(0.75rem,2vw,1.5rem)] w-full justify-between">
       <div className="flex flex-col items-center gap-1">
-        <span className={`text-6xl font-extralight tabular-nums font-mono tracking-tight leading-none ${
+        <span className={`font-extralight tabular-nums font-mono tracking-tight leading-none ${
           isAlarm ? "text-destructive animate-pomodoro-blink" : "text-foreground"
-        }`}>
+        }`} style={{ fontSize: "var(--dock-big-number-size)" }}>
           {mins}:{secs}
         </span>
         {isAlarm && (
@@ -347,8 +347,8 @@ function StopwatchView() {
   const secs = (elapsed % 60).toString().padStart(2, "0")
 
   return (
-    <div className="flex items-center gap-6 w-full justify-between">
-      <span className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
+    <div className="flex items-center gap-[clamp(0.75rem,2vw,1.5rem)] w-full justify-between">
+      <span className="font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none" style={{ fontSize: "var(--dock-big-number-size)" }}>
         {mins}:{secs}
       </span>
 

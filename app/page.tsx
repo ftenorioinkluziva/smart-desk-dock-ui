@@ -28,7 +28,7 @@ export default function Page() {
   }, [handleScroll])
 
   return (
-    <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col">
+    <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col dock-py">
       {/* Carousel content area */}
       <div
         ref={scrollRef}
@@ -36,27 +36,27 @@ export default function Page() {
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
       >
         {/* Page 1: Clock */}
-        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <ClockWeather />
         </section>
 
         {/* Page 2: Weather Forecast */}
-        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <WeatherForecast />
         </section>
 
         {/* Page 3: Pomodoro / Productivity Hub */}
-        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <ProductivityHub />
         </section>
 
         {/* Page 4: Calendar */}
-        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <CalendarPage />
         </section>
 
         {/* Page 5: Alarms */}
-        <section className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center">
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <AlarmsPage />
         </section>
       </div>
@@ -67,14 +67,14 @@ export default function Page() {
       </div>
 
       {/* Pagination Dots */}
-      <div className="flex items-center justify-center gap-1.5 py-1.5 shrink-0">
+      <div className="flex items-center justify-center gap-1 py-[clamp(0.2rem,0.7vh,0.4rem)] shrink-0">
         {Array.from({ length: PAGES }).map((_, i) => (
           <span
             key={i}
             className={`rounded-full transition-all duration-300 ${
               activePage === i
-                ? "w-1.5 h-1.5 bg-foreground"
-                : "w-1 h-1 bg-muted-foreground/40"
+                ? "w-[clamp(0.3rem,0.9vw,0.4rem)] h-[clamp(0.3rem,0.9vw,0.4rem)] bg-foreground"
+                : "w-[clamp(0.2rem,0.7vw,0.3rem)] h-[clamp(0.2rem,0.7vw,0.3rem)] bg-muted-foreground/40"
             }`}
             aria-hidden="true"
           />

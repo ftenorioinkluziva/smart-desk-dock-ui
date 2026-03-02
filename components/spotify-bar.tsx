@@ -66,9 +66,9 @@ export function SpotifyBar() {
   const artist = nowPlaying.artist
 
   return (
-    <div className="flex items-center w-full px-4 py-1.5 gap-3">
+    <div className="flex items-center w-full dock-px py-[clamp(0.25rem,0.8vh,0.375rem)] gap-[clamp(0.45rem,1.4vw,0.75rem)]">
       {/* Album art */}
-      <div className="size-8 shrink-0 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
+      <div className="size-[clamp(1.6rem,3.6vw,2rem)] shrink-0 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
         {nowPlaying.albumArt ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -90,63 +90,68 @@ export function SpotifyBar() {
       <div className="flex flex-col min-w-0 flex-1">
         {track ? (
           <>
-            <span className="text-[11px] font-medium text-foreground truncate leading-tight">
+            <span className="text-[clamp(0.55rem,1.35vw,0.6875rem)] font-medium text-foreground truncate leading-tight">
               {track}
             </span>
-            <span className="text-[9px] text-muted-foreground truncate leading-tight">
+            <span className="text-[clamp(0.5rem,1.1vw,0.5625rem)] text-muted-foreground truncate leading-tight">
               {artist}
             </span>
           </>
         ) : (
-          <span className="text-[10px] text-muted-foreground italic">
+          <span className="text-[clamp(0.5rem,1.2vw,0.625rem)] text-muted-foreground italic">
             {isMock ? "Configure Spotify credentials" : "Nothing playing"}
           </span>
         )}
       </div>
 
       {/* Playback controls */}
-      <div className="flex items-center gap-0.5 shrink-0">
+      <div className="flex items-center gap-[clamp(0.1rem,0.4vw,0.25rem)] shrink-0">
         <button
           aria-label="Shuffle"
           disabled={isMock}
-          className="flex items-center justify-center size-6 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}
         >
-          <Shuffle className="size-2.5" />
+          <Shuffle className="size-(--dock-control-icon-size)" />
         </button>
         <button
           onClick={handlePrevious}
           aria-label="Previous track"
           disabled={isMock}
-          className="flex items-center justify-center size-6 text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          className="flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}
         >
-          <SkipBack className="size-3" fill="currentColor" />
+          <SkipBack className="size-[calc(var(--dock-control-icon-size)*1.15)]" fill="currentColor" />
         </button>
         <button
           onClick={handlePlayPause}
           aria-label={nowPlaying.isPlaying ? "Pause" : "Play"}
           disabled={isMock}
-          className="flex items-center justify-center size-7 rounded-full bg-spotify text-background hover:opacity-90 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
+          className="flex items-center justify-center rounded-full bg-spotify text-background hover:opacity-90 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
+          style={{ width: "calc(var(--dock-control-size) * 1.2)", height: "calc(var(--dock-control-size) * 1.2)" }}
         >
           {nowPlaying.isPlaying ? (
-            <Pause className="size-3" fill="currentColor" />
+            <Pause className="size-[calc(var(--dock-control-icon-size)*1.2)]" fill="currentColor" />
           ) : (
-            <Play className="size-3 ml-px" fill="currentColor" />
+            <Play className="size-[calc(var(--dock-control-icon-size)*1.2)] ml-px" fill="currentColor" />
           )}
         </button>
         <button
           onClick={handleNext}
           aria-label="Next track"
           disabled={isMock}
-          className="flex items-center justify-center size-6 text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          className="flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}
         >
-          <SkipForward className="size-3" fill="currentColor" />
+          <SkipForward className="size-[calc(var(--dock-control-icon-size)*1.15)]" fill="currentColor" />
         </button>
         <button
           aria-label="Repeat"
           disabled={isMock}
-          className="flex items-center justify-center size-6 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}
         >
-          <Repeat className="size-2.5" />
+          <Repeat className="size-(--dock-control-icon-size)" />
         </button>
       </div>
     </div>

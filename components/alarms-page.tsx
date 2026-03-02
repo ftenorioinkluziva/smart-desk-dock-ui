@@ -64,8 +64,8 @@ export function AlarmsPage() {
   }, [newTime, newLabel, newDays])
 
   return (
-    <div className="flex h-full w-full px-10 py-3 gap-8 overflow-hidden">
-      <div className="flex flex-col gap-2.5 shrink-0 w-60 justify-center">
+    <div className="flex h-full w-full dock-px py-[clamp(0.35rem,1vh,0.75rem)] overflow-hidden" style={{ gap: "var(--dock-gap)" }}>
+      <div className="flex flex-col gap-2.5 shrink-0 w-[min(39vw,15rem)] justify-center">
         <div className="flex items-center justify-between">
           <h2 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-muted-foreground">
             {"Alarms"}
@@ -87,7 +87,7 @@ export function AlarmsPage() {
                 type="time"
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                className="bg-secondary/80 text-foreground text-sm font-mono tabular-nums rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring appearance-none w-20"
+                className="bg-secondary/80 text-foreground text-sm font-mono tabular-nums rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring appearance-none w-[clamp(3.8rem,10vw,5rem)]"
                 style={{ colorScheme: "dark" }}
               />
               <input
@@ -136,7 +136,7 @@ export function AlarmsPage() {
             <span className="text-xs text-muted-foreground">{"No alarms set"}</span>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 min-[600px]:grid-cols-2 gap-2">
           {alarms.map((alarm) => (
             <div
               key={alarm.id}

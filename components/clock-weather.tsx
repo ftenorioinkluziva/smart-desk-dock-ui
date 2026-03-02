@@ -64,10 +64,10 @@ export function ClockWeather() {
   if (!time) {
     return (
       <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
-        <div className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
+        <div className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-clock-size)" }}>
           {"--:--"}
         </div>
-        <div className="text-[14px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+        <div className="text-[clamp(0.6rem,1.6vw,0.875rem)] font-medium tracking-[0.2em] uppercase text-muted-foreground">
           {"loading..."}
         </div>
       </div>
@@ -84,30 +84,30 @@ export function ClockWeather() {
   })
 
   return (
-    <div className="flex items-center w-full h-full px-10">
-      <div className="flex w-full items-center justify-between gap-8">
+    <div className="flex items-center w-full h-full dock-px">
+      <div className="flex w-full items-center justify-between" style={{ gap: "var(--dock-gap)" }}>
         <div className="flex flex-col items-start gap-1 shrink-0">
           <div className="flex items-baseline">
-            <span className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+            <span className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-clock-size)" }}>
               {hours}
               <span className="animate-pulse">:</span>
               {minutes}
             </span>
-            <span className="text-xl font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none">
+            <span className="font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none" style={{ fontSize: "var(--dock-seconds-size)" }}>
               {seconds}
             </span>
           </div>
-          <div className="text-[14px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+          <div className="text-[clamp(0.6rem,1.6vw,0.875rem)] font-medium tracking-[0.2em] uppercase text-muted-foreground">
             {dateStr.toUpperCase()}
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-2xl bg-secondary/30 shrink-0">
-          <WeatherIcon condition={weather?.condition ?? "clear"} className="size-8 text-shadow-chart-4" />
-          <span className="text-4xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+        <div className="flex flex-col items-center gap-1.5 px-[clamp(0.75rem,2vw,1.25rem)] py-[clamp(0.45rem,1.4vh,0.75rem)] rounded-2xl bg-secondary/30 shrink-0">
+          <WeatherIcon condition={weather?.condition ?? "clear"} className="size-[clamp(1.25rem,2.6vw,2rem)] text-shadow-chart-4" />
+          <span className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-big-number-size)" }}>
             {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
           </span>
-          <span className="text-[14px] text-muted-foreground font-mono tabular-nums">
+          <span className="text-[clamp(0.6rem,1.5vw,0.875rem)] text-muted-foreground font-mono tabular-nums">
             {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
           </span>
         </div>

@@ -87,7 +87,7 @@ export function SpotifyBar() {
       </div>
 
       {/* Track info */}
-      <div className="flex flex-col min-w-0 w-[120px] shrink-0">
+      <div className="flex flex-col min-w-0 flex-1">
         {track ? (
           <>
             <span className="text-[11px] font-medium text-foreground truncate leading-tight">
@@ -103,9 +103,6 @@ export function SpotifyBar() {
           </span>
         )}
       </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
 
       {/* Playback controls */}
       <div className="flex items-center gap-0.5 shrink-0">

@@ -22,8 +22,7 @@ export function ProductivityHub() {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
   return (
-    <div className="flex items-center justify-center h-full w-full px-5 gap-5">
-      {/* Left: Segmented Control (vertical) */}
+    <div className="flex items-center h-full w-full px-10 gap-8">
       <div className="flex flex-col items-center gap-1.5 shrink-0">
         {(["pomodoro", "timer", "stopwatch"] as Tab[]).map((tab) => (
           <button
@@ -40,8 +39,7 @@ export function ProductivityHub() {
         ))}
       </div>
 
-      {/* Right: Content area */}
-      <div className="flex-1 flex items-center justify-center min-w-0">
+      <div className="flex-1 flex items-center min-w-0">
         {activeTab === "pomodoro" && <PomodoroView />}
         {activeTab === "timer" && <TimerView />}
         {activeTab === "stopwatch" && <StopwatchView />}
@@ -119,15 +117,14 @@ function PomodoroView() {
   const strokeDashoffset = circumference - (progress / 100) * circumference
 
   return (
-    <div className="flex items-center gap-6 w-full">
-      {/* Left side: circular timer */}
+    <div className="flex items-center justify-between gap-8 w-full">
       <div
         className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${
           isAlarm ? "animate-pomodoro-alarm" : ""
         }`}
       >
         {isAlarm && (
-          <div className="absolute inset-[-6px] rounded-full animate-pomodoro-pulse">
+          <div className="absolute -inset-1.5 rounded-full animate-pomodoro-pulse">
             <div className="w-full h-full rounded-full border-2 border-destructive/60" />
           </div>
         )}
@@ -181,9 +178,7 @@ function PomodoroView() {
         </div>
       </div>
 
-      {/* Right side: mode selector, controls, sessions */}
       <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
-        {/* Mode selector - horizontal */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {(Object.keys(POMODORO_DURATIONS) as PomodoroMode[]).map((m) => (
             <button
@@ -205,7 +200,6 @@ function PomodoroView() {
           ))}
         </div>
 
-        {/* Controls */}
         <div className="flex items-center gap-2.5">
           {isAlarm ? (
             <button
@@ -239,7 +233,6 @@ function PomodoroView() {
           )}
         </div>
 
-        {/* Session counter */}
         <div className="flex items-center gap-1.5">
           {Array.from({ length: 4 }).map((_, i) => (
             <span
@@ -295,8 +288,7 @@ function TimerView() {
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
 
   return (
-    <div className="flex items-center gap-6 w-full justify-center">
-      {/* Timer display */}
+    <div className="flex items-center gap-6 w-full justify-between">
       <div className="flex flex-col items-center gap-1">
         <span className={`text-6xl font-extralight tabular-nums font-mono tracking-tight leading-none ${
           isAlarm ? "text-destructive animate-pomodoro-blink" : "text-foreground"
@@ -310,7 +302,6 @@ function TimerView() {
         )}
       </div>
 
-      {/* Controls to the right */}
       <div className="flex items-center gap-2.5">
         <button
           onClick={togglePlay}
@@ -356,13 +347,11 @@ function StopwatchView() {
   const secs = (elapsed % 60).toString().padStart(2, "0")
 
   return (
-    <div className="flex items-center gap-6 w-full justify-center">
-      {/* Time display */}
+    <div className="flex items-center gap-6 w-full justify-between">
       <span className="text-6xl font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none">
         {mins}:{secs}
       </span>
 
-      {/* Controls to the right */}
       <div className="flex items-center gap-2.5">
         <button
           onClick={togglePlay}

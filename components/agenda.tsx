@@ -140,8 +140,7 @@ export function CalendarPage() {
   const dayOfWeek = WEEKDAY_PT_SHORT[today.getDay()] || "DOM."
 
   return (
-    <div className="flex h-full w-full px-5 py-3 gap-5 overflow-hidden">
-      {/* Left: date header + events */}
+    <div className="flex h-full w-full px-10 py-3 gap-8 overflow-hidden">
       <div className="flex flex-col flex-1 min-w-0 gap-2 justify-center">
         <div className="text-base font-bold text-foreground tracking-tight leading-tight">
           {dayOfWeek}{" "}
@@ -305,8 +304,7 @@ export function CalendarPage() {
         )}
       </div>
 
-      {/* Right: mini calendar */}
-      <div className="shrink-0 w-[170px] flex flex-col justify-center">
+      <div className="shrink-0 w-55 flex flex-col justify-center">
         <div className="flex items-center justify-between mb-1.5">
           <button onClick={prevMonth} aria-label="Previous month" className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground">
             <ChevronLeft className="size-3" />

@@ -63,7 +63,7 @@ export function ClockWeather() {
 
   if (!time) {
     return (
-      <div className="flex flex-col items-center justify-center gap-1">
+      <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
         <div className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
           {"--:--"}
         </div>
@@ -84,33 +84,33 @@ export function ClockWeather() {
   })
 
   return (
-    <div className="flex items-center justify-center gap-10 w-full px-8">
-      {/* Left: Large clock */}
-      <div className="flex flex-col items-end gap-1 shrink-0">
-        <div className="flex items-baseline">
-          <span className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
-            {hours}
-            <span className="animate-pulse">:</span>
-            {minutes}
-          </span>
-          <span className="text-xl font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none">
-            {seconds}
-          </span>
+    <div className="flex items-center w-full h-full px-10">
+      <div className="flex w-full items-center justify-between gap-8">
+        <div className="flex flex-col items-start gap-1 shrink-0">
+          <div className="flex items-baseline">
+            <span className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+              {hours}
+              <span className="animate-pulse">:</span>
+              {minutes}
+            </span>
+            <span className="text-xl font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none">
+              {seconds}
+            </span>
+          </div>
+          <div className="text-[14px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+            {dateStr.toUpperCase()}
+          </div>
         </div>
-        <div className="text-[14px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
-          {dateStr.toUpperCase()}
-        </div>
-      </div>
 
-      {/* Right: Weather summary card */}
-      <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-2xl bg-secondary/30">
-        <WeatherIcon condition={weather?.condition ?? "clear"} className="size-8 text-shadow-chart-4" />
-        <span className="text-4xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
-          {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
-        </span>
-        <span className="text-[14px] text-muted-foreground font-mono tabular-nums">
-          {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
-        </span>
+        <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-2xl bg-secondary/30 shrink-0">
+          <WeatherIcon condition={weather?.condition ?? "clear"} className="size-8 text-shadow-chart-4" />
+          <span className="text-4xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+            {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
+          </span>
+          <span className="text-[14px] text-muted-foreground font-mono tabular-nums">
+            {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
+          </span>
+        </div>
       </div>
     </div>
   )

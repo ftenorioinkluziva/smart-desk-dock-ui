@@ -64,9 +64,8 @@ export function AlarmsPage() {
   }, [newTime, newLabel, newDays])
 
   return (
-    <div className="flex h-full w-full px-5 py-3 gap-4 overflow-hidden">
-      {/* Left: header + add form */}
-      <div className="flex flex-col gap-2.5 shrink-0 w-[200px] justify-center">
+    <div className="flex h-full w-full px-10 py-3 gap-8 overflow-hidden">
+      <div className="flex flex-col gap-2.5 shrink-0 w-60 justify-center">
         <div className="flex items-center justify-between">
           <h2 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-muted-foreground">
             {"Alarms"}
@@ -88,7 +87,7 @@ export function AlarmsPage() {
                 type="time"
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                className="bg-secondary/80 text-foreground text-sm font-mono tabular-nums rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring appearance-none w-[80px]"
+                className="bg-secondary/80 text-foreground text-sm font-mono tabular-nums rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring appearance-none w-20"
                 style={{ colorScheme: "dark" }}
               />
               <input
@@ -131,7 +130,6 @@ export function AlarmsPage() {
         )}
       </div>
 
-      {/* Right: alarm cards in a scrollable grid layout */}
       <div className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-hide justify-center min-w-0">
         {alarms.length === 0 && (
           <div className="flex items-center justify-center flex-1">
@@ -175,13 +173,13 @@ export function AlarmsPage() {
                 <button
                   onClick={() => toggleAlarm(alarm.id)}
                   aria-label={alarm.enabled ? "Disable alarm" : "Enable alarm"}
-                  className={`relative w-8 h-[18px] rounded-full transition-colors ${
+                  className={`relative w-8 h-4.5 rounded-full transition-colors ${
                     alarm.enabled ? "bg-accent" : "bg-secondary"
                   }`}
                 >
                   <span
-                    className={`absolute top-[2px] left-[2px] size-[14px] rounded-full bg-foreground transition-transform ${
-                      alarm.enabled ? "translate-x-[14px]" : "translate-x-0"
+                    className={`absolute top-0.5 left-0.5 size-3.5 rounded-full bg-foreground transition-transform ${
+                      alarm.enabled ? "translate-x-3.5" : "translate-x-0"
                     }`}
                   />
                 </button>

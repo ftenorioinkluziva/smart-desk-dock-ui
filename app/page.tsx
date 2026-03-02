@@ -32,31 +32,31 @@ export default function Page() {
       {/* Carousel content area */}
       <div
         ref={scrollRef}
-        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+        className="flex-1 min-h-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
       >
         {/* Page 1: Clock */}
-        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+        <section className="w-dvw shrink-0 snap-center flex items-center justify-center">
           <ClockWeather />
         </section>
 
         {/* Page 2: Weather Forecast */}
-        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+        <section className="w-dvw shrink-0 snap-center flex items-center justify-center">
           <WeatherForecast />
         </section>
 
         {/* Page 3: Pomodoro / Productivity Hub */}
-        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+        <section className="w-dvw shrink-0 snap-center flex items-center justify-center">
           <ProductivityHub />
         </section>
 
         {/* Page 4: Calendar */}
-        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+        <section className="w-dvw shrink-0 snap-center flex items-center justify-center">
           <CalendarPage />
         </section>
 
         {/* Page 5: Alarms */}
-        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+        <section className="w-dvw shrink-0 snap-center flex items-center justify-center">
           <AlarmsPage />
         </section>
       </div>

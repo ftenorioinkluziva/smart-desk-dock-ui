@@ -86,14 +86,21 @@ export function ClockWeather() {
   return (
     <div className="flex items-center w-full h-full dock-px">
       <div className="flex w-full items-center justify-between" style={{ gap: "var(--dock-gap)" }}>
+        {/* Clock + date */}
         <div className="flex flex-col items-start gap-1 shrink-0">
-          <div className="flex items-baseline">
-            <span className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-clock-size)" }}>
+          <div className="flex items-end leading-none">
+            <span
+              className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none"
+              style={{ fontSize: "var(--dock-clock-size)" }}
+            >
               {hours}
               <span className="animate-pulse">:</span>
               {minutes}
             </span>
-            <span className="font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none" style={{ fontSize: "var(--dock-seconds-size)" }}>
+            <span
+              className="font-extralight text-muted-foreground tabular-nums font-mono leading-none mb-[0.12em]"
+              style={{ fontSize: "var(--dock-seconds-size)" }}
+            >
               {seconds}
             </span>
           </div>
@@ -102,12 +109,16 @@ export function ClockWeather() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1.5 px-[clamp(0.75rem,2vw,1.25rem)] py-[clamp(0.45rem,1.4vh,0.75rem)] rounded-2xl bg-secondary/30 shrink-0">
-          <WeatherIcon condition={weather?.condition ?? "clear"} className="size-[clamp(1.25rem,2.6vw,2rem)] text-shadow-chart-4" />
-          <span className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-big-number-size)" }}>
+        {/* Weather card */}
+        <div className="flex flex-col items-center gap-1 px-[clamp(0.75rem,2vw,1.5rem)] py-[clamp(0.6rem,1.6vh,1rem)] rounded-2xl bg-secondary shrink-0">
+          <WeatherIcon condition={weather?.condition ?? "clear"} className="size-[clamp(1.1rem,2.4vw,1.75rem)] text-foreground" />
+          <span
+            className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none"
+            style={{ fontSize: "var(--dock-big-number-size)" }}
+          >
             {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
           </span>
-          <span className="text-[clamp(0.6rem,1.5vw,0.875rem)] text-muted-foreground font-mono tabular-nums">
+          <span className="text-[clamp(0.55rem,1.4vw,0.8rem)] text-muted-foreground font-mono tabular-nums">
             {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
           </span>
         </div>

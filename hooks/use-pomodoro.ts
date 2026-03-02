@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 export type PomodoroPhase = "focus" | "short-break" | "long-break"
 export type PomodoroStatus = "idle" | "running" | "finished"
@@ -10,13 +10,6 @@ const DURATIONS: Record<PomodoroPhase, number> = {
   focus:       25 * 60,
   "short-break": 5 * 60,
   "long-break": 30 * 60,
-}
-
-/** Audio file played when each phase completes */
-const ALARM: Record<PomodoroPhase, string> = {
-  focus:         "/sounds/pomodoro/pomodoro1.mp3",
-  "short-break": "/sounds/pomodoro/pomodoro2.mp3",
-  "long-break":  "/sounds/pomodoro/pomodoro3.mp3",
 }
 
 export type PomodoroReturn = {
@@ -41,7 +34,6 @@ export function usePomodoro(): PomodoroReturn {
   const [status,     setStatus]     = useState<PomodoroStatus>("idle")
   const [focusRound, setFocusRound] = useState(1)
   const [seconds,    setSeconds]    = useState(DURATIONS["focus"])
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // ── Tick: counts down every second while running ──────────────────────────
   useEffect(() => {
@@ -54,14 +46,7 @@ export function usePomodoro(): PomodoroReturn {
   useEffect(() => {
     if (status !== "running" || seconds !== 0) return
     setStatus("finished")
-    audioRef.current?.pause()
-    const audio = new Audio(ALARM[phase])
-    audio.play().catch(() => {})
-    audioRef.current = audio
-  }, [seconds, status, phase])
-
-  // ── Cleanup audio on unmount ──────────────────────────────────────────────
-  useEffect(() => () => { audioRef.current?.pause() }, [])
+  }, [seconds, status])
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const start = useCallback(() => setStatus("running"), [])
@@ -69,9 +54,6 @@ export function usePomodoro(): PomodoroReturn {
   const pause = useCallback(() => setStatus("idle"), [])
 
   const beginNextPhase = useCallback(() => {
-    audioRef.current?.pause()
-    audioRef.current = null
-
     // Determine what comes next
     let nextPhase: PomodoroPhase
     let nextRound = focusRound
@@ -102,8 +84,6 @@ export function usePomodoro(): PomodoroReturn {
   }, [phase, focusRound])
 
   const reset = useCallback(() => {
-    audioRef.current?.pause()
-    audioRef.current = null
     setPhase("focus")
     setFocusRound(1)
     setSeconds(DURATIONS["focus"])

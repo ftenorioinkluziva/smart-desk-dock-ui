@@ -64,10 +64,10 @@ export function ClockWeather() {
   if (!time) {
     return (
       <div className="flex flex-col items-center justify-center gap-1">
-        <div className="text-8xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
+        <div className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono">
           {"--:--"}
         </div>
-        <div className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">
+        <div className="text-[14px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
           {"loading..."}
         </div>
       </div>
@@ -84,11 +84,11 @@ export function ClockWeather() {
   })
 
   return (
-    <div className="flex items-center justify-center gap-8 w-full px-8">
+    <div className="flex items-center justify-center gap-10 w-full px-8">
       {/* Left: Large clock */}
       <div className="flex flex-col items-end gap-1 shrink-0">
         <div className="flex items-baseline">
-          <span className="text-7xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
+          <span className="text-9xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
             {hours}
             <span className="animate-pulse">:</span>
             {minutes}
@@ -97,18 +97,18 @@ export function ClockWeather() {
             {seconds}
           </span>
         </div>
-        <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
+        <div className="text-[14px] font-medium tracking-[0.2em] uppercase text-muted-foreground">
           {dateStr.toUpperCase()}
         </div>
       </div>
 
       {/* Right: Weather summary card */}
       <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-2xl bg-secondary/30">
-        <WeatherIcon condition={weather?.condition ?? "clear"} className="size-6 text-chart-4" />
-        <span className="text-2xl font-light text-foreground tabular-nums font-mono leading-none">
+        <WeatherIcon condition={weather?.condition ?? "clear"} className="size-8 text-shadow-chart-4" />
+        <span className="text-4xl font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none">
           {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
         </span>
-        <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
+        <span className="text-[14px] text-muted-foreground font-mono tabular-nums">
           {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
         </span>
       </div>

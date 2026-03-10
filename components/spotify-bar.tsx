@@ -85,7 +85,6 @@ export function SpotifyBar() {
           </svg>
         )}
       </div>
-
       {/* Track info */}
       <div className="flex flex-col min-w-0 flex-1">
         {track ? (

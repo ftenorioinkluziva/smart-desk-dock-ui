@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Play, Pause, RotateCcw, Square, Coffee, Brain, BellRing, CheckCircle2 } from "lucide-react"
+import { Play, Pause, RotateCcw, Square, Coffee, Brain, BellRing } from "lucide-react"
 
 type Tab = "pomodoro" | "timer" | "stopwatch"
 type PomodoroMode = "focus" | "short-break" | "long-break"
@@ -13,35 +13,81 @@ const POMODORO_DURATIONS: Record<PomodoroMode, number> = {
 }
 
 const MODE_LABELS: Record<PomodoroMode, string> = {
-  "focus": "Focus",
-  "short-break": "Short Break",
-  "long-break": "Long Break",
+  "focus": "Foco",
+  "short-break": "Pausa",
+  "long-break": "Pausa Longa",
 }
 
-const TIMER_PRESETS = [5, 10, 15]
+const TAB_LABELS: Record<Tab, string> = {
+  "pomodoro": "Pomodoro",
+  "timer": "Timer",
+  "stopwatch": "Cronômetro",
+}
+
+const TIMER_PRESETS = [5, 10, 15, 30]
+
+// ── Shared sub-components ──────────────────────────────────────────────────
+
+function Divider() {
+  return <div className="w-px self-stretch bg-border/30 shrink-0 my-1" aria-hidden="true" />
+}
+
+function ControlButton({
+  onClick,
+  label,
+  variant = "primary",
+  icon,
+}: {
+  onClick: () => void
+  label: string
+  variant?: "primary" | "secondary" | "alert"
+  icon?: React.ReactNode
+}) {
+  const base = "flex items-center justify-center gap-2 w-full rounded-2xl font-medium tracking-wide transition-all duration-150 active:scale-[0.96] select-none"
+  const py = "py-[clamp(0.45rem,1.3vh,0.7rem)]"
+  const size = "text-[clamp(0.65rem,1.9vw,0.85rem)]"
+
+  const variants = {
+    primary:   "bg-foreground text-background shadow-[0_1px_4px_rgba(0,0,0,0.6)] hover:bg-foreground/90",
+    secondary: "bg-secondary/70 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary",
+    alert:     "bg-accent/90 text-accent-foreground shadow-[0_1px_4px_rgba(0,0,0,0.4)] hover:bg-accent",
+  }
+
+  return (
+    <button onClick={onClick} aria-label={label} className={`${base} ${py} ${size} ${variants[variant]}`}>
+      {icon && <span className="flex items-center [&>svg]:size-3.5">{icon}</span>}
+      {label}
+    </button>
+  )
+}
+
+// ── Main hub ──────────────────────────────────────────────────────────────
 
 export function ProductivityHub(): JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
   return (
-    <div className="flex flex-col h-full w-full dock-px justify-center gap-[clamp(0.5rem,1.5vh,0.85rem)]">
-      <div className="flex items-center gap-1 p-1 rounded-full bg-secondary/40 border border-border/50 self-start">
-        {(["pomodoro", "timer", "stopwatch"] as Tab[]).map((tab) => (
+    <div className="flex flex-col h-full w-full dock-px gap-[clamp(0.3rem,0.9vh,0.55rem)]">
+      {/* Tab bar — full width, readable tap targets */}
+      <div className="flex items-stretch rounded-xl bg-secondary/30 border border-border/30 p-[clamp(0.15rem,0.4vh,0.25rem)] shrink-0 gap-[clamp(0.15rem,0.4vw,0.25rem)]">
+        {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-[clamp(0.6rem,1.8vw,0.875rem)] py-[clamp(0.28rem,0.8vh,0.38rem)] text-[clamp(0.5rem,1.2vw,0.64rem)] font-medium tracking-wide uppercase rounded-full transition-all text-center ${
+            className={`flex-1 py-[clamp(0.3rem,0.9vh,0.5rem)] rounded-lg text-center font-medium tracking-wide transition-all duration-150 active:scale-[0.97] ${
               activeTab === tab
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-secondary text-foreground border border-border/60"
+                : "text-muted-foreground hover:text-foreground/80"
             }`}
+            style={{ fontSize: "clamp(0.62rem,1.9vw,0.82rem)" }}
           >
-            {tab}
+            {TAB_LABELS[tab]}
           </button>
         ))}
       </div>
 
-      <div className="flex-1 flex items-center min-w-0">
+      {/* Content area */}
+      <div className="flex-1 flex items-center min-h-0 overflow-hidden">
         {activeTab === "pomodoro" && <PomodoroView />}
         {activeTab === "timer" && <TimerView />}
         {activeTab === "stopwatch" && <StopwatchView />}
@@ -49,6 +95,8 @@ export function ProductivityHub(): JSX.Element {
     </div>
   )
 }
+
+// ── Pomodoro ──────────────────────────────────────────────────────────────
 
 function PomodoroView() {
   const [mode, setMode] = useState<PomodoroMode>("focus")
@@ -59,37 +107,27 @@ function PomodoroView() {
 
   const duration = POMODORO_DURATIONS[mode]
   const progress = ((duration - totalSeconds) / duration) * 100
+  const radius = 54
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (progress / 100) * circumference
 
   useEffect(() => {
-    if (!isRunning) {
-      return
-    }
-
+    if (!isRunning) return
     if (totalSeconds <= 0) {
       setIsRunning(false)
       setIsAlertVisible(true)
-      if (mode === "focus") {
-        setSessions((prev) => prev + 1)
-      }
+      if (mode === "focus") setSessions((p) => p + 1)
       return
     }
-
-    const interval = setInterval(() => {
-      setTotalSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval)
-          return 0
-        }
-        return prev - 1
-      })
+    const id = setInterval(() => {
+      setTotalSeconds((p) => (p <= 1 ? (clearInterval(id), 0) : p - 1))
     }, 1000)
-
-    return () => clearInterval(interval)
+    return () => clearInterval(id)
   }, [isRunning, totalSeconds, mode])
 
-  const switchMode = useCallback((newMode: PomodoroMode) => {
-    setMode(newMode)
-    setTotalSeconds(POMODORO_DURATIONS[newMode])
+  const switchMode = useCallback((m: PomodoroMode) => {
+    setMode(m)
+    setTotalSeconds(POMODORO_DURATIONS[m])
     setIsRunning(false)
     setIsAlertVisible(false)
   }, [])
@@ -107,177 +145,157 @@ function PomodoroView() {
       setIsRunning(true)
       return
     }
-    setIsRunning((prev) => !prev)
+    setIsRunning((p) => !p)
   }, [mode, totalSeconds])
 
-  const dismissAlert = useCallback(() => {
-    setIsAlertVisible(false)
-  }, [])
-
   const startNextPhase = useCallback(() => {
-    const nextMode: PomodoroMode = mode === "focus"
-      ? sessions > 0 && sessions % 4 === 0
-        ? "long-break"
-        : "short-break"
-      : "focus"
-
-    setMode(nextMode)
-    setTotalSeconds(POMODORO_DURATIONS[nextMode])
+    const next: PomodoroMode =
+      mode === "focus"
+        ? sessions > 0 && sessions % 4 === 0 ? "long-break" : "short-break"
+        : "focus"
+    setMode(next)
+    setTotalSeconds(POMODORO_DURATIONS[next])
     setIsAlertVisible(false)
     setIsRunning(true)
   }, [mode, sessions])
 
   const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
-
-  const radius = 58
-  const circumference = 2 * Math.PI * radius
-  const strokeDashoffset = circumference - (progress / 100) * circumference
+  const arcColor = isAlertVisible ? "text-destructive" : mode === "focus" ? "text-accent" : "text-chart-2"
 
   return (
-    <div className="w-full flex flex-col items-center justify-center gap-[clamp(0.45rem,1.2vh,0.8rem)]">
-      <div className="flex items-center justify-center gap-1.5 flex-wrap">
-        {(Object.keys(POMODORO_DURATIONS) as PomodoroMode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => switchMode(m)}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-medium uppercase tracking-wider transition-all ${
-              mode === m
-                ? "bg-accent/20 text-accent"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+    <div className="w-full flex items-center gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+
+      {/* Left: ring timer */}
+      <div className="flex flex-col items-center justify-center flex-1">
+        <div
+          className={`relative flex items-center justify-center ${isAlertVisible ? "animate-pomodoro-alarm" : ""}`}
+        >
+          {isAlertVisible && (
+            <div className="absolute -inset-2 rounded-full animate-pomodoro-pulse pointer-events-none">
+              <div className="w-full h-full rounded-full border-2 border-destructive/40" />
+            </div>
+          )}
+
+          <svg
+            viewBox="0 0 120 120"
+            className="w-[clamp(8.5rem,30vw,14rem)] h-[clamp(8.5rem,30vw,14rem)] -rotate-90"
           >
-            {m === "focus" ? (
-              <Brain className="size-2.5" />
-            ) : (
-              <Coffee className="size-2.5" />
-            )}
-            {MODE_LABELS[m]}
-          </button>
-        ))}
+            <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="4" className="text-secondary" />
+            <circle
+              cx="60" cy="60" r={radius}
+              fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              className={`transition-all duration-1000 ease-linear ${arcColor} ${isAlertVisible ? "animate-pomodoro-blink" : ""}`}
+            />
+          </svg>
+
+          <div className={`absolute flex flex-col items-center ${isAlertVisible ? "animate-pomodoro-blink" : ""}`}>
+            <span
+              className={`font-extralight tabular-nums font-mono tracking-tight leading-none ${isAlertVisible ? "text-destructive" : "text-foreground"}`}
+              style={{ fontSize: "clamp(2rem,8.5vw,4rem)" }}
+            >
+              {mins}:{secs}
+            </span>
+            <span
+              className={`uppercase tracking-[0.14em] font-medium leading-none mt-0.5 ${isAlertVisible ? "text-destructive/80" : "text-muted-foreground"}`}
+              style={{ fontSize: "clamp(0.6rem,1.7vw,0.85rem)" }}
+            >
+              {isAlertVisible ? "Concluído!" : MODE_LABELS[mode]}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div
-        className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${
-          isAlertVisible ? "animate-pomodoro-alarm" : ""
-        }`}
-      >
-        {isAlertVisible && (
-          <div className="absolute -inset-1.5 rounded-full animate-pomodoro-pulse">
-            <div className="w-full h-full rounded-full border-2 border-destructive/60" />
+      <Divider />
+
+      {/* Right: mode + sessions + controls */}
+      <div className="flex flex-col justify-center gap-[clamp(0.35rem,1vh,0.6rem)]" style={{ width: "clamp(8rem,34%,13rem)" }}>
+
+        {/* Mode selector */}
+        {!isAlertVisible ? (
+          <div className="flex flex-wrap gap-[clamp(0.2rem,0.6vw,0.35rem)]">
+            {(Object.keys(POMODORO_DURATIONS) as PomodoroMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => switchMode(m)}
+                className={`flex items-center gap-1 px-[clamp(0.4rem,1.2vw,0.6rem)] py-[clamp(0.25rem,0.7vh,0.35rem)] rounded-xl font-medium tracking-wide transition-all duration-150 active:scale-[0.96] ${
+                  mode === m
+                    ? "bg-secondary text-foreground border border-border/60"
+                    : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/40"
+                }`}
+                style={{ fontSize: "clamp(0.55rem,1.5vw,0.72rem)" }}
+              >
+                {m === "focus" ? <Brain className="size-2.5 shrink-0" /> : <Coffee className="size-2.5 shrink-0" />}
+                {MODE_LABELS[m]}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <BellRing className="size-3.5 text-destructive animate-pomodoro-blink shrink-0" />
+            <span className="text-destructive font-semibold" style={{ fontSize: "clamp(0.65rem,1.8vw,0.85rem)" }}>
+              Fase concluída!
+            </span>
           </div>
         )}
 
-        <svg
-          width="140"
-          height="140"
-          viewBox="0 0 140 140"
-          className="w-[clamp(6.4rem,18vw,9.6rem)] h-[clamp(6.4rem,18vw,9.6rem)] transform -rotate-90"
-        >
-          <circle
-            cx="70"
-            cy="70"
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="text-secondary"
-          />
-          <circle
-            cx="70"
-            cy="70"
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            className={`transition-all duration-1000 ease-linear ${
-              isAlertVisible
-                ? "text-destructive animate-pomodoro-blink"
-                : mode === "focus"
-                ? "text-accent"
-                : "text-chart-2"
-            }`}
-          />
-        </svg>
-
-        <div className={`absolute flex flex-col items-center gap-0.5 ${
-          isAlertVisible ? "animate-pomodoro-blink" : ""
-        }`}>
-          <span className={`font-semibold tabular-nums font-mono tracking-tight leading-none ${
-            isAlertVisible ? "text-destructive" : "text-foreground"
-          }`} style={{ fontSize: "calc(var(--dock-big-number-size) * 1.2)" }}>
-            {mins}:{secs}
-          </span>
-          <span className="text-[9px] uppercase tracking-[0.17em] text-muted-foreground font-medium">
-            {isAlertVisible ? "Phase complete" : MODE_LABELS[mode]}
+        {/* Sessions progress */}
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <span
+              key={i}
+              className={`size-2.5 rounded-full transition-colors duration-300 ${i < sessions % 4 ? "bg-accent" : "bg-secondary"}`}
+              aria-hidden="true"
+            />
+          ))}
+          <span className="text-muted-foreground font-mono tabular-nums ml-0.5" style={{ fontSize: "clamp(0.6rem,1.6vw,0.75rem)" }}>
+            {sessions} sess.
           </span>
         </div>
-      </div>
 
-      <div className="flex items-center gap-2.5">
-        <button
-          onClick={togglePlay}
-          aria-label={isRunning ? "Pause" : "Start"}
-          className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
-        >
-          {isRunning ? (
-            <Pause className="size-4" fill="currentColor" />
+        {/* Controls */}
+        <div className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.4rem)]">
+          {isAlertVisible ? (
+            <>
+              <ControlButton
+                onClick={startNextPhase}
+                label="Próxima fase"
+                variant="alert"
+                icon={<Play className="size-3" fill="currentColor" />}
+              />
+              <ControlButton
+                onClick={() => setIsAlertVisible(false)}
+                label="Dispensar"
+                variant="secondary"
+              />
+            </>
           ) : (
-            <Play className="size-4 ml-0.5" fill="currentColor" />
+            <>
+              <ControlButton
+                onClick={togglePlay}
+                label={isRunning ? "Pausar" : "Iniciar"}
+                variant="primary"
+                icon={isRunning
+                  ? <Pause className="size-3" fill="currentColor" />
+                  : <Play className="size-3 ml-0.5" fill="currentColor" />}
+              />
+              <ControlButton
+                onClick={reset}
+                label="Reiniciar"
+                variant="secondary"
+                icon={<RotateCcw className="size-3" />}
+              />
+            </>
           )}
-        </button>
-        <button
-          onClick={reset}
-          aria-label="Reset timer"
-          className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-        >
-          <RotateCcw className="size-3.5" />
-        </button>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <span
-            key={i}
-            className={`size-2 rounded-full transition-colors ${
-              i < sessions % 4 ? "bg-accent" : "bg-secondary"
-            }`}
-            aria-hidden="true"
-          />
-        ))}
-        <span className="text-[9px] text-muted-foreground ml-1 font-mono tabular-nums">
-          {sessions} {"sessions"}
-        </span>
-      </div>
-
-      {isAlertVisible && (
-        <div className="w-full max-w-136 rounded-lg border border-destructive/50 bg-destructive/10 px-2.5 py-2 flex items-center justify-between gap-2" role="status" aria-live="polite">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <BellRing className="size-3.5 text-destructive shrink-0 animate-pomodoro-blink" />
-            <span className="text-[10px] text-destructive-foreground/90 font-medium truncate">Tempo concluído. Iniciar próxima fase?</span>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={dismissAlert}
-              className="h-7 px-2.5 rounded-md text-[10px] border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              Dispensar
-            </button>
-            <button
-              onClick={startNextPhase}
-              className="h-7 px-2.5 rounded-md text-[10px] bg-accent/20 text-accent hover:opacity-90 transition-opacity"
-            >
-              Próxima
-            </button>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
+
+// ── Timer ─────────────────────────────────────────────────────────────────
 
 function TimerView() {
   const [totalSeconds, setTotalSeconds] = useState(5 * 60)
@@ -286,27 +304,16 @@ function TimerView() {
   const initialRef = useRef(5 * 60)
 
   useEffect(() => {
-    if (!isRunning) {
-      return
-    }
-
+    if (!isRunning) return
     if (totalSeconds <= 0) {
       setIsRunning(false)
       setIsAlertVisible(true)
       return
     }
-
-    const interval = setInterval(() => {
-      setTotalSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval)
-          return 0
-        }
-        return prev - 1
-      })
+    const id = setInterval(() => {
+      setTotalSeconds((p) => (p <= 1 ? (clearInterval(id), 0) : p - 1))
     }, 1000)
-
-    return () => clearInterval(interval)
+    return () => clearInterval(id)
   }, [isRunning, totalSeconds])
 
   const reset = useCallback(() => {
@@ -322,13 +329,13 @@ function TimerView() {
       setIsRunning(true)
       return
     }
-    setIsRunning((prev) => !prev)
+    setIsRunning((p) => !p)
   }, [totalSeconds])
 
   const applyPreset = useCallback((minutes: number) => {
-    const presetSeconds = minutes * 60
-    initialRef.current = presetSeconds
-    setTotalSeconds(presetSeconds)
+    const s = minutes * 60
+    initialRef.current = s
+    setTotalSeconds(s)
     setIsRunning(false)
     setIsAlertVisible(false)
   }, [])
@@ -338,69 +345,81 @@ function TimerView() {
   const progress = ((initialRef.current - totalSeconds) / initialRef.current) * 100
 
   return (
-    <div className="flex items-center gap-[clamp(0.75rem,2vw,1.5rem)] w-full justify-between">
-      <div className="flex flex-col gap-2 min-w-0 flex-1">
-        <div className="flex items-end gap-2">
-          <span className={`font-extralight tabular-nums font-mono tracking-tight leading-none ${
+    <div className="w-full flex items-center gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+
+      {/* Left: time + progress bar */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-[clamp(0.4rem,1.1vh,0.65rem)]">
+        <span
+          className={`font-extralight tabular-nums font-mono tracking-tight leading-none transition-colors ${
             isAlertVisible ? "text-destructive animate-pomodoro-blink" : "text-foreground"
-          }`} style={{ fontSize: "var(--dock-big-number-size)" }}>
-            {mins}:{secs}
-          </span>
-          {isAlertVisible && <CheckCircle2 className="size-4 text-destructive mb-1" />}
+          }`}
+          style={{ fontSize: "clamp(2.8rem,13vw,6rem)" }}
+        >
+          {mins}:{secs}
+        </span>
+
+        {/* Progress bar */}
+        <div className="h-[clamp(0.2rem,0.5vh,0.3rem)] w-full rounded-full bg-secondary overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${isAlertVisible ? "bg-destructive" : "bg-accent"}`}
+            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+          />
         </div>
 
-        <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-          <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
-        </div>
+        <span
+          className="text-muted-foreground leading-none text-center"
+          style={{ fontSize: "clamp(0.6rem,1.7vw,0.8rem)" }}
+        >
+          {isAlertVisible ? "Timer concluído!" : isRunning ? "Em contagem…" : "Pronto para iniciar"}
+        </span>
+      </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {TIMER_PRESETS.map((minutes) => (
+      <Divider />
+
+      {/* Right: presets + controls */}
+      <div className="flex flex-col gap-[clamp(0.35rem,1vh,0.6rem)]" style={{ width: "clamp(8.5rem,38%,15rem)" }}>
+
+        {/* Preset buttons */}
+        <div className="grid grid-cols-4 gap-[clamp(0.2rem,0.6vw,0.35rem)]">
+          {TIMER_PRESETS.map((m) => (
             <button
-              key={minutes}
-              onClick={() => applyPreset(minutes)}
-              className={`h-6 px-2 rounded-full text-[9px] font-medium transition-colors ${
-                initialRef.current === minutes * 60
-                  ? "bg-accent/20 text-accent"
-                  : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+              key={m}
+              onClick={() => applyPreset(m)}
+              className={`py-[clamp(0.3rem,0.8vh,0.45rem)] rounded-xl font-medium tracking-wide transition-all duration-150 active:scale-[0.96] ${
+                initialRef.current === m * 60
+                  ? "bg-secondary text-foreground border border-border/60"
+                  : "bg-secondary/40 text-muted-foreground hover:text-foreground/80 hover:bg-secondary/70"
               }`}
+              style={{ fontSize: "clamp(0.6rem,1.7vw,0.8rem)" }}
             >
-              {minutes}m
+              {m}m
             </button>
           ))}
         </div>
 
-        {isAlertVisible && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-2 py-1.5 flex items-center justify-between gap-2" role="status" aria-live="polite">
-            <span className="text-[10px] text-destructive-foreground/90 font-medium">Timer concluído.</span>
-            <button
-              onClick={reset}
-              className="h-6 px-2 rounded-md text-[10px] bg-accent/20 text-accent hover:opacity-90 transition-opacity"
-            >
-              Reiniciar
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2.5 shrink-0">
-        <button
-          onClick={togglePlay}
-          aria-label={isRunning ? "Pause" : "Start"}
-          className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
-        >
-          {isRunning ? <Pause className="size-4" fill="currentColor" /> : <Play className="size-4 ml-0.5" fill="currentColor" />}
-        </button>
-        <button
-          onClick={reset}
-          aria-label="Reset"
-          className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-        >
-          <RotateCcw className="size-3.5" />
-        </button>
+        {/* Controls */}
+        <div className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.4rem)]">
+          <ControlButton
+            onClick={togglePlay}
+            label={isRunning ? "Pausar" : "Iniciar"}
+            variant="primary"
+            icon={isRunning
+              ? <Pause className="size-3" fill="currentColor" />
+              : <Play className="size-3 ml-0.5" fill="currentColor" />}
+          />
+          <ControlButton
+            onClick={reset}
+            label="Reiniciar"
+            variant="secondary"
+            icon={<RotateCcw className="size-3" />}
+          />
+        </div>
       </div>
     </div>
   )
 }
+
+// ── Stopwatch ─────────────────────────────────────────────────────────────
 
 function StopwatchView() {
   const [elapsed, setElapsed] = useState(0)
@@ -408,10 +427,8 @@ function StopwatchView() {
 
   useEffect(() => {
     if (!isRunning) return
-    const interval = setInterval(() => {
-      setElapsed((prev) => prev + 1)
-    }, 1000)
-    return () => clearInterval(interval)
+    const id = setInterval(() => setElapsed((p) => p + 1), 1000)
+    return () => clearInterval(id)
   }, [isRunning])
 
   const reset = useCallback(() => {
@@ -419,34 +436,63 @@ function StopwatchView() {
     setElapsed(0)
   }, [])
 
-  const togglePlay = useCallback(() => {
-    setIsRunning((prev) => !prev)
-  }, [])
+  const togglePlay = useCallback(() => setIsRunning((p) => !p), [])
 
-  const mins = Math.floor(elapsed / 60).toString().padStart(2, "0")
+  const hrs = Math.floor(elapsed / 3600)
+  const mins = Math.floor((elapsed % 3600) / 60).toString().padStart(2, "0")
   const secs = (elapsed % 60).toString().padStart(2, "0")
 
   return (
-    <div className="flex items-center gap-[clamp(0.75rem,2vw,1.5rem)] w-full justify-between">
-      <span className="font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none" style={{ fontSize: "var(--dock-big-number-size)" }}>
-        {mins}:{secs}
-      </span>
+    <div className="w-full flex items-center gap-[clamp(0.75rem,2.5vw,1.5rem)]">
 
-      <div className="flex items-center gap-2.5">
-        <button
+      {/* Left: elapsed time */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-[clamp(0.35rem,0.9vh,0.55rem)]">
+        <span
+          className="font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none"
+          style={{ fontSize: "clamp(2.8rem,13vw,6rem)" }}
+        >
+          {hrs > 0 && `${hrs.toString().padStart(2, "0")}:`}{mins}:{secs}
+        </span>
+
+        {/* Thin animated bar when running */}
+        <div className="h-[clamp(0.2rem,0.5vh,0.3rem)] w-full rounded-full bg-secondary overflow-hidden">
+          {isRunning && (
+            <div
+              className="h-full rounded-full bg-accent/60"
+              style={{
+                width: `${((elapsed % 60) / 60) * 100}%`,
+                transition: "width 1s linear",
+              }}
+            />
+          )}
+        </div>
+
+        <span
+          className="text-muted-foreground text-center"
+          style={{ fontSize: "clamp(0.6rem,1.7vw,0.8rem)" }}
+        >
+          {isRunning ? "Em contagem…" : elapsed > 0 ? "Pausado" : "Pronto para iniciar"}
+        </span>
+      </div>
+
+      <Divider />
+
+      {/* Right: controls */}
+      <div className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.4rem)] justify-center" style={{ width: "clamp(8.5rem,38%,15rem)" }}>
+        <ControlButton
           onClick={togglePlay}
-          aria-label={isRunning ? "Pause" : "Start"}
-          className="flex items-center justify-center size-10 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity"
-        >
-          {isRunning ? <Pause className="size-4" fill="currentColor" /> : <Play className="size-4 ml-0.5" fill="currentColor" />}
-        </button>
-        <button
+          label={isRunning ? "Pausar" : "Iniciar"}
+          variant="primary"
+          icon={isRunning
+            ? <Pause className="size-3" fill="currentColor" />
+            : <Play className="size-3 ml-0.5" fill="currentColor" />}
+        />
+        <ControlButton
           onClick={reset}
-          aria-label="Stop"
-          className="flex items-center justify-center size-9 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-        >
-          <Square className="size-3.5" />
-        </button>
+          label="Zerar"
+          variant="secondary"
+          icon={<Square className="size-3" />}
+        />
       </div>
     </div>
   )

@@ -14,8 +14,8 @@
   --dock-clock-size: clamp(3.2rem, 12vw, 7.5rem);
   --dock-seconds-size: clamp(0.9rem, 2.2vw, 1.25rem);
   --dock-big-number-size: clamp(2.15rem, 7.8vw, 3.75rem);
-  --dock-control-size: clamp(1.35rem, 3.3vw, 1.75rem);
-  --dock-control-icon-size: clamp(0.58rem, 1.4vw, 0.8rem);
+  --dock-control-size: clamp(1.7rem, 4.2vw, 2.2rem);
+  --dock-control-icon-size: clamp(0.75rem, 1.85vw, 1.05rem);
   --background: oklch(0.07 0 0);
   --foreground: oklch(0.95 0 0);
   --card: oklch(0.13 0 0);
@@ -59,8 +59,8 @@
     --dock-clock-size: clamp(2.35rem, 10vw, 4.2rem);
     --dock-seconds-size: clamp(0.7rem, 1.8vw, 0.95rem);
     --dock-big-number-size: clamp(1.7rem, 6.6vw, 2.6rem);
-    --dock-control-size: clamp(1.2rem, 3vw, 1.5rem);
-    --dock-control-icon-size: clamp(0.5rem, 1.25vw, 0.68rem);
+    --dock-control-size: clamp(1.5rem, 3.8vw, 1.9rem);
+    --dock-control-icon-size: clamp(0.65rem, 1.6vw, 0.88rem);
   }
 }
 
@@ -72,8 +72,8 @@
     --dock-clock-size: clamp(2.8rem, 11vw, 5.5rem);
     --dock-seconds-size: clamp(0.78rem, 2vw, 1.05rem);
     --dock-big-number-size: clamp(1.95rem, 7.1vw, 3rem);
-    --dock-control-size: clamp(1.28rem, 3.1vw, 1.62rem);
-    --dock-control-icon-size: clamp(0.54rem, 1.35vw, 0.75rem);
+    --dock-control-size: clamp(1.6rem, 4vw, 2rem);
+    --dock-control-icon-size: clamp(0.7rem, 1.7vw, 0.95rem);
   }
 }
 
@@ -85,8 +85,8 @@
     --dock-clock-size: clamp(3.2rem, 12vw, 7.5rem);
     --dock-seconds-size: clamp(0.9rem, 2.2vw, 1.25rem);
     --dock-big-number-size: clamp(2.15rem, 7.8vw, 3.75rem);
-    --dock-control-size: clamp(1.35rem, 3.3vw, 1.75rem);
-    --dock-control-icon-size: clamp(0.58rem, 1.4vw, 0.8rem);
+    --dock-control-size: clamp(1.7rem, 4.2vw, 2.2rem);
+    --dock-control-icon-size: clamp(0.75rem, 1.85vw, 1.05rem);
   }
 }
 

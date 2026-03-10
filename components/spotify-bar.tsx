@@ -68,7 +68,7 @@ export function SpotifyBar() {
   return (
     <div className="flex items-center w-full dock-px py-[clamp(0.25rem,0.8vh,0.375rem)] gap-[clamp(0.45rem,1.4vw,0.75rem)]">
       {/* Album art */}
-      <div className="size-[clamp(1.6rem,3.6vw,2rem)] shrink-0 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
+      <div className="size-[clamp(2rem,4.5vw,2.5rem)] shrink-0 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
         {nowPlaying.albumArt ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -90,15 +90,15 @@ export function SpotifyBar() {
       <div className="flex flex-col min-w-0 flex-1">
         {track ? (
           <>
-            <span className="text-[clamp(0.55rem,1.35vw,0.6875rem)] font-medium text-foreground truncate leading-tight">
+            <span className="text-[clamp(0.72rem,1.8vw,0.9rem)] font-medium text-foreground truncate leading-tight">
               {track}
             </span>
-            <span className="text-[clamp(0.5rem,1.1vw,0.5625rem)] text-muted-foreground truncate leading-tight">
+            <span className="text-[clamp(0.62rem,1.55vw,0.78rem)] text-muted-foreground truncate leading-tight">
               {artist}
             </span>
           </>
         ) : (
-          <span className="text-[clamp(0.5rem,1.2vw,0.625rem)] text-muted-foreground italic">
+          <span className="text-[clamp(0.65rem,1.6vw,0.8rem)] text-muted-foreground italic">
             {isMock ? "Configure Spotify credentials" : "Nothing playing"}
           </span>
         )}

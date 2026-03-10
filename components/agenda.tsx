@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Plus, Check, Trash2, Edit3, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Check, Trash2, Edit3, ChevronLeft, ChevronRight, Calendar } from "lucide-react"
 
 interface CalendarEvent {
   id: string
@@ -27,17 +27,17 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
   const day = new Date(year, month, 1).getDay()
-  // Convert Sunday=0 to Monday-first: Mon=0, ..., Sun=6
   return day === 0 ? 6 : day - 1
 }
 
 const MONTH_NAMES_PT = [
-  "JANEIRO", "FEVEREIRO", "MARCO", "ABRIL", "MAIO", "JUNHO",
-  "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO",
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ]
 
 const WEEKDAY_PT_SHORT: Record<number, string> = {
-  0: "DOM.", 1: "SEG.", 2: "TER.", 3: "QUA.", 4: "QUI.", 5: "SEX.", 6: "SAB.",
+  0: "Domingo", 1: "Segunda", 2: "Terça", 3: "Quarta",
+  4: "Quinta", 5: "Sexta", 6: "Sábado",
 }
 
 function generateId() {
@@ -50,8 +50,8 @@ export function CalendarPage() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [events, setEvents] = useState<CalendarEvent[]>([
-    { id: "1", title: "In California", time: "All day", color: "bg-chart-2", completed: false },
-    { id: "2", title: "Morning Meeting", time: "06-07", color: "bg-accent", completed: false },
+    { id: "1", title: "In California", time: "Dia todo", color: "bg-chart-2", completed: false },
+    { id: "2", title: "Morning Meeting", time: "06:00 – 07:00", color: "bg-accent", completed: false },
   ])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState("")
@@ -71,40 +71,28 @@ export function CalendarPage() {
 
   const prevMonth = useCallback(() => {
     setCurrentMonth((m) => {
-      if (m === 0) {
-        setCurrentYear((y) => y - 1)
-        return 11
-      }
+      if (m === 0) { setCurrentYear((y) => y - 1); return 11 }
       return m - 1
     })
   }, [])
 
   const nextMonth = useCallback(() => {
     setCurrentMonth((m) => {
-      if (m === 11) {
-        setCurrentYear((y) => y + 1)
-        return 0
-      }
+      if (m === 11) { setCurrentYear((y) => y + 1); return 0 }
       return m + 1
     })
   }, [])
 
   const addEvent = useCallback(() => {
     if (!newTitle.trim()) return
-    setEvents((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        title: newTitle.trim(),
-        time: newTime.trim() || "All day",
-        color: EVENT_COLORS[newColorIdx % EVENT_COLORS.length],
-        completed: false,
-      },
-    ])
-    setNewTitle("")
-    setNewTime("")
-    setNewColorIdx(0)
-    setShowAdd(false)
+    setEvents((prev) => [...prev, {
+      id: generateId(),
+      title: newTitle.trim(),
+      time: newTime.trim() || "Dia todo",
+      color: EVENT_COLORS[newColorIdx % EVENT_COLORS.length],
+      completed: false,
+    }])
+    setNewTitle(""); setNewTime(""); setNewColorIdx(0); setShowAdd(false)
   }, [newTitle, newTime, newColorIdx])
 
   const deleteEvent = useCallback((id: string) => {
@@ -112,58 +100,85 @@ export function CalendarPage() {
   }, [])
 
   const toggleComplete = useCallback((id: string) => {
-    setEvents((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, completed: !e.completed } : e))
-    )
+    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, completed: !e.completed } : e))
   }, [])
 
   const startEdit = useCallback((event: CalendarEvent) => {
-    setEditingId(event.id)
-    setEditTitle(event.title)
-    setEditTime(event.time)
+    setEditingId(event.id); setEditTitle(event.title); setEditTime(event.time)
   }, [])
 
   const saveEdit = useCallback(() => {
     if (!editTitle.trim() || !editingId) return
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === editingId
-          ? { ...e, title: editTitle.trim(), time: editTime.trim() || "All day" }
-          : e
-      )
-    )
-    setEditingId(null)
-    setEditTitle("")
-    setEditTime("")
+    setEvents((prev) => prev.map((e) =>
+      e.id === editingId ? { ...e, title: editTitle.trim(), time: editTime.trim() || "Dia todo" } : e
+    ))
+    setEditingId(null); setEditTitle(""); setEditTime("")
   }, [editingId, editTitle, editTime])
 
-  const dayOfWeek = WEEKDAY_PT_SHORT[today.getDay()] || "DOM."
+  const weekdayName = WEEKDAY_PT_SHORT[today.getDay()] ?? "Domingo"
 
   return (
-    <div className="flex h-full w-full dock-px py-[clamp(0.35rem,1vh,0.75rem)] overflow-hidden" style={{ gap: "var(--dock-gap)" }}>
-      <div className="flex flex-col flex-1 min-w-0 gap-2 justify-center">
-        <div className="text-base font-bold text-foreground tracking-tight leading-tight">
-          {dayOfWeek}{" "}
-          <span className="uppercase">
-            {MONTH_NAMES_PT[currentMonth]} {selectedDay}
+    <div
+      className="flex h-full w-full dock-px py-[clamp(0.3rem,0.9vh,0.6rem)] overflow-hidden"
+      style={{ gap: "var(--dock-gap)" }}
+    >
+      {/* ── Left 1/3: date header + events ── */}
+      <div
+        className="flex flex-col h-full shrink-0"
+        style={{ width: "clamp(9rem,38%,13rem)" }}
+      >
+        {/* Compact date block */}
+        <div className="shrink-0 pb-[clamp(0.25rem,0.7vh,0.4rem)]">
+          <span
+            className="font-medium tracking-[0.18em] uppercase text-muted-foreground leading-none block"
+            style={{ fontSize: "clamp(0.65rem,1.7vw,0.82rem)" }}
+          >
+            {weekdayName}
           </span>
+          <div className="flex items-baseline gap-[0.25em] leading-none">
+            <span
+              className="font-extralight text-foreground tabular-nums font-mono leading-none"
+              style={{ fontSize: "clamp(2.6rem,9vw,4.2rem)" }}
+            >
+              {selectedDay}
+            </span>
+            <span
+              className="font-light text-muted-foreground leading-none"
+              style={{ fontSize: "clamp(0.85rem,2.7vw,1.2rem)" }}
+            >
+              {MONTH_NAMES_PT[currentMonth]}
+            </span>
+          </div>
         </div>
 
-        {/* Events list */}
-        <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto scrollbar-hide">
-          {events.length === 0 && (
-            <span className="text-xs text-muted-foreground">{"No events"}</span>
-          )}
-          {events.map((event) => (
-            <div key={event.id} className="flex items-center gap-2 group">
-              {editingId === event.id ? (
-                <div className="flex flex-col gap-1 flex-1">
-                  <div className="flex items-center gap-1.5">
+        {/* Divider */}
+        <div className="w-full h-px bg-border/25 shrink-0" />
+
+        {/* Events list — fills remaining space */}
+        <div className="flex flex-col flex-1 min-h-0 pt-[clamp(0.25rem,0.7vh,0.4rem)]">
+          <div className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.45rem)] overflow-y-auto scrollbar-hide flex-1 min-h-0">
+            {events.length === 0 && (
+              <div className="flex items-center gap-1.5 py-1">
+                <Calendar className="size-3 text-muted-foreground/40 shrink-0" />
+                <span
+                  className="text-muted-foreground/50"
+                  style={{ fontSize: "clamp(0.7rem,1.8vw,0.85rem)" }}
+                >
+                  Sem eventos
+                </span>
+              </div>
+            )}
+
+            {events.map((event) => (
+              <div key={event.id}>
+                {editingId === event.id ? (
+                  <div className="flex flex-col gap-1 p-[clamp(0.25rem,0.7vh,0.4rem)] rounded-lg bg-secondary/50 border border-border/40">
                     <input
                       type="text"
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
-                      className="flex-1 bg-secondary/80 text-foreground text-xs rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-ring/60"
+                      style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
                       autoFocus
                       onKeyDown={(e) => e.key === "Enter" && saveEdit()}
                     />
@@ -171,163 +186,193 @@ export function CalendarPage() {
                       type="text"
                       value={editTime}
                       onChange={(e) => setEditTime(e.target.value)}
-                      placeholder="Time"
-                      className="w-[clamp(3.2rem,8vw,3.8rem)] bg-secondary/80 text-foreground text-xs rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring"
+                      placeholder="Horário"
+                      className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-ring/60 placeholder:text-muted-foreground/40"
+                      style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
                       onKeyDown={(e) => e.key === "Enter" && saveEdit()}
                     />
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={saveEdit}
+                        className="px-2 py-0.5 rounded bg-accent/20 text-accent font-medium transition-colors hover:bg-accent/30"
+                        style={{ fontSize: "clamp(0.55rem,1.4vw,0.68rem)" }}
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        style={{ fontSize: "clamp(0.55rem,1.4vw,0.68rem)" }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                ) : (
+                  <div className="flex items-center gap-1.5 group">
                     <button
-                      onClick={saveEdit}
-                      className="text-[10px] text-accent hover:text-accent/80 font-medium"
-                      aria-label="Save edit"
-                    >
-                      {"Save"}
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="text-[10px] text-muted-foreground hover:text-foreground"
-                      aria-label="Cancel edit"
-                    >
-                      {"Cancel"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => toggleComplete(event.id)}
-                    className={`size-3.5 shrink-0 rounded-sm border flex items-center justify-center transition-colors ${
-                      event.completed
-                        ? "bg-accent border-accent"
-                        : "border-muted-foreground/40 hover:border-accent"
-                    }`}
-                    aria-label={event.completed ? "Mark incomplete" : "Mark complete"}
-                  >
-                    {event.completed && <Check className="size-2.5 text-accent-foreground" />}
-                  </button>
-                  <span
-                    className={`w-0.5 h-4 shrink-0 rounded-full ${event.color}`}
-                    aria-hidden="true"
-                  />
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span
-                      className={`text-xs font-medium truncate leading-tight ${
-                        event.completed ? "line-through text-muted-foreground" : "text-foreground"
+                      onClick={() => toggleComplete(event.id)}
+                      className={`size-[clamp(0.8rem,2vw,1rem)] shrink-0 rounded border-[1.5px] flex items-center justify-center transition-colors ${
+                        event.completed
+                          ? "bg-accent border-accent"
+                          : "border-border/60 hover:border-accent/70"
                       }`}
+                      aria-label={event.completed ? "Desmarcar" : "Concluir"}
                     >
-                      {event.title}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground leading-tight font-mono">
-                      {event.time}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => startEdit(event)}
-                      aria-label="Edit event"
-                      className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                    >
-                      <Edit3 className="size-2.5" />
+                      {event.completed && <Check className="size-2 text-accent-foreground" />}
                     </button>
-                    <button
-                      onClick={() => deleteEvent(event.id)}
-                      aria-label="Delete event"
-                      className="size-5 flex items-center justify-center text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="size-2.5" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
 
-        {/* Add event inline */}
-        {showAdd ? (
-          <div className="flex flex-col gap-1 p-2 rounded-lg bg-secondary/40 border border-border/50 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Event title"
-                className="flex-1 bg-secondary/80 text-foreground text-xs rounded px-2 py-1 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && addEvent()}
-              />
-              <input
-                type="text"
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                placeholder="Time"
-                className="w-[clamp(3.2rem,8vw,3.8rem)] bg-secondary/80 text-foreground text-xs rounded px-2 py-1 outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
-                onKeyDown={(e) => e.key === "Enter" && addEvent()}
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-1">
-                {EVENT_COLORS.map((color, i) => (
-                  <button
-                    key={color}
-                    onClick={() => setNewColorIdx(i)}
-                    className={`size-3 rounded-full ${color} transition-transform ${
-                      newColorIdx === i ? "scale-125 ring-1 ring-foreground/50" : "opacity-50 hover:opacity-80"
-                    }`}
-                    aria-label={`Color ${i + 1}`}
-                  />
-                ))}
+                    <span className={`w-[2.5px] h-[clamp(1.4rem,4vh,1.9rem)] rounded-full shrink-0 ${event.color}`} aria-hidden="true" />
+
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span
+                        className={`font-medium truncate leading-snug ${event.completed ? "line-through text-muted-foreground/50" : "text-foreground"}`}
+                        style={{ fontSize: "clamp(0.75rem,2vw,0.9rem)" }}
+                      >
+                        {event.title}
+                      </span>
+                      <span
+                        className="text-muted-foreground/60 font-mono leading-none tabular-nums"
+                        style={{ fontSize: "clamp(0.62rem,1.6vw,0.74rem)" }}
+                      >
+                        {event.time}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEdit(event)}
+                        className="size-[clamp(1rem,2.5vw,1.3rem)] flex items-center justify-center text-muted-foreground/50 hover:text-foreground transition-colors rounded hover:bg-secondary/60"
+                        aria-label="Editar"
+                      >
+                        <Edit3 className="size-2.5" />
+                      </button>
+                      <button
+                        onClick={() => deleteEvent(event.id)}
+                        className="size-[clamp(1rem,2.5vw,1.3rem)] flex items-center justify-center text-muted-foreground/50 hover:text-destructive transition-colors rounded hover:bg-secondary/60"
+                        aria-label="Remover"
+                      >
+                        <Trash2 className="size-2.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={addEvent}
-                className="ml-auto text-[10px] font-medium text-accent hover:text-accent/80 px-2"
-              >
-                {"Add"}
-              </button>
-              <button
-                onClick={() => { setShowAdd(false); setNewTitle(""); setNewTime("") }}
-                className="text-[10px] text-muted-foreground hover:text-foreground"
-              >
-                {"Cancel"}
-              </button>
-            </div>
+            ))}
           </div>
-        ) : (
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            <Plus className="size-3" />
-            <span>{"Add event"}</span>
-          </button>
-        )}
+
+          {/* Add event — anchored to bottom */}
+          <div className="shrink-0 pt-[clamp(0.2rem,0.5vh,0.35rem)]">
+            {showAdd ? (
+              <div className="flex flex-col gap-1 p-[clamp(0.25rem,0.7vh,0.4rem)] rounded-lg bg-secondary/40 border border-border/40">
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Título"
+                  className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-ring/60"
+                  style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && addEvent()}
+                />
+                <input
+                  type="text"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  placeholder="Horário"
+                  className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-ring/60"
+                  style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
+                  onKeyDown={(e) => e.key === "Enter" && addEvent()}
+                />
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-1">
+                    {EVENT_COLORS.map((color, i) => (
+                      <button
+                        key={color}
+                        onClick={() => setNewColorIdx(i)}
+                        className={`size-3 rounded-full ${color} transition-transform ${
+                          newColorIdx === i ? "scale-125 ring-1 ring-foreground/40" : "opacity-50 hover:opacity-80"
+                        }`}
+                        aria-label={`Cor ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={addEvent}
+                    className="px-2 py-0.5 rounded bg-accent/20 text-accent font-medium transition-colors hover:bg-accent/30"
+                    style={{ fontSize: "clamp(0.55rem,1.4vw,0.65rem)" }}
+                  >
+                    OK
+                  </button>
+                  <button
+                    onClick={() => { setShowAdd(false); setNewTitle(""); setNewTime("") }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    style={{ fontSize: "clamp(0.55rem,1.4vw,0.65rem)" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAdd(true)}
+                className="flex items-center gap-1 text-muted-foreground/60 hover:text-foreground transition-colors"
+                style={{ fontSize: "clamp(0.68rem,1.8vw,0.82rem)" }}
+              >
+                <Plus className="size-3.5" />
+                Adicionar
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="shrink-0 w-[min(38vw,13.75rem)] flex flex-col justify-center">
-        <div className="flex items-center justify-between mb-1.5">
-          <button onClick={prevMonth} aria-label="Previous month" className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground">
-            <ChevronLeft className="size-3" />
+      {/* ── Divider ── */}
+      <div className="w-px self-stretch bg-border/25 shrink-0 my-[clamp(0.25rem,0.8vh,0.5rem)]" />
+
+      {/* ── Right 2/3: big calendar ── */}
+      <div className="flex-1 flex flex-col justify-center gap-[clamp(0.2rem,0.55vh,0.35rem)] min-w-0">
+        {/* Month nav */}
+        <div className="flex items-center justify-between shrink-0">
+          <button
+            onClick={prevMonth}
+            aria-label="Mês anterior"
+            className="size-[clamp(1.4rem,3.5vw,1.8rem)] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors active:scale-95"
+          >
+            <ChevronLeft className="size-4" />
           </button>
-          <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
-            {MONTH_NAMES_PT[currentMonth]}
+          <span
+            className="font-medium tracking-[0.12em] uppercase text-foreground"
+            style={{ fontSize: "clamp(0.78rem,2.2vw,1rem)" }}
+          >
+            {MONTH_NAMES_PT[currentMonth]} {currentYear}
           </span>
-          <button onClick={nextMonth} aria-label="Next month" className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground">
-            <ChevronRight className="size-3" />
+          <button
+            onClick={nextMonth}
+            aria-label="Próximo mês"
+            className="size-[clamp(1.4rem,3.5vw,1.8rem)] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors active:scale-95"
+          >
+            <ChevronRight className="size-4" />
           </button>
         </div>
+
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 gap-0">
+        <div className="grid grid-cols-7 shrink-0">
           {WEEKDAY_LABELS.map((label, i) => (
-            <span key={i} className="text-center text-[9px] text-muted-foreground/60 font-medium py-0.5">
+            <span
+              key={i}
+              className="text-center text-muted-foreground/50 font-medium"
+              style={{ fontSize: "clamp(0.68rem,1.8vw,0.85rem)" }}
+            >
               {label}
             </span>
           ))}
         </div>
-        {/* Days grid */}
-        <div className="grid grid-cols-7 gap-0">
+
+        {/* Days grid — cells expand to fill height */}
+        <div className="grid grid-cols-7 flex-1 min-h-0" style={{ gap: "clamp(0.1rem,0.3vh,0.2rem) 0" }}>
           {Array.from({ length: firstDay }).map((_, i) => (
-            <span key={`empty-${i}`} className="size-5" />
+            <span key={`empty-${i}`} />
           ))}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1
@@ -337,13 +382,14 @@ export function CalendarPage() {
               <button
                 key={day}
                 onClick={() => setSelectedDay(day)}
-                className={`size-5 flex items-center justify-center text-[10px] rounded-full transition-colors ${
+                className={`w-full h-full flex items-center justify-center rounded-xl transition-all duration-150 active:scale-90 font-mono tabular-nums ${
                   selected
-                    ? "bg-foreground text-background font-bold"
+                    ? "bg-foreground text-background font-semibold"
                     : todayMark
                     ? "text-accent font-semibold"
-                    : "text-foreground/70 hover:text-foreground"
+                    : "text-foreground/65 hover:text-foreground hover:bg-secondary/50"
                 }`}
+                style={{ fontSize: "clamp(0.72rem,1.9vw,0.92rem)" }}
               >
                 {day}
               </button>
@@ -355,5 +401,4 @@ export function CalendarPage() {
   )
 }
 
-// Keep backward-compat export for any existing references
 export { CalendarPage as Agenda }

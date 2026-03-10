@@ -5,9 +5,8 @@ import { ClockWeather } from "@/components/clock-weather"
 import { WeatherForecast } from "@/components/weather-forecast"
 import { ProductivityHub } from "@/components/productivity-hub"
 import { CalendarPage } from "@/components/agenda"
-import { AlarmsPage } from "@/components/alarms-page"
 import { SpotifyBar } from "@/components/spotify-bar"
-const PAGES = 5
+const PAGES = 4
 
 export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -55,10 +54,6 @@ export default function Page() {
           <CalendarPage />
         </section>
 
-        {/* Page 5: Alarms */}
-        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
-          <AlarmsPage />
-        </section>
       </div>
 
       {/* Persistent Spotify Bar - always visible as footer */}

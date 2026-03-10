@@ -63,12 +63,9 @@ export function ClockWeather() {
 
   if (!time) {
     return (
-      <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
-        <div className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-clock-size)" }}>
+      <div className="flex flex-col items-center justify-center w-full h-full">
+        <div className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "clamp(4rem, 17vw, 8rem)" }}>
           {"--:--"}
-        </div>
-        <div className="text-[clamp(0.6rem,1.6vw,0.875rem)] font-medium tracking-[0.2em] uppercase text-muted-foreground">
-          {"loading..."}
         </div>
       </div>
     )
@@ -77,40 +74,64 @@ export function ClockWeather() {
   const hours = time.getHours().toString().padStart(2, "0")
   const minutes = time.getMinutes().toString().padStart(2, "0")
 
-  const dateStr = time.toLocaleDateString("pt-BR", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  })
+  const weekday = time.toLocaleDateString("pt-BR", { weekday: "long" })
+  const monthDay = time.toLocaleDateString("pt-BR", { weekday: undefined, month: "long", day: "numeric" })
 
   return (
-    <div className="flex items-center w-full h-full dock-px">
-      <div className="flex w-full items-center justify-between" style={{ gap: "var(--dock-gap)" }}>
-        <div className="flex flex-col items-start gap-1 shrink-0">
-          <div className="flex items-baseline">
-            <span className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-clock-size)" }}>
-              {hours}
-              <span className="animate-pulse">:</span>
-              {minutes}
-            </span>
-            <span className="font-extralight text-muted-foreground tabular-nums font-mono ml-1 leading-none" style={{ fontSize: "var(--dock-seconds-size)" }}>
-              {seconds}
-            </span>
-          </div>
-          <div className="text-[clamp(0.6rem,1.6vw,0.875rem)] font-medium tracking-[0.2em] uppercase text-muted-foreground">
-            {dateStr.toUpperCase()}
-          </div>
-        </div>
+    <div className="flex flex-col items-center justify-center w-full h-full gap-[clamp(0.2rem,0.7vh,0.55rem)]">
+      {/* Clock — large, centered */}
+      <div className="flex items-baseline">
+        <span
+          className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none"
+          style={{ fontSize: "clamp(4.5rem, 19vw, 9rem)" }}
+        >
+          {hours}
+          <span className="animate-pulse">:</span>
+          {minutes}
+        </span>
+        <span
+          className="font-extralight text-muted-foreground/60 tabular-nums font-mono ml-[0.3em] leading-none self-end pb-[0.1em]"
+          style={{ fontSize: "clamp(1.1rem, 3.8vw, 2rem)" }}
+        >
+          {seconds}
+        </span>
+      </div>
 
-        <div className="flex flex-col items-center gap-1.5 px-[clamp(0.75rem,2vw,1.25rem)] py-[clamp(0.45rem,1.4vh,0.75rem)] rounded-2xl bg-secondary/30 shrink-0">
-          <WeatherIcon condition={weather?.condition ?? "clear"} className="size-[clamp(1.25rem,2.6vw,2rem)] text-shadow-chart-4" />
-          <span className="font-extralight tracking-tight text-foreground tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-big-number-size)" }}>
-            {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
-          </span>
-          <span className="text-[clamp(0.6rem,1.5vw,0.875rem)] text-muted-foreground font-mono tabular-nums">
-            {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
-          </span>
-        </div>
+      {/* Weekday */}
+      <div
+        className="font-semibold tracking-[0.2em] uppercase text-muted-foreground leading-tight"
+        style={{ fontSize: "clamp(0.875rem, 2.6vw, 1.25rem)" }}
+      >
+        {weekday}
+      </div>
+
+      {/* Date */}
+      <div
+        className="tracking-[0.12em] uppercase text-muted-foreground/55 leading-tight"
+        style={{ fontSize: "clamp(0.75rem, 2.2vw, 1.05rem)" }}
+      >
+        {monthDay}
+      </div>
+
+      {/* Weather — compact strip below date */}
+      <div className="flex items-center gap-[clamp(0.6rem,1.8vw,1.1rem)] mt-[clamp(0.3rem,1vh,0.6rem)] px-[clamp(0.9rem,2.4vw,1.5rem)] py-[clamp(0.4rem,1.1vh,0.6rem)] rounded-full bg-secondary/30">
+        <WeatherIcon
+          condition={weather?.condition ?? "clear"}
+          className="size-[clamp(1rem,2.4vw,1.4rem)] text-chart-4 shrink-0"
+        />
+        <span
+          className="font-light text-foreground tabular-nums font-mono leading-none"
+          style={{ fontSize: "clamp(0.875rem, 2.4vw, 1.1rem)" }}
+        >
+          {weather ? `${weather.temp}\u00B0` : "--\u00B0"}
+        </span>
+        <span className="w-px h-4 bg-border/40 shrink-0" aria-hidden="true" />
+        <span
+          className="text-muted-foreground font-mono tabular-nums leading-none"
+          style={{ fontSize: "clamp(0.8rem, 2vw, 0.975rem)" }}
+        >
+          {weather ? `${weather.low}\u00B0 / ${weather.high}\u00B0` : "--\u00B0 / --\u00B0"}
+        </span>
       </div>
     </div>
   )

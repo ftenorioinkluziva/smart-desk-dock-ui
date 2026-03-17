@@ -6,11 +6,17 @@ import { Play, Pause, RotateCcw, Square, Coffee, Brain, BellRing } from "lucide-
 type Tab = "pomodoro" | "timer" | "stopwatch"
 type PomodoroMode = "focus" | "short-break" | "long-break"
 
-const POMODORO_DURATIONS: Record<PomodoroMode, number> = {
+const DEFAULT_POMODORO_DURATIONS: Record<PomodoroMode, number> = {
   "focus": 25 * 60,
   "short-break": 5 * 60,
   "long-break": 15 * 60,
 }
+
+const POMODORO_CONFIG_FIELDS: Array<{ mode: PomodoroMode; label: string }> = [
+  { mode: "focus", label: "Foco" },
+  { mode: "short-break", label: "Pausa" },
+  { mode: "long-break", label: "Pausa longa" },
+]
 
 const MODE_LABELS: Record<PomodoroMode, string> = {
   "focus": "Foco",
@@ -25,6 +31,20 @@ const TAB_LABELS: Record<Tab, string> = {
 }
 
 const TIMER_PRESETS = [5, 10, 15, 30]
+const POMODORO_DURATIONS_STORAGE_KEY = "focus-dock-pomodoro-durations"
+
+function toMinutesDrafts(durations: Record<PomodoroMode, number>): Record<PomodoroMode, string> {
+  return {
+    "focus": String(Math.round(durations["focus"] / 60)),
+    "short-break": String(Math.round(durations["short-break"] / 60)),
+    "long-break": String(Math.round(durations["long-break"] / 60)),
+  }
+}
+
+function normalizeStoredDuration(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback
+  return Math.max(60, Math.min(10800, Math.round(value)))
+}
 
 // ── Shared sub-components ──────────────────────────────────────────────────
 
@@ -63,7 +83,7 @@ function ControlButton({
 
 // ── Main hub ──────────────────────────────────────────────────────────────
 
-export function ProductivityHub(): JSX.Element {
+export function ProductivityHub() {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
 
   return (
@@ -100,16 +120,41 @@ export function ProductivityHub(): JSX.Element {
 
 function PomodoroView() {
   const [mode, setMode] = useState<PomodoroMode>("focus")
-  const [totalSeconds, setTotalSeconds] = useState(POMODORO_DURATIONS["focus"])
+  const [durations, setDurations] = useState<Record<PomodoroMode, number>>(DEFAULT_POMODORO_DURATIONS)
+  const [durationDrafts, setDurationDrafts] = useState<Record<PomodoroMode, string>>(toMinutesDrafts(DEFAULT_POMODORO_DURATIONS))
+  const [totalSeconds, setTotalSeconds] = useState(DEFAULT_POMODORO_DURATIONS["focus"])
   const [isRunning, setIsRunning] = useState(false)
   const [isAlertVisible, setIsAlertVisible] = useState(false)
   const [sessions, setSessions] = useState(0)
 
-  const duration = POMODORO_DURATIONS[mode]
+  const duration = durations[mode]
   const progress = ((duration - totalSeconds) / duration) * 100
   const radius = 54
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (progress / 100) * circumference
+
+  useEffect(() => {
+    try {
+      const rawValue = window.localStorage.getItem(POMODORO_DURATIONS_STORAGE_KEY)
+      if (!rawValue) return
+      const parsed = JSON.parse(rawValue) as Partial<Record<PomodoroMode, unknown>>
+      const loadedDurations: Record<PomodoroMode, number> = {
+        "focus": normalizeStoredDuration(parsed["focus"], DEFAULT_POMODORO_DURATIONS["focus"]),
+        "short-break": normalizeStoredDuration(parsed["short-break"], DEFAULT_POMODORO_DURATIONS["short-break"]),
+        "long-break": normalizeStoredDuration(parsed["long-break"], DEFAULT_POMODORO_DURATIONS["long-break"]),
+      }
+
+      setDurations(loadedDurations)
+      setDurationDrafts(toMinutesDrafts(loadedDurations))
+      setTotalSeconds(loadedDurations["focus"])
+    } catch {
+      window.localStorage.removeItem(POMODORO_DURATIONS_STORAGE_KEY)
+    }
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem(POMODORO_DURATIONS_STORAGE_KEY, JSON.stringify(durations))
+  }, [durations])
 
   useEffect(() => {
     if (!isRunning) return
@@ -127,26 +172,26 @@ function PomodoroView() {
 
   const switchMode = useCallback((m: PomodoroMode) => {
     setMode(m)
-    setTotalSeconds(POMODORO_DURATIONS[m])
+    setTotalSeconds(durations[m])
     setIsRunning(false)
     setIsAlertVisible(false)
-  }, [])
+  }, [durations])
 
   const reset = useCallback(() => {
     setIsRunning(false)
-    setTotalSeconds(POMODORO_DURATIONS[mode])
+    setTotalSeconds(durations[mode])
     setIsAlertVisible(false)
-  }, [mode])
+  }, [durations, mode])
 
   const togglePlay = useCallback(() => {
     setIsAlertVisible(false)
     if (totalSeconds <= 0) {
-      setTotalSeconds(POMODORO_DURATIONS[mode])
+      setTotalSeconds(durations[mode])
       setIsRunning(true)
       return
     }
     setIsRunning((p) => !p)
-  }, [mode, totalSeconds])
+  }, [durations, mode, totalSeconds])
 
   const startNextPhase = useCallback(() => {
     const next: PomodoroMode =
@@ -154,10 +199,36 @@ function PomodoroView() {
         ? sessions > 0 && sessions % 4 === 0 ? "long-break" : "short-break"
         : "focus"
     setMode(next)
-    setTotalSeconds(POMODORO_DURATIONS[next])
+    setTotalSeconds(durations[next])
     setIsAlertVisible(false)
     setIsRunning(true)
-  }, [mode, sessions])
+  }, [durations, mode, sessions])
+
+  const applyDurationDraft = useCallback((targetMode: PomodoroMode) => {
+    const rawValue = durationDrafts[targetMode].trim()
+    const parsedMinutes = Number(rawValue.replace(",", "."))
+    const fallbackMinutes = Math.round(durations[targetMode] / 60)
+    const normalizedMinutes = Number.isFinite(parsedMinutes)
+      ? Math.max(1, Math.min(180, Math.round(parsedMinutes)))
+      : fallbackMinutes
+
+    const normalizedSeconds = normalizedMinutes * 60
+
+    setDurationDrafts((prev) => ({
+      ...prev,
+      [targetMode]: String(normalizedMinutes),
+    }))
+    setDurations((prev) => ({
+      ...prev,
+      [targetMode]: normalizedSeconds,
+    }))
+
+    if (targetMode === mode) {
+      setTotalSeconds(normalizedSeconds)
+      setIsRunning(false)
+      setIsAlertVisible(false)
+    }
+  }, [durationDrafts, durations, mode])
 
   const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
@@ -216,7 +287,7 @@ function PomodoroView() {
         {/* Mode selector */}
         {!isAlertVisible ? (
           <div className="flex flex-wrap gap-[clamp(0.2rem,0.6vw,0.35rem)]">
-            {(Object.keys(POMODORO_DURATIONS) as PomodoroMode[]).map((m) => (
+            {(Object.keys(durations) as PomodoroMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => switchMode(m)}
@@ -240,6 +311,45 @@ function PomodoroView() {
             </span>
           </div>
         )}
+
+        {/* Duration settings */}
+        <div className="rounded-xl border border-border/40 bg-secondary/25 p-[clamp(0.3rem,0.8vh,0.45rem)]">
+          <div className="text-muted-foreground font-medium mb-[clamp(0.2rem,0.6vh,0.3rem)]" style={{ fontSize: "clamp(0.52rem,1.45vw,0.68rem)" }}>
+            Duração (min)
+          </div>
+          <div className="grid grid-cols-3 gap-[clamp(0.2rem,0.6vw,0.3rem)]">
+            {POMODORO_CONFIG_FIELDS.map(({ mode: fieldMode, label }) => (
+              <label key={fieldMode} className="flex flex-col gap-[clamp(0.08rem,0.25vh,0.14rem)]">
+                <span className="text-muted-foreground" style={{ fontSize: "clamp(0.48rem,1.35vw,0.62rem)" }}>
+                  {label}
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={180}
+                  step={1}
+                  inputMode="numeric"
+                  value={durationDrafts[fieldMode]}
+                  onChange={(event) => {
+                    setDurationDrafts((prev) => ({
+                      ...prev,
+                      [fieldMode]: event.target.value,
+                    }))
+                  }}
+                  onBlur={() => applyDurationDraft(fieldMode)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.currentTarget.blur()
+                    }
+                  }}
+                  className="w-full rounded-lg border border-border/60 bg-background/80 px-1.5 py-1 text-center text-foreground outline-none transition-colors focus:border-border"
+                  style={{ fontSize: "clamp(0.58rem,1.6vw,0.76rem)" }}
+                  aria-label={`Duração de ${label.toLowerCase()} em minutos`}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
 
         {/* Sessions progress */}
         <div className="flex items-center gap-1.5">

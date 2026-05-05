@@ -97,9 +97,9 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
   - Evitar mudancas perceptiveis ou distrativas.
 
 - [ ] Revisar comportamento PWA em iOS.
-  - Conferir manifest e icons.
-  - Validar safe areas em landscape.
-  - Testar tela cheia adicionada a Home Screen.
+  - [x] Conferir manifest e icons.
+  - [x] Validar safe areas em landscape no codigo.
+  - [ ] Testar tela cheia adicionada a Home Screen em iPhone/iPad real.
 
 ## P3 - Organizacao tecnica
 

@@ -1,14 +1,20 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Plus, Check, Trash2, Edit3, ChevronLeft, ChevronRight, Calendar } from "lucide-react"
 
 interface CalendarEvent {
   id: string
   title: string
+  date: string
   time: string
   color: string
   completed: boolean
+}
+
+interface CalendarEventsResponse {
+  events: CalendarEvent[]
+  mock?: boolean
 }
 
 const EVENT_COLORS = [
@@ -44,15 +50,21 @@ function generateId() {
   return Math.random().toString(36).substring(2, 9)
 }
 
+function formatDateKey(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
 export function CalendarPage() {
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
   const [selectedDay, setSelectedDay] = useState(today.getDate())
+  const todayDateKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate())
   const [events, setEvents] = useState<CalendarEvent[]>([
-    { id: "1", title: "In California", time: "Dia todo", color: "bg-chart-2", completed: false },
-    { id: "2", title: "Morning Meeting", time: "06:00 – 07:00", color: "bg-accent", completed: false },
+    { id: "1", title: "In California", date: todayDateKey, time: "Dia todo", color: "bg-chart-2", completed: false },
+    { id: "2", title: "Morning Meeting", date: todayDateKey, time: "06:00 - 07:00", color: "bg-accent", completed: false },
   ])
+  const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState("")
   const [editTime, setEditTime] = useState("")
@@ -63,6 +75,40 @@ export function CalendarPage() {
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth)
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
+  const selectedDateKey = formatDateKey(currentYear, currentMonth, selectedDay)
+  const selectedEvents = events.filter((event) => event.date === selectedDateKey)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const timeMin = new Date(currentYear, currentMonth, 1).toISOString()
+    const timeMax = new Date(currentYear, currentMonth + 1, 1).toISOString()
+
+    async function fetchCalendarEvents() {
+      try {
+        const params = new URLSearchParams({ timeMin, timeMax })
+        const response = await fetch(`/api/calendar-events?${params.toString()}`, {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) return
+
+        const data = await response.json() as CalendarEventsResponse
+        if (data.mock) {
+          setIsGoogleCalendarConnected(false)
+          return
+        }
+
+        setEvents(data.events)
+        setIsGoogleCalendarConnected(true)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setIsGoogleCalendarConnected(false)
+      }
+    }
+
+    fetchCalendarEvents()
+    return () => controller.abort()
+  }, [currentMonth, currentYear])
 
   const isToday = (day: number) =>
     day === today.getDate() &&
@@ -88,12 +134,13 @@ export function CalendarPage() {
     setEvents((prev) => [...prev, {
       id: generateId(),
       title: newTitle.trim(),
+      date: selectedDateKey,
       time: newTime.trim() || "Dia todo",
       color: EVENT_COLORS[newColorIdx % EVENT_COLORS.length],
       completed: false,
     }])
     setNewTitle(""); setNewTime(""); setNewColorIdx(0); setShowAdd(false)
-  }, [newTitle, newTime, newColorIdx])
+  }, [newTitle, selectedDateKey, newTime, newColorIdx])
 
   const deleteEvent = useCallback((id: string) => {
     setEvents((prev) => prev.filter((e) => e.id !== id))
@@ -157,7 +204,7 @@ export function CalendarPage() {
         {/* Events list — fills remaining space */}
         <div className="flex flex-col flex-1 min-h-0 pt-[clamp(0.25rem,0.7vh,0.4rem)]">
           <div className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.45rem)] overflow-y-auto scrollbar-hide flex-1 min-h-0">
-            {events.length === 0 && (
+            {selectedEvents.length === 0 && (
               <div className="flex items-center gap-1.5 py-1">
                 <Calendar className="size-3 text-muted-foreground/40 shrink-0" />
                 <span
@@ -169,7 +216,7 @@ export function CalendarPage() {
               </div>
             )}
 
-            {events.map((event) => (
+            {selectedEvents.map((event) => (
               <div key={event.id}>
                 {editingId === event.id ? (
                   <div className="flex flex-col gap-1 p-[clamp(0.25rem,0.7vh,0.4rem)] rounded-lg bg-secondary/50 border border-border/40">
@@ -211,10 +258,15 @@ export function CalendarPage() {
                 ) : (
                   <div className="flex items-center gap-1.5 group">
                     <button
-                      onClick={() => toggleComplete(event.id)}
+                      onClick={() => {
+                        if (!isGoogleCalendarConnected) toggleComplete(event.id)
+                      }}
+                      disabled={isGoogleCalendarConnected}
                       className={`size-[clamp(0.8rem,2vw,1rem)] shrink-0 rounded border-[1.5px] flex items-center justify-center transition-colors ${
                         event.completed
                           ? "bg-accent border-accent"
+                          : isGoogleCalendarConnected
+                          ? "border-border/40 opacity-60"
                           : "border-border/60 hover:border-accent/70"
                       }`}
                       aria-label={event.completed ? "Desmarcar" : "Concluir"}
@@ -239,6 +291,7 @@ export function CalendarPage() {
                       </span>
                     </div>
 
+                    {!isGoogleCalendarConnected && (
                     <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => startEdit(event)}
@@ -255,6 +308,7 @@ export function CalendarPage() {
                         <Trash2 className="size-2.5" />
                       </button>
                     </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -262,6 +316,7 @@ export function CalendarPage() {
           </div>
 
           {/* Add event — anchored to bottom */}
+          {!isGoogleCalendarConnected && (
           <div className="shrink-0 pt-[clamp(0.2rem,0.5vh,0.35rem)]">
             {showAdd ? (
               <div className="flex flex-col gap-1 p-[clamp(0.25rem,0.7vh,0.4rem)] rounded-lg bg-secondary/40 border border-border/40">
@@ -324,6 +379,7 @@ export function CalendarPage() {
               </button>
             )}
           </div>
+          )}
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Check, Settings, X } from "lucide-react"
 import { readSelectedCalendarIds, writeSelectedCalendarIds } from "@/lib/calendar-settings"
+import { readNightModeSettings, writeNightModeSettings, type NightModeSettings } from "@/lib/dock-settings"
 
 type CalendarOption = {
   id: string
@@ -20,6 +21,7 @@ export function SettingsPanel() {
   const [isOpen, setIsOpen] = useState(false)
   const [calendars, setCalendars] = useState<CalendarOption[]>([])
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([])
+  const [nightModeSettings, setNightModeSettings] = useState<NightModeSettings>(() => readNightModeSettings())
   const [isLoading, setIsLoading] = useState(false)
 
   const fetchCalendars = useCallback(async () => {
@@ -49,7 +51,10 @@ export function SettingsPanel() {
   }, [])
 
   useEffect(() => {
-    if (isOpen) fetchCalendars()
+    if (isOpen) {
+      setNightModeSettings(readNightModeSettings())
+      fetchCalendars()
+    }
   }, [fetchCalendars, isOpen])
 
   function toggleCalendar(calendarId: string) {
@@ -60,6 +65,11 @@ export function SettingsPanel() {
 
     setSelectedCalendarIds(normalized)
     writeSelectedCalendarIds(normalized)
+  }
+
+  function updateNightModeSettings(nextSettings: NightModeSettings) {
+    setNightModeSettings(nextSettings)
+    writeNightModeSettings(nextSettings)
   }
 
   return (
@@ -94,6 +104,41 @@ export function SettingsPanel() {
             </div>
 
             <div className="mt-3 flex max-h-[12rem] flex-col gap-1 overflow-y-auto">
+              <div className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.86rem)" }}>
+                    Modo noturno automático
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={nightModeSettings.enabled}
+                    onChange={(event) => updateNightModeSettings({ ...nightModeSettings, enabled: event.target.checked })}
+                    className="size-4 accent-[var(--accent)]"
+                  />
+                </label>
+
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1 text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
+                    Início
+                    <input
+                      type="time"
+                      value={nightModeSettings.start}
+                      onChange={(event) => updateNightModeSettings({ ...nightModeSettings, start: event.target.value })}
+                      className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus:border-ring"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
+                    Fim
+                    <input
+                      type="time"
+                      value={nightModeSettings.end}
+                      onChange={(event) => updateNightModeSettings({ ...nightModeSettings, end: event.target.value })}
+                      className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus:border-ring"
+                    />
+                  </label>
+                </div>
+              </div>
+
               {isLoading && (
                 <div className="text-muted-foreground" style={{ fontSize: "clamp(0.68rem,1.7vw,0.82rem)" }}>
                   Carregando agendas...

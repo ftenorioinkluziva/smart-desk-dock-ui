@@ -1,18 +1,21 @@
 "use client"
 
 import { useRef, useState, useEffect, useCallback } from "react"
-import { ClockWeather } from "@/components/clock-weather"
 import { WeatherForecast } from "@/components/weather-forecast"
 import { ProductivityHub } from "@/components/productivity-hub"
 import { CalendarPage } from "@/components/agenda"
 import { SpotifyBar } from "@/components/spotify-bar"
 import { TodayPanel } from "@/components/today-panel"
 import { SettingsPanel } from "@/components/settings-panel"
+import { NightDock } from "@/components/night-dock"
+import { isWithinNightMode, NIGHT_MODE_SETTINGS_EVENT, readNightModeSettings } from "@/lib/dock-settings"
 const PAGES = 5
+const NIGHT_DOCK_PAGE_INDEX = 1
 
 export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
+  const [nightModeSettings, setNightModeSettings] = useState(() => readNightModeSettings())
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
@@ -27,6 +30,36 @@ export default function Page() {
     el.addEventListener("scroll", handleScroll, { passive: true })
     return () => el.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
+
+  const scrollToPage = useCallback((pageIndex: number) => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ left: el.clientWidth * pageIndex, behavior: "smooth" })
+  }, [])
+
+  useEffect(() => {
+    const handleSettingsChange = () => setNightModeSettings(readNightModeSettings())
+    window.addEventListener(NIGHT_MODE_SETTINGS_EVENT, handleSettingsChange)
+    return () => window.removeEventListener(NIGHT_MODE_SETTINGS_EVENT, handleSettingsChange)
+  }, [])
+
+  useEffect(() => {
+    let wasInNightMode = isWithinNightMode(new Date(), nightModeSettings)
+
+    if (wasInNightMode && activePage === 0) {
+      scrollToPage(NIGHT_DOCK_PAGE_INDEX)
+    }
+
+    const interval = setInterval(() => {
+      const isNightMode = isWithinNightMode(new Date(), nightModeSettings)
+      if (isNightMode && !wasInNightMode) {
+        scrollToPage(NIGHT_DOCK_PAGE_INDEX)
+      }
+      wasInNightMode = isNightMode
+    }, 30 * 1000)
+
+    return () => clearInterval(interval)
+  }, [activePage, nightModeSettings, scrollToPage])
 
   return (
     <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col dock-py">
@@ -43,9 +76,9 @@ export default function Page() {
           <TodayPanel />
         </section>
 
-        {/* Page 2: Clock */}
+        {/* Page 2: Night Dock */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
-          <ClockWeather />
+          <NightDock />
         </section>
 
         {/* Page 3: Weather Forecast */}

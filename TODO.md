@@ -86,12 +86,13 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
 
 ## P2 - Modo dock / Apple
 
-- [ ] Modo noturno.
+- [x] Modo noturno.
   - Reduzir brilho visual depois de um horario configuravel.
   - Mostrar relogio minimalista quando inativo.
   - Retornar ao modo normal ao tocar na tela.
+  - Ativar automaticamente a tela noturna no horario configurado.
 
-- [ ] Prevenir burn-in visual.
+- [x] Prevenir burn-in visual.
   - Mover elementos principais alguns pixels ao longo do tempo.
   - Evitar mudancas perceptiveis ou distrativas.
 

@@ -48,13 +48,22 @@ const WMO_DESCRIPTIONS: Record<number, string> = {
 
 const WEEKDAY_LABELS = ["DOM.", "SEG.", "TER.", "QUA.", "QUI.", "SEX.", "SÁB."] as const
 
+type HourlyWeather = {
+  time: string
+  temp: number
+  precipitationProbability: number | null
+  condition: string
+}
+
 function dateToWeekdayLabel(date: string): string {
   const [year, month, day] = date.split("-").map(Number)
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
   return WEEKDAY_LABELS[weekday] ?? "---"
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const includeHourly = searchParams.get("hourly") === "true"
   const lat = parseFloat(process.env.WEATHER_LAT ?? "-15.886953") // Brasília default
   const lon = parseFloat(process.env.WEATHER_LON ?? "-47.813873")
   const timezone = process.env.WEATHER_TIMEZONE ?? "America/Sao_Paulo"
@@ -69,6 +78,10 @@ export async function GET() {
       current: "temperature_2m,weather_code",
       daily: "weather_code,temperature_2m_max,temperature_2m_min",
     })
+
+    if (includeHourly) {
+      params.set("hourly", "temperature_2m,weather_code,precipitation_probability")
+    }
 
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`, {
       next: { revalidate: 900 },
@@ -89,6 +102,12 @@ export async function GET() {
         temperature_2m_max: number[]
         temperature_2m_min: number[]
       }
+      hourly?: {
+        time: string[]
+        temperature_2m: number[]
+        weather_code: number[]
+        precipitation_probability?: number[]
+      }
     }
 
     const temp = Math.round(data.current.temperature_2m)
@@ -97,13 +116,24 @@ export async function GET() {
     const low = Math.round(data.daily.temperature_2m_min[0])
 
     const forecast = data.daily.time.map((date, index) => {
+      const [, , dayOfMonth] = date.split("-")
       return {
         day: dateToWeekdayLabel(date),
+        date: dayOfMonth,
         low: Math.round(data.daily.temperature_2m_min[index]),
         high: Math.round(data.daily.temperature_2m_max[index]),
         condition: wmoToCondition(Math.round(data.daily.weather_code[index])),
       }
     })
+
+    const hourly: HourlyWeather[] = includeHourly && data.hourly
+      ? data.hourly.time.map((time, index) => ({
+        time,
+        temp: Math.round(data.hourly!.temperature_2m[index]),
+        precipitationProbability: data.hourly!.precipitation_probability?.[index] ?? null,
+        condition: wmoToCondition(Math.round(data.hourly!.weather_code[index])),
+      }))
+      : []
 
     return NextResponse.json({
       location,
@@ -113,6 +143,7 @@ export async function GET() {
       description: WMO_DESCRIPTIONS[weatherCode] ?? "clear sky",
       condition: wmoToCondition(weatherCode),
       forecast,
+      ...(includeHourly ? { hourly } : {}),
     })
   } catch {
     // Fallback so the UI never breaks
@@ -124,12 +155,13 @@ export async function GET() {
       description: "clear sky",
       condition: "clear",
       forecast: [
-        { day: "DOM.", low: 18, high: 30, condition: "clear" },
-        { day: "SEG.", low: 19, high: 31, condition: "clear" },
-        { day: "TER.", low: 20, high: 29, condition: "clouds" },
-        { day: "QUA.", low: 19, high: 28, condition: "rain" },
-        { day: "QUI.", low: 18, high: 30, condition: "clear" },
+        { day: "DOM.", date: "05", low: 18, high: 30, condition: "clear" },
+        { day: "SEG.", date: "06", low: 19, high: 31, condition: "clear" },
+        { day: "TER.", date: "07", low: 20, high: 29, condition: "clouds" },
+        { day: "QUA.", date: "08", low: 19, high: 28, condition: "rain" },
+        { day: "QUI.", date: "09", low: 18, high: 30, condition: "clear" },
       ],
+      ...(includeHourly ? { hourly: [] } : {}),
     })
   }
 }

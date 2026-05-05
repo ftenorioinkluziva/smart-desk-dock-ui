@@ -5,6 +5,7 @@ import { Sun, Cloud, CloudRain, CloudSun, CloudLightning, Snowflake } from "luci
 
 interface ForecastDay {
   day: string
+  date: string
   condition: string
   low: number
   high: number
@@ -39,6 +40,7 @@ function WeatherIcon({ condition, className }: { condition: string; className?: 
 
 const PLACEHOLDER_FORECAST: ForecastDay[] = Array.from({ length: 5 }, (_, i) => ({
   day: ["DOM.", "SEG.", "TER.", "QUA.", "QUI."][i],
+  date: ["05", "06", "07", "08", "09"][i],
   condition: "clear",
   low: 0,
   high: 0,
@@ -120,6 +122,12 @@ export function WeatherForecast() {
               style={{ fontSize: "clamp(0.6rem,1.8vw,0.8rem)" }}
             >
               {day.day}
+            </span>
+            <span
+              className="font-mono tabular-nums text-muted-foreground/45 leading-none"
+              style={{ fontSize: "clamp(0.56rem,1.5vw,0.7rem)" }}
+            >
+              {day.date}
             </span>
 
             <WeatherIcon

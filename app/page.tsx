@@ -6,7 +6,9 @@ import { WeatherForecast } from "@/components/weather-forecast"
 import { ProductivityHub } from "@/components/productivity-hub"
 import { CalendarPage } from "@/components/agenda"
 import { SpotifyBar } from "@/components/spotify-bar"
-const PAGES = 4
+import { TodayPanel } from "@/components/today-panel"
+import { SettingsPanel } from "@/components/settings-panel"
+const PAGES = 5
 
 export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -28,28 +30,35 @@ export default function Page() {
 
   return (
     <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col dock-py">
+      <SettingsPanel />
+
       {/* Carousel content area */}
       <div
         ref={scrollRef}
         className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
       >
-        {/* Page 1: Clock */}
+        {/* Page 1: Today */}
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+          <TodayPanel />
+        </section>
+
+        {/* Page 2: Clock */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <ClockWeather />
         </section>
 
-        {/* Page 2: Weather Forecast */}
+        {/* Page 3: Weather Forecast */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <WeatherForecast />
         </section>
 
-        {/* Page 3: Pomodoro / Productivity Hub */}
+        {/* Page 4: Pomodoro / Productivity Hub */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <ProductivityHub />
         </section>
 
-        {/* Page 4: Calendar */}
+        {/* Page 5: Calendar */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <CalendarPage />
         </section>

@@ -25,6 +25,13 @@ SPOTIFY_REFRESH_TOKEN=
 WEATHER_LAT=       # default: -15.886953  (Brasília)
 WEATHER_LON=       # default: -47.813873
 WEATHER_TIMEZONE=  # default: America/Sao_Paulo
+WEATHER_LOCATION=  # default: Brasília
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REFRESH_TOKEN=
+GOOGLE_CALENDAR_ID=        # default: primary
+GOOGLE_CALENDAR_TIMEZONE=  # default: WEATHER_TIMEZONE or America/Sao_Paulo
 ```
 
 #### Getting Spotify credentials
@@ -50,21 +57,17 @@ WEATHER_TIMEZONE=  # default: America/Sao_Paulo
 
 ### App layout — `app/page.tsx`
 
-Single-page app with a **4-panel horizontal carousel** (snap scroll). Each panel occupies 100 vw × 100 dvh. Edge tap zones (8 px) advance/retreat the carousel.
-
-State that lives in `page.tsx` (lifted because it spans panels):
-- Pomodoro cycle (via `usePomodoro`)
-- Alarms CRUD + firing logic (via `useAlarms`)
-- Free timer and stopwatch
+Single-page app with a **5-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
 
 ### Panels (left → right)
 
 | # | Component | Description |
 |---|-----------|-------------|
-| 1 | `ClockWeather` | Live clock, weather (temp / high-low / condition) |
-| 2 | `ProductivityHub` | Tabbed: Pomodoro · Timer · Stopwatch |
-| 3 | `Agenda` | Daily event list (currently mock data) |
-| 4 | `AlarmsView` | Alarm CRUD — lists, enables/disables, fires overlay |
+| 1 | `TodayPanel` | Clock, context phrase, next event, compact weather |
+| 2 | `NightDock` | Low-brightness clock mode for night/inactive use |
+| 3 | `WeatherForecast` | Current weather and forecast |
+| 4 | `ProductivityHub` | Tabbed: Pomodoro · Timer · Stopwatch |
+| 5 | `CalendarPage` | Monthly calendar and daily events from Google Calendar when configured |
 
 ### Persistent bottom bar
 
@@ -80,32 +83,35 @@ app/
   layout.tsx                 Root layout (Vercel Analytics, theme)
   globals.css                Tailwind 4 theme tokens (OKLCH)
   api/
-    weather/route.ts          GET  → { temp, high, low, description, condition }
+    calendar-events/route.ts  GET  → { events }
+    calendar-list/route.ts    GET  → { calendars }
+    weather/route.ts          GET  → { temp, high, low, description, condition, forecast, hourly? }
     spotify-now-playing/      GET  → { isPlaying, track, artist, albumArt }
-    spotify-control/          POST { action } → forwards to Spotify Web API
+    spotify-control/route.ts  POST { action } → forwards to Spotify Web API
 
 components/
-  clock-weather.tsx
+  today-panel.tsx
+  night-dock.tsx
+  weather-forecast.tsx
   productivity-hub.tsx
   agenda.tsx
-  alarms-view.tsx
-  alarm-modal.tsx            Add/edit alarm dialog
-  alarm-overlay.tsx          Full-screen firing overlay (snooze / stop)
+  settings-panel.tsx
   spotify-bar.tsx            Bottom playback bar
   theme-provider.tsx
   ui/                        shadcn components (50+)
 
 hooks/
-  use-pomodoro.ts            State machine: idle → running → finished, 4-cycle sequence
-  use-alarms.ts              CRUD + localStorage persistence
+  use-mobile.ts
+  use-toast.ts
 
 lib/
   spotify.ts                 getAccessToken(), spotifyControl(), spotifyConfigured flag
-  alarms.ts                  Alarm type, DayOfWeek, ALARM_SOUNDS constants
+  google-calendar.ts         OAuth, calendar list fetch, event fetch + normalization
+  calendar-settings.ts       selected Google Calendar ids in localStorage
+  dock-settings.ts           night mode settings in localStorage
   utils.ts                   cn() (clsx + tailwind-merge)
 
 public/
-  sounds/alarm/              5 alarm sound files
   sounds/pomodoro/           3 pomodoro completion chimes
 ```
 
@@ -121,11 +127,11 @@ public/
 
 ### Adding a new API route
 
-Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.). Keep Spotify helpers in `lib/spotify.ts`, not inline.
+Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.). Keep Spotify helpers in `lib/spotify.ts` and Google Calendar helpers in `lib/google-calendar.ts`, not inline.
 
-### Alarm system
+### Google Calendar mock/real split
 
-`useAlarms` persists to `localStorage` key `"focus-dock-alarms"`. The 1-second tick in `page.tsx` compares `HH:MM` against enabled alarms; a `firedThisMinute` ref prevents double-firing. Snooze adds 10 minutes to `nextSnooze` on the alarm object.
+`lib/google-calendar.ts` exports `googleCalendarConfigured` (true when client id, client secret, and refresh token are present). Calendar API routes return `{ mock: true }` when not configured. The settings panel can list connected calendars and stores the selected ids in `localStorage`.
 
 ### Spotify mock/real split
 
@@ -149,9 +155,9 @@ Local state flips immediately on button click → command sent → `setTimeout(f
 
 ## Known Limitations / Future Work
 
-- **Agenda is hardcoded mock data.** Next step: integrate Google Calendar API or CalDAV.
 - **Weather location is static.** Could be made configurable via settings panel.
-- **No settings UI.** Pomodoro durations, weather city, theme are not user-configurable at runtime.
+- **Settings UI is partial.** Calendar selection and night mode are configurable; alert preferences, weather city, and theme/brightness still need UI.
 - **Spotify requires Premium** for playback control (play/pause/skip).
 - **No PWA offline support.** Service worker not implemented; weather/Spotify fail without network.
-- **`spotify-player.tsx` and `pomodoro-timer.tsx`** in `components/` are leftover scaffolding — not used in the main page.
+- **iOS Home Screen behavior still needs device validation.** Manifest/icons and safe-area code are in place, but fullscreen behavior should be checked on a real iPhone/iPad.
+- **Apple platform alert limitations.** iOS/iPadOS support for web vibration is limited or absent, notification permission must be requested from explicit user action, and reliable background/audio alerts should always have a visual fallback.

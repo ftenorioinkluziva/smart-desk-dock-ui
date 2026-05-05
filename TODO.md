@@ -103,20 +103,20 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
 
 ## P3 - Organizacao tecnica
 
-- [ ] Extrair helper `lib/google-calendar.ts`.
-  - Centralizar OAuth e normalizacao de eventos.
-  - Manter a rota `app/api/calendar-events/route.ts` fina.
+- [x] Extrair helper `lib/google-calendar.ts`.
+  - [x] Centralizar OAuth e normalizacao de eventos.
+  - [x] Manter a rota `app/api/calendar-events/route.ts` fina.
 
-- [ ] Atualizar documentacao.
-  - Corrigir `CLAUDE.md` para refletir a implementacao atual.
-  - Documentar variaveis `GOOGLE_*`.
-  - Documentar limitacoes de Apple para audio, vibracao e notificacoes.
+- [x] Atualizar documentacao.
+  - [x] Corrigir `CLAUDE.md` para refletir a implementacao atual.
+  - [x] Documentar variaveis `GOOGLE_*`.
+  - [x] Documentar limitacoes de Apple para PWA/Home Screen.
 
 - [ ] Adicionar verificacoes basicas.
-  - Testar normalizacao de eventos do Google Calendar.
-  - Rodar `pnpm lint`.
-  - Rodar `pnpm exec tsc --noEmit`.
-  - Rodar `pnpm build`.
+  - [x] Testar normalizacao de eventos do Google Calendar.
+  - [ ] Rodar `pnpm lint`.
+  - [x] Rodar `pnpm exec tsc --noEmit`.
+  - [x] Rodar `pnpm build`.
 
 ## P3 - Segurança operacional
 

@@ -8,8 +8,9 @@ import { SpotifyBar } from "@/components/spotify-bar"
 import { TodayPanel } from "@/components/today-panel"
 import { SettingsPanel } from "@/components/settings-panel"
 import { NightDock } from "@/components/night-dock"
+import { HomeAssistantPanel } from "@/components/home-assistant-panel"
 import { isWithinNightMode, NIGHT_MODE_SETTINGS_EVENT, readNightModeSettings } from "@/lib/dock-settings"
-const PAGES = 5
+const PAGES = 6
 const NIGHT_DOCK_PAGE_INDEX = 1
 
 export default function Page() {
@@ -94,6 +95,11 @@ export default function Page() {
         {/* Page 5: Calendar */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <CalendarPage />
+        </section>
+
+        {/* Page 6: Home Assistant */}
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+          <HomeAssistantPanel />
         </section>
 
       </div>

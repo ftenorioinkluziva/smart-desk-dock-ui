@@ -32,6 +32,10 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REFRESH_TOKEN=
 GOOGLE_CALENDAR_ID=        # default: primary
 GOOGLE_CALENDAR_TIMEZONE=  # default: WEATHER_TIMEZONE or America/Sao_Paulo
+
+HOME_ASSISTANT_URL=
+HOME_ASSISTANT_TOKEN=
+HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.tomada_mesa,scene.movie_mode
 ```
 
 #### Getting Spotify credentials
@@ -57,7 +61,7 @@ GOOGLE_CALENDAR_TIMEZONE=  # default: WEATHER_TIMEZONE or America/Sao_Paulo
 
 ### App layout — `app/page.tsx`
 
-Single-page app with a **5-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
+Single-page app with a **6-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
 
 ### Panels (left → right)
 
@@ -68,6 +72,7 @@ Single-page app with a **5-panel horizontal carousel** (snap scroll). Each panel
 | 3 | `WeatherForecast` | Current weather and forecast |
 | 4 | `ProductivityHub` | Tabbed: Pomodoro · Timer · Stopwatch |
 | 5 | `CalendarPage` | Monthly calendar and daily events from Google Calendar when configured |
+| 6 | `HomeAssistantPanel` | Home Assistant favorites: lights, switches, covers, scenes, scripts |
 
 ### Persistent bottom bar
 
@@ -85,6 +90,8 @@ app/
   api/
     calendar-events/route.ts  GET  → { events }
     calendar-list/route.ts    GET  → { calendars }
+    home-assistant/entities/   GET  → { entities }
+    home-assistant/service/    POST { entityId, action, brightness? }
     weather/route.ts          GET  → { temp, high, low, description, condition, forecast, hourly? }
     spotify-now-playing/      GET  → { isPlaying, track, artist, albumArt }
     spotify-control/route.ts  POST { action } → forwards to Spotify Web API
@@ -93,6 +100,7 @@ components/
   today-panel.tsx
   night-dock.tsx
   weather-forecast.tsx
+  home-assistant-panel.tsx
   productivity-hub.tsx
   agenda.tsx
   settings-panel.tsx
@@ -107,6 +115,7 @@ hooks/
 lib/
   spotify.ts                 getAccessToken(), spotifyControl(), spotifyConfigured flag
   google-calendar.ts         OAuth, calendar list fetch, event fetch + normalization
+  home-assistant.ts          server-side Home Assistant API wrapper
   calendar-settings.ts       selected Google Calendar ids in localStorage
   dock-settings.ts           night mode settings in localStorage
   utils.ts                   cn() (clsx + tailwind-merge)
@@ -132,6 +141,10 @@ Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.
 ### Google Calendar mock/real split
 
 `lib/google-calendar.ts` exports `googleCalendarConfigured` (true when client id, client secret, and refresh token are present). Calendar API routes return `{ mock: true }` when not configured. The settings panel can list connected calendars and stores the selected ids in `localStorage`.
+
+### Home Assistant mock/real split
+
+`lib/home-assistant.ts` exports `homeAssistantConfigured` (true when URL and token are present). Home Assistant API routes return `{ mock: true }` when not configured. The browser never receives the HA token; service calls go through `app/api/home-assistant/service/route.ts`.
 
 ### Spotify mock/real split
 

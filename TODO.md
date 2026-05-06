@@ -86,16 +86,20 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
 
 ## P2 - Controle de casa inteligente
 
-- [ ] Criar painel Home Assistant.
-  - Usar `HOME_ASSISTANT_URL` e `HOME_ASSISTANT_TOKEN` no servidor.
-  - Comecar com entidades favoritas configuradas por env, ex.: `HOME_ASSISTANT_ENTITIES=light.sala,switch.tomada_mesa,scene.movie_mode`.
-  - Criar rota server-side para listar estados sem expor token no client.
-  - Criar rota server-side para chamar servicos do Home Assistant.
-  - Exibir luzes, tomadas, scripts e cenas em controles compactos.
-  - Permitir acoes rapidas: ligar/desligar, acionar cena/script e ajustar brilho quando suportado.
-  - Mostrar estados `unavailable`/erro de forma discreta.
-  - Atualizar estados automaticamente sem poluir a UI.
-  - Manter layout otimizado para dock em landscape.
+- [x] Criar painel Home Assistant.
+  - Usar Home Assistant como unica integracao inicial para casa inteligente.
+  - Controlar dispositivos Smart Life/Tuya somente se estiverem expostos no Home Assistant.
+  - [x] Usar `HOME_ASSISTANT_URL` e `HOME_ASSISTANT_TOKEN` no servidor.
+  - [x] Comecar com entidades favoritas configuradas por env, ex.: `HOME_ASSISTANT_ENTITIES=light.sala,switch.tomada_mesa,scene.movie_mode`.
+  - [x] Criar rota server-side para listar estados sem expor token no client.
+  - [x] Criar rota server-side para chamar servicos do Home Assistant.
+  - [x] Exibir luzes, tomadas, scripts e cenas em controles compactos.
+  - [x] Exibir teto retratil/cover com acoes de abrir, parar e fechar.
+  - [x] Permitir acoes rapidas: ligar/desligar, acionar cena/script e ajustar brilho quando suportado.
+  - [x] Mostrar estados `unavailable`/erro de forma discreta.
+  - [x] Atualizar estados automaticamente sem poluir a UI.
+  - [x] Manter layout otimizado para dock em landscape.
+  - [x] Testar com token real do Home Assistant.
 
 ## P2 - Financeiro rapido
 

@@ -1,0 +1,20 @@
+services:
+  smart-desk-dock:
+    image: ghcr.io/ftenorioinkluziva/smart-desk-dock-ui:main
+    container_name: smart-desk-dock
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: smart-desk-dock-watchtower
+    restart: unless-stopped
+    command: --interval 60 --label-enable --cleanup
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOME}/.docker/config.json:/config.json:ro

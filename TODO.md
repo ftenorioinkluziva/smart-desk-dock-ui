@@ -148,6 +148,12 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
 
 ## P3 - Organizacao tecnica
 
+- [x] Preparar deploy Docker na tailnet.
+  - [x] Adicionar `Dockerfile` com build standalone do Next.js.
+  - [x] Publicar imagem no GHCR a cada push na `main`.
+  - [x] Adicionar `docker-compose.yml` com Watchtower para atualizacao automatica.
+  - [x] Documentar deploy no Ubuntu dentro da tailnet.
+
 - [x] Extrair helper `lib/google-calendar.ts`.
   - [x] Centralizar OAuth e normalizacao de eventos.
   - [x] Manter a rota `app/api/calendar-events/route.ts` fina.

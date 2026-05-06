@@ -102,7 +102,7 @@ function describeHourlyWeather(hourlyWeather: HourlyWeather | null, isDark = fal
 
 function describeCurrentWeather(weather: WeatherData | null, isDark: boolean) {
   if (!weather) return null
-  return `${weatherDescription(weather.condition, isDark)} em ${weather.location}, ${weather.temp} graus; minima de ${weather.low} e maxima de ${weather.high} hoje`
+  return `${weatherDescription(weather.condition, isDark)} em ${weather.location}, ${weather.temp} graus; mínima de ${weather.low} e máxima de ${weather.high} hoje`
 }
 
 export function TodayPanel() {
@@ -234,9 +234,9 @@ export function TodayPanel() {
         title: "Em compromisso",
         sentence: nextTimedEvent?.title
           ? eventWeatherText
-            ? `Agora: ${nextTimedEvent.title}. La fora, ${eventWeatherText}.`
+            ? `Agora: ${nextTimedEvent.title}. Lá fora, ${eventWeatherText}.`
             : `Agora: ${nextTimedEvent.title}.`
-          : "Voce esta em compromisso agora.",
+          : "Você está em compromisso agora.",
         active: true,
       }
     }
@@ -248,9 +248,9 @@ export function TodayPanel() {
         title: `${minutesUntilNextEvent} min`,
         sentence: nextTimedEvent?.title
           ? eventWeatherText
-            ? `${nextTimedEvent.title} comeca em ${minutesUntilNextEvent} min. Na hora, ${eventWeatherText}.`
-            : `${nextTimedEvent.title} comeca em ${minutesUntilNextEvent} min.`
-          : `Seu proximo evento comeca em ${minutesUntilNextEvent} min.`,
+            ? `${nextTimedEvent.title} começa em ${minutesUntilNextEvent} min. Na hora, ${eventWeatherText}.`
+            : `${nextTimedEvent.title} começa em ${minutesUntilNextEvent} min.`
+          : `Seu próximo evento começa em ${minutesUntilNextEvent} min.`,
         active: true,
       }
     }
@@ -261,7 +261,7 @@ export function TodayPanel() {
         label: "Saída",
         title: "Leve guarda-chuva",
         sentence: nextEventStart && minutesUntilNextEvent !== null && minutesUntilNextEvent > 0
-          ? `Leve guarda-chuva. Voce tem ${minutesUntilNextEvent} min ate o proximo evento.`
+          ? `Leve guarda-chuva. Você tem ${minutesUntilNextEvent} min até o próximo evento.`
           : "Leve guarda-chuva se for sair agora.",
         active: false,
       }
@@ -273,8 +273,8 @@ export function TodayPanel() {
         label: "Clima",
         title: "Calor agora",
         sentence: nextEventStart && minutesUntilNextEvent !== null && minutesUntilNextEvent > 0
-          ? `Esta quente agora. Voce tem ${minutesUntilNextEvent} min ate o proximo evento.`
-          : "Esta quente agora. Hidrate-se.",
+          ? `Está quente agora. Você tem ${minutesUntilNextEvent} min até o próximo evento.`
+          : "Está quente agora. Hidrate-se.",
         active: false,
       }
     }
@@ -285,9 +285,9 @@ export function TodayPanel() {
         label: "Noite",
         title: "Baixa intensidade",
         sentence: nextTimedEvent
-          ? "Noite tranquila, com o proximo compromisso no radar."
+          ? "Noite tranquila, com o próximo compromisso no radar."
           : hasAllDayEvents
-          ? "Noite tranquila, sem compromissos com horario restantes."
+          ? "Noite tranquila, sem compromissos com horário restantes."
           : "Noite tranquila, sem compromissos restantes.",
         active: false,
       }
@@ -299,8 +299,8 @@ export function TodayPanel() {
         label: isEvening ? "Fim do dia" : "Agenda",
         title: "Sem compromissos",
         sentence: currentWeatherText
-          ? `Sem compromissos com horario restantes hoje. Agora, ${currentWeatherText}.`
-          : "Sem compromissos com horario restantes hoje.",
+          ? `Sem compromissos com horário restantes hoje. Agora, ${currentWeatherText}.`
+          : "Sem compromissos com horário restantes hoje.",
         active: false,
       }
     }
@@ -312,8 +312,8 @@ export function TodayPanel() {
         label: "Dia todo",
         title: allDayTitle,
         sentence: currentWeatherText
-          ? `Evento de dia todo: ${allDayTitle}. Sem compromissos com horario agora; ${currentWeatherText}.`
-          : `Evento de dia todo: ${allDayTitle}. Sem compromissos com horario agora.`,
+          ? `Evento de dia todo: ${allDayTitle}. Sem compromissos com horário agora; ${currentWeatherText}.`
+          : `Evento de dia todo: ${allDayTitle}. Sem compromissos com horário agora.`,
         active: false,
       }
     }
@@ -327,8 +327,8 @@ export function TodayPanel() {
         title: freeMinutes > 0 ? `${freeHours}h${String(freeMinutes).padStart(2, "0")} livres` : `${freeHours}h livres`,
         sentence: nextTimedEvent?.title
           ? eventWeatherText
-            ? `Boa janela: ${freeMinutes > 0 ? `${freeHours}h${String(freeMinutes).padStart(2, "0")}` : `${freeHours}h`} livres ate ${nextTimedEvent.title}. Na hora, ${eventWeatherText}.`
-            : `Boa janela: ${freeMinutes > 0 ? `${freeHours}h${String(freeMinutes).padStart(2, "0")}` : `${freeHours}h`} livres ate ${nextTimedEvent.title}.`
+            ? `Boa janela: ${freeMinutes > 0 ? `${freeHours}h${String(freeMinutes).padStart(2, "0")}` : `${freeHours}h`} livres até ${nextTimedEvent.title}. Na hora, ${eventWeatherText}.`
+            : `Boa janela: ${freeMinutes > 0 ? `${freeHours}h${String(freeMinutes).padStart(2, "0")}` : `${freeHours}h`} livres até ${nextTimedEvent.title}.`
           : `Boa janela: ${freeMinutes > 0 ? `${freeHours}h${String(freeMinutes).padStart(2, "0")}` : `${freeHours}h`} livres.`,
         active: false,
       }
@@ -341,9 +341,9 @@ export function TodayPanel() {
         title: `${minutesUntilNextEvent} min livres`,
         sentence: nextTimedEvent?.title
           ? eventWeatherText
-            ? `Voce tem ${minutesUntilNextEvent} min livres ate ${nextTimedEvent.title}. Na hora, ${eventWeatherText}.`
-            : `Voce tem ${minutesUntilNextEvent} min livres ate ${nextTimedEvent.title}.`
-          : `Voce tem ${minutesUntilNextEvent} min livres agora.`,
+            ? `Você tem ${minutesUntilNextEvent} min livres até ${nextTimedEvent.title}. Na hora, ${eventWeatherText}.`
+            : `Você tem ${minutesUntilNextEvent} min livres até ${nextTimedEvent.title}.`
+          : `Você tem ${minutesUntilNextEvent} min livres agora.`,
         active: false,
       }
     }

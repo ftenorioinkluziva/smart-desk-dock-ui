@@ -73,7 +73,7 @@ export function SpotifyBar() {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={nowPlaying.albumArt}
-            alt={`${track} album art`}
+            alt={`Capa do álbum ${track}`}
             className="size-full object-cover"
           />
         ) : (
@@ -98,7 +98,7 @@ export function SpotifyBar() {
           </>
         ) : (
           <span className="text-[clamp(0.65rem,1.6vw,0.8rem)] text-muted-foreground italic">
-            {isMock ? "Configure Spotify credentials" : "Nothing playing"}
+            {isMock ? "Configure as credenciais do Spotify" : "Nada tocando"}
           </span>
         )}
       </div>
@@ -106,7 +106,7 @@ export function SpotifyBar() {
       {/* Playback controls */}
       <div className="flex items-center gap-[clamp(0.1rem,0.4vw,0.25rem)] shrink-0">
         <button
-          aria-label="Shuffle"
+          aria-label="Aleatório"
           disabled={isMock}
           className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
           style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}
@@ -115,7 +115,7 @@ export function SpotifyBar() {
         </button>
         <button
           onClick={handlePrevious}
-          aria-label="Previous track"
+          aria-label="Faixa anterior"
           disabled={isMock}
           className="flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
           style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}
@@ -124,7 +124,7 @@ export function SpotifyBar() {
         </button>
         <button
           onClick={handlePlayPause}
-          aria-label={nowPlaying.isPlaying ? "Pause" : "Play"}
+          aria-label={nowPlaying.isPlaying ? "Pausar" : "Tocar"}
           disabled={isMock}
           className="flex items-center justify-center rounded-full bg-spotify text-background hover:opacity-90 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
           style={{ width: "calc(var(--dock-control-size) * 1.2)", height: "calc(var(--dock-control-size) * 1.2)" }}
@@ -137,7 +137,7 @@ export function SpotifyBar() {
         </button>
         <button
           onClick={handleNext}
-          aria-label="Next track"
+          aria-label="Próxima faixa"
           disabled={isMock}
           className="flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
           style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}
@@ -145,7 +145,7 @@ export function SpotifyBar() {
           <SkipForward className="size-[calc(var(--dock-control-icon-size)*1.15)]" fill="currentColor" />
         </button>
         <button
-          aria-label="Repeat"
+          aria-label="Repetir"
           disabled={isMock}
           className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
           style={{ width: "var(--dock-control-size)", height: "var(--dock-control-size)" }}

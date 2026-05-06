@@ -119,7 +119,7 @@ export function normalizeCalendarEvent(event: GoogleCalendarEvent, index: number
   return {
     id: `${calendarId}:${event.id}`,
     calendarId,
-    title: event.summary?.trim() || "Sem titulo",
+    title: event.summary?.trim() || "Sem título",
     date: event.start?.date ?? formatDateInTimezone(new Date(dateValue)),
     time: formatTimeRange(event),
     startDateTime,

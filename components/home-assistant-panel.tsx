@@ -39,7 +39,7 @@ const DOMAIN_LABELS: Record<string, string> = {
 
 const LIGHT_COLOR_PRESETS: ColorPreset[] = [
   { label: "Laranja", swatch: "#ff8a1f", hsColor: [30, 100] },
-  { label: "Pessego", swatch: "#ffc08a", hsColor: [28, 45] },
+  { label: "Pêssego", swatch: "#ffc08a", hsColor: [28, 45] },
   { label: "Branco quente", swatch: "#f4ddc6", colorTempKelvin: 2700 },
   { label: "Branco neutro", swatch: "#ffffff", colorTempKelvin: 4000 },
   { label: "Branco frio", swatch: "#dcebff", colorTempKelvin: 6500 },
@@ -51,8 +51,8 @@ const LIGHT_COLOR_PRESETS: ColorPreset[] = [
 
 function getEntityDisplayName(entity: HomeAssistantEntity) {
   if (entity.entityId === "light.abajur") return "Abajur"
-  if (entity.entityId === "switch.luz_escritorio_switch_1") return "Luz escritorio"
-  if (entity.entityId === "cover.teto_sala_door_1") return "Teto retratil"
+  if (entity.entityId === "switch.luz_escritorio_switch_1") return "Luz escritório"
+  if (entity.entityId === "cover.teto_sala_door_1") return "Teto retrátil"
   return entity.name.replace(/\s+Switch 1$/i, "").trim()
 }
 
@@ -67,7 +67,7 @@ function EntityIcon({ entity, active }: { entity: HomeAssistantEntity; active: b
 
 function getEntityStatus(entity: HomeAssistantEntity, pending: boolean) {
   if (pending) return "enviando"
-  if (entity.state === "unavailable") return "indisponivel"
+  if (entity.state === "unavailable") return "indisponível"
   if (entity.state === "unknown") return "sem estado"
   if (entity.domain === "cover") {
     if (entity.state === "open") return "aberto"
@@ -226,7 +226,7 @@ export function HomeAssistantPanel() {
                 <div className="flex w-full items-center justify-between gap-2">
                   <EntityIcon entity={entity} active={active} />
                   <span className="font-mono uppercase text-muted-foreground/60" style={{ fontSize: "clamp(0.48rem,1.25vw,0.62rem)" }}>
-                    {unavailable ? "indisponivel" : DOMAIN_LABELS[entity.domain] ?? entity.domain}
+                    {unavailable ? "indisponível" : DOMAIN_LABELS[entity.domain] ?? entity.domain}
                   </span>
                 </div>
                 <div className="mt-2 line-clamp-2 min-w-0 font-semibold leading-tight text-foreground" style={{ fontSize: "clamp(0.92rem,2.3vw,1.2rem)" }}>

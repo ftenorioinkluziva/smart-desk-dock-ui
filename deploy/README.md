@@ -105,7 +105,7 @@ docker login ghcr.io -u ftenorioinkluziva
 
 Cole o token como senha.
 
-O `docker-compose.yml` monta `${HOME}/.docker/config.json` no Watchtower para que ele consiga puxar novas imagens privadas do GHCR automaticamente.
+O `docker-compose.yml` monta `/root/.docker/config.json` no Watchtower porque os comandos de deploy usam `sudo docker compose`. Por isso o login tambem deve ser feito com `sudo docker login`.
 
 ## 5. Subir o app
 

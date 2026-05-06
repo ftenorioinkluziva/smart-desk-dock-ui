@@ -84,6 +84,47 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
   - Usar chaves versionadas em `localStorage`.
   - Ter fallback seguro se dados antigos estiverem invalidos.
 
+## P2 - Controle de casa inteligente
+
+- [ ] Criar painel Home Assistant.
+  - Usar `HOME_ASSISTANT_URL` e `HOME_ASSISTANT_TOKEN` no servidor.
+  - Comecar com entidades favoritas configuradas por env, ex.: `HOME_ASSISTANT_ENTITIES=light.sala,switch.tomada_mesa,scene.movie_mode`.
+  - Criar rota server-side para listar estados sem expor token no client.
+  - Criar rota server-side para chamar servicos do Home Assistant.
+  - Exibir luzes, tomadas, scripts e cenas em controles compactos.
+  - Permitir acoes rapidas: ligar/desligar, acionar cena/script e ajustar brilho quando suportado.
+  - Mostrar estados `unavailable`/erro de forma discreta.
+  - Atualizar estados automaticamente sem poluir a UI.
+  - Manter layout otimizado para dock em landscape.
+
+## P2 - Financeiro rapido
+
+- [ ] Criar painel de carteira de investimentos.
+  - Integrar com a aplicacao local em `C:\projetos\paridade-risco-mobile`.
+  - Identificar se a integracao sera por API existente, arquivo exportado ou novo endpoint.
+  - Mostrar patrimonio atual, variacao do dia/mes e alocacao resumida.
+  - Destacar apenas alertas acionaveis: desvio de alvo, caixa baixo, queda/alta relevante.
+  - Evitar dados sensiveis em excesso na tela do dock.
+  - Atualizar em intervalo conservador para nao gerar ruido.
+
+## P2 - Inbox Zero / Pendencias
+
+- [ ] Criar painel de pendencias.
+  - Avaliar integracoes com Gmail, Notion, Todoist e Linear.
+  - Comecar com no maximo 3 a 5 itens realmente acionaveis.
+  - Separar "precisa resposta", "vence hoje" e "aguardando".
+  - Evitar transformar o dock em lista longa de tarefas.
+  - Permitir esconder itens sensiveis ou pessoais.
+
+## P2 - Midia expandida
+
+- [ ] Criar painel Spotify expandido.
+  - Mostrar capa maior, faixa, artista, album e dispositivo ativo.
+  - Exibir controles grandes para play/pause, anterior, proxima e shuffle/repeat.
+  - Avaliar controle de volume e troca de dispositivo se a API permitir.
+  - Mostrar estado mock/configuracao quando Spotify nao estiver configurado.
+  - Manter a barra compacta persistente no rodape.
+
 ## P2 - Modo dock / Apple
 
 - [x] Modo noturno.

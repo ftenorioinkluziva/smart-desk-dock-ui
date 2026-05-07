@@ -64,7 +64,8 @@ async function getAccessToken(): Promise<string> {
   })
 
   if (!response.ok) {
-    throw new Error("Google OAuth token refresh failed")
+    const errorBody = await response.text()
+    throw new Error(`Google OAuth token refresh failed: ${response.status} ${errorBody}`)
   }
 
   const data = await response.json() as { access_token?: string }
@@ -159,7 +160,8 @@ export async function fetchGoogleCalendarEvents({
     )
 
     if (!response.ok) {
-      throw new Error(`Google Calendar request failed for ${calendarId}: ${response.status}`)
+      const errorBody = await response.text()
+      throw new Error(`Google Calendar request failed for ${calendarId}: ${response.status} ${errorBody}`)
     }
 
     const data = await response.json() as { items?: GoogleCalendarEvent[] }
@@ -187,7 +189,8 @@ export async function fetchGoogleCalendarList(): Promise<CalendarOption[]> {
   })
 
   if (!response.ok) {
-    throw new Error(`Google Calendar list request failed: ${response.status}`)
+    const errorBody = await response.text()
+    throw new Error(`Google Calendar list request failed: ${response.status} ${errorBody}`)
   }
 
   const data = await response.json() as { items?: GoogleCalendarListItem[] }

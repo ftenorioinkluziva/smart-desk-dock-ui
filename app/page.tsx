@@ -4,14 +4,16 @@ import { useRef, useState, useEffect, useCallback } from "react"
 import { WeatherForecast } from "@/components/weather-forecast"
 import { ProductivityHub } from "@/components/productivity-hub"
 import { CalendarPage } from "@/components/agenda"
-import { SpotifyBar } from "@/components/spotify-bar"
 import { TodayPanel } from "@/components/today-panel"
 import { SettingsPanel } from "@/components/settings-panel"
 import { NightDock } from "@/components/night-dock"
 import { HomeAssistantPanel } from "@/components/home-assistant-panel"
+import { SpotifyExpandedPanel } from "@/components/spotify-expanded-panel"
+import { FinancePanel } from "@/components/finance-panel"
+import { VoiceAgentPanel } from "@/components/voice-agent-panel"
 import { isWithinNightMode, NIGHT_MODE_SETTINGS_EVENT, readNightModeSettings } from "@/lib/dock-settings"
-const PAGES = 6
-const NIGHT_DOCK_PAGE_INDEX = 1
+const PAGES = 9
+const NIGHT_DOCK_PAGE_INDEX = 2
 
 export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -64,7 +66,7 @@ export default function Page() {
 
   return (
     <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col dock-py">
-      <SettingsPanel />
+      <SettingsPanel showTrigger={activePage === 0} />
 
       {/* Carousel content area */}
       <div
@@ -77,40 +79,54 @@ export default function Page() {
           <TodayPanel />
         </section>
 
-        {/* Page 2: Night Dock */}
+        {/* Page 2: Voice Agent */}
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+          <VoiceAgentPanel />
+        </section>
+
+        {/* Page 3: Night Dock */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <NightDock />
         </section>
 
-        {/* Page 3: Weather Forecast */}
+        {/* Page 4: Weather Forecast */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <WeatherForecast />
         </section>
 
-        {/* Page 4: Pomodoro / Productivity Hub */}
+        {/* Page 5: Pomodoro / Productivity Hub */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <ProductivityHub />
         </section>
 
-        {/* Page 5: Calendar */}
+        {/* Page 6: Calendar */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <CalendarPage />
         </section>
 
-        {/* Page 6: Home Assistant */}
+        {/* Page 7: Home Assistant */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <HomeAssistantPanel />
         </section>
 
-      </div>
+        {/* Page 8: Finance */}
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+          <FinancePanel />
+        </section>
 
-      {/* Persistent Spotify Bar - always visible as footer */}
-      <div className="w-full border-t border-border/30 bg-background/90 backdrop-blur-sm shrink-0">
-        <SpotifyBar />
+        {/* Page 9: Expanded Spotify */}
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+          <SpotifyExpandedPanel />
+        </section>
+
       </div>
 
       {/* Pagination Dots */}
-      <div className="flex items-center justify-center gap-1 py-[clamp(0.2rem,0.7vh,0.4rem)] shrink-0">
+      <div
+        className={`pointer-events-none absolute inset-x-0 bottom-[calc(var(--dock-safe-bottom)+0.25rem)] flex items-center justify-center gap-1 transition-opacity ${
+          activePage === PAGES - 1 ? "opacity-0" : "opacity-100"
+        }`}
+      >
         {Array.from({ length: PAGES }).map((_, i) => (
           <span
             key={i}

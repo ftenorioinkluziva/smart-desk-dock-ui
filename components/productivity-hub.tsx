@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Play, Pause, RotateCcw, Square, Coffee, Brain, BellRing } from "lucide-react"
+import {
+  PRODUCTIVITY_CONTROL_EVENT,
+  type ProductivityControlDetail,
+} from "@/lib/productivity-actions"
 
 type Tab = "pomodoro" | "timer" | "stopwatch"
 type PomodoroMode = "focus" | "short-break" | "long-break"
@@ -85,6 +89,19 @@ function ControlButton({
 
 export function ProductivityHub() {
   const [activeTab, setActiveTab] = useState<Tab>("pomodoro")
+  const [command, setCommand] = useState<ProductivityControlDetail | null>(null)
+
+  useEffect(() => {
+    const handleProductivityControl = (event: Event) => {
+      const detail = (event as CustomEvent<ProductivityControlDetail>).detail
+      if (!detail) return
+      setActiveTab(detail.target)
+      setCommand(detail)
+    }
+
+    window.addEventListener(PRODUCTIVITY_CONTROL_EVENT, handleProductivityControl)
+    return () => window.removeEventListener(PRODUCTIVITY_CONTROL_EVENT, handleProductivityControl)
+  }, [])
 
   return (
     <div className="flex flex-col h-full w-full dock-px gap-[clamp(0.3rem,0.9vh,0.55rem)]">
@@ -108,9 +125,9 @@ export function ProductivityHub() {
 
       {/* Content area */}
       <div className="flex-1 flex items-center min-h-0 overflow-hidden">
-        {activeTab === "pomodoro" && <PomodoroView />}
-        {activeTab === "timer" && <TimerView />}
-        {activeTab === "stopwatch" && <StopwatchView />}
+        {activeTab === "pomodoro" && <PomodoroView command={command} />}
+        {activeTab === "timer" && <TimerView command={command} />}
+        {activeTab === "stopwatch" && <StopwatchView command={command} />}
       </div>
     </div>
   )
@@ -118,7 +135,7 @@ export function ProductivityHub() {
 
 // ── Pomodoro ──────────────────────────────────────────────────────────────
 
-function PomodoroView() {
+function PomodoroView({ command }: { command: ProductivityControlDetail | null }) {
   const [mode, setMode] = useState<PomodoroMode>("focus")
   const [durations, setDurations] = useState<Record<PomodoroMode, number>>(DEFAULT_POMODORO_DURATIONS)
   const [durationDrafts, setDurationDrafts] = useState<Record<PomodoroMode, string>>(toMinutesDrafts(DEFAULT_POMODORO_DURATIONS))
@@ -192,6 +209,24 @@ function PomodoroView() {
     }
     setIsRunning((p) => !p)
   }, [durations, mode, totalSeconds])
+
+  useEffect(() => {
+    if (!command || command.target !== "pomodoro") return
+
+    setIsAlertVisible(false)
+    if (command.action === "start") {
+      if (totalSeconds <= 0) setTotalSeconds(durations[mode])
+      setIsRunning(true)
+      return
+    }
+    if (command.action === "pause") {
+      setIsRunning(false)
+      return
+    }
+    if (command.action === "reset") {
+      reset()
+    }
+  }, [command, durations, mode, reset, totalSeconds])
 
   const startNextPhase = useCallback(() => {
     const next: PomodoroMode =
@@ -407,7 +442,7 @@ function PomodoroView() {
 
 // ── Timer ─────────────────────────────────────────────────────────────────
 
-function TimerView() {
+function TimerView({ command }: { command: ProductivityControlDetail | null }) {
   const [totalSeconds, setTotalSeconds] = useState(5 * 60)
   const [isRunning, setIsRunning] = useState(false)
   const [isAlertVisible, setIsAlertVisible] = useState(false)
@@ -449,6 +484,29 @@ function TimerView() {
     setIsRunning(false)
     setIsAlertVisible(false)
   }, [])
+
+  useEffect(() => {
+    if (!command || command.target !== "timer") return
+
+    setIsAlertVisible(false)
+    if (typeof command.minutes === "number" && Number.isFinite(command.minutes)) {
+      const seconds = Math.max(60, Math.min(10800, Math.round(command.minutes * 60)))
+      initialRef.current = seconds
+      setTotalSeconds(seconds)
+    }
+
+    if (command.action === "start") {
+      setIsRunning(true)
+      return
+    }
+    if (command.action === "pause") {
+      setIsRunning(false)
+      return
+    }
+    if (command.action === "reset") {
+      reset()
+    }
+  }, [command, reset])
 
   const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
@@ -531,7 +589,7 @@ function TimerView() {
 
 // ── Stopwatch ─────────────────────────────────────────────────────────────
 
-function StopwatchView() {
+function StopwatchView({ command }: { command: ProductivityControlDetail | null }) {
   const [elapsed, setElapsed] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
 
@@ -547,6 +605,22 @@ function StopwatchView() {
   }, [])
 
   const togglePlay = useCallback(() => setIsRunning((p) => !p), [])
+
+  useEffect(() => {
+    if (!command || command.target !== "stopwatch") return
+
+    if (command.action === "start") {
+      setIsRunning(true)
+      return
+    }
+    if (command.action === "pause") {
+      setIsRunning(false)
+      return
+    }
+    if (command.action === "reset") {
+      reset()
+    }
+  }, [command, reset])
 
   const hrs = Math.floor(elapsed / 3600)
   const mins = Math.floor((elapsed % 3600) / 60).toString().padStart(2, "0")

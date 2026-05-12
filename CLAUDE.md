@@ -36,6 +36,10 @@ GOOGLE_CALENDAR_TIMEZONE=  # default: WEATHER_TIMEZONE or America/Sao_Paulo
 HOME_ASSISTANT_URL=
 HOME_ASSISTANT_TOKEN=
 HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.tomada_mesa,scene.movie_mode
+
+FINANCE_API_URL=      # e.g. http://127.0.0.1:3001
+FINANCE_API_TOKEN=    # bearer token from paridade-risco-mobile, preferred
+FINANCE_API_USER_ID=  # alternative for local trusted use
 ```
 
 #### Getting Spotify credentials
@@ -44,7 +48,7 @@ HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.t
 2. Add redirect URI: `http://127.0.0.1:3000/callback` (note: `localhost` is blocked since Nov 2025)
 3. Authorize (replace `YOUR_CLIENT_ID`):
    ```
-   https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state
+   https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state%20playlist-read-private
    ```
 4. Copy `code` from the redirect URL, then exchange for a refresh token:
    ```bash
@@ -61,7 +65,7 @@ HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.t
 
 ### App layout — `app/page.tsx`
 
-Single-page app with a **6-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
+Single-page app with a **8-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
 
 ### Panels (left → right)
 
@@ -73,6 +77,8 @@ Single-page app with a **6-panel horizontal carousel** (snap scroll). Each panel
 | 4 | `ProductivityHub` | Tabbed: Pomodoro · Timer · Stopwatch |
 | 5 | `CalendarPage` | Monthly calendar and daily events from Google Calendar when configured |
 | 6 | `HomeAssistantPanel` | Home Assistant favorites: lights, switches, covers, scenes, scripts |
+| 7 | `FinancePanel` | Compact investment portfolio from paridade-risco-mobile |
+| 8 | `SpotifyExpandedPanel` | Expanded Spotify playback, devices, volume, and playlists |
 
 ### Persistent bottom bar
 
@@ -90,6 +96,7 @@ app/
   api/
     calendar-events/route.ts  GET  → { events }
     calendar-list/route.ts    GET  → { calendars }
+    finance/summary/route.ts  GET  → compact portfolio summary
     home-assistant/entities/   GET  → { entities }
     home-assistant/service/    POST { entityId, action, brightness? }
     weather/route.ts          GET  → { temp, high, low, description, condition, forecast, hourly? }
@@ -100,6 +107,7 @@ components/
   today-panel.tsx
   night-dock.tsx
   weather-forecast.tsx
+  finance-panel.tsx
   home-assistant-panel.tsx
   productivity-hub.tsx
   agenda.tsx
@@ -115,6 +123,7 @@ hooks/
 lib/
   spotify.ts                 getAccessToken(), spotifyControl(), spotifyConfigured flag
   google-calendar.ts         OAuth, calendar list fetch, event fetch + normalization
+  finance.ts                 server-side paridade-risco-mobile API proxy helpers
   home-assistant.ts          server-side Home Assistant API wrapper
   calendar-settings.ts       selected Google Calendar ids in localStorage
   dock-settings.ts           night mode settings in localStorage
@@ -145,6 +154,10 @@ Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.
 ### Home Assistant mock/real split
 
 `lib/home-assistant.ts` exports `homeAssistantConfigured` (true when URL and token are present). Home Assistant API routes return `{ mock: true }` when not configured. The browser never receives the HA token; service calls go through `app/api/home-assistant/service/route.ts`.
+
+### Finance mock/real split
+
+`lib/finance.ts` exports `financeConfigured` (true when `FINANCE_API_URL` is present). The browser only calls `/api/finance/summary`; the dock server forwards to `paridade-risco-mobile` endpoints and returns mock data when not configured. Use `FINANCE_API_TOKEN` or `FINANCE_API_USER_ID` when the upstream API needs an authenticated user.
 
 ### Spotify mock/real split
 

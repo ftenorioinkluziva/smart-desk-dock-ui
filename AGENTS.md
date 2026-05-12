@@ -36,6 +36,15 @@ GOOGLE_CALENDAR_TIMEZONE=  # default: WEATHER_TIMEZONE or America/Sao_Paulo
 HOME_ASSISTANT_URL=
 HOME_ASSISTANT_TOKEN=
 HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.tomada_mesa,scene.movie_mode
+
+FINANCE_API_URL=      # e.g. http://127.0.0.1:3001
+FINANCE_API_TOKEN=    # bearer token from paridade-risco-mobile, preferred
+FINANCE_API_USER_ID=  # alternative for local trusted use
+
+OPENAI_API_KEY=
+OPENAI_REALTIME_MODEL=             # default: gpt-realtime-mini
+OPENAI_REALTIME_VOICE=             # default: marin
+OPENAI_REALTIME_REASONING_EFFORT=  # default: low, used with gpt-realtime-2
 ```
 
 #### Getting Spotify credentials
@@ -44,7 +53,7 @@ HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.t
 2. Add redirect URI: `http://127.0.0.1:3000/callback` (note: `localhost` is blocked since Nov 2025)
 3. Authorize (replace `YOUR_CLIENT_ID`):
    ```
-   https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state
+   https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state%20playlist-read-private
    ```
 4. Copy `code` from the redirect URL, then exchange for a refresh token:
    ```bash
@@ -61,18 +70,21 @@ HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.t
 
 ### App layout — `app/page.tsx`
 
-Single-page app with a **6-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
+Single-page app with a **9-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
 
 ### Panels (left → right)
 
 | # | Component | Description |
 |---|-----------|-------------|
 | 1 | `TodayPanel` | Clock, context phrase, next event, compact weather |
-| 2 | `NightDock` | Low-brightness clock mode for night/inactive use |
-| 3 | `WeatherForecast` | Current weather and forecast |
-| 4 | `ProductivityHub` | Tabbed: Pomodoro · Timer · Stopwatch |
-| 5 | `CalendarPage` | Monthly calendar and daily events from Google Calendar when configured |
-| 6 | `HomeAssistantPanel` | Home Assistant favorites: lights, switches, covers, scenes, scripts |
+| 2 | `VoiceAgentPanel` | OpenAI Realtime voice conversation panel |
+| 3 | `NightDock` | Low-brightness clock mode for night/inactive use |
+| 4 | `WeatherForecast` | Current weather and forecast |
+| 5 | `ProductivityHub` | Tabbed: Pomodoro · Timer · Stopwatch |
+| 6 | `CalendarPage` | Monthly calendar and daily events from Google Calendar when configured |
+| 7 | `HomeAssistantPanel` | Home Assistant favorites: lights, switches, covers, scenes, scripts |
+| 8 | `FinancePanel` | Compact investment portfolio from paridade-risco-mobile |
+| 9 | `SpotifyExpandedPanel` | Expanded Spotify playback, devices, volume, and playlists |
 
 ### Persistent bottom bar
 
@@ -90,8 +102,10 @@ app/
   api/
     calendar-events/route.ts  GET  → { events }
     calendar-list/route.ts    GET  → { calendars }
+    finance/summary/route.ts  GET  → compact portfolio summary
     home-assistant/entities/   GET  → { entities }
     home-assistant/service/    POST { entityId, action, brightness? }
+    realtime/session/route.ts  POST → OpenAI Realtime ephemeral client secret
     weather/route.ts          GET  → { temp, high, low, description, condition, forecast, hourly? }
     spotify-now-playing/      GET  → { isPlaying, track, artist, albumArt }
     spotify-control/route.ts  POST { action } → forwards to Spotify Web API
@@ -100,22 +114,27 @@ components/
   today-panel.tsx
   night-dock.tsx
   weather-forecast.tsx
+  finance-panel.tsx
   home-assistant-panel.tsx
   productivity-hub.tsx
   agenda.tsx
   settings-panel.tsx
+  voice-agent-panel.tsx       OpenAI Realtime voice conversation panel
   spotify-bar.tsx            Bottom playback bar
   theme-provider.tsx
   ui/                        shadcn components (50+)
 
 hooks/
   use-mobile.ts
+  use-realtime-agent.ts       WebRTC lifecycle for OpenAI Realtime
   use-toast.ts
 
 lib/
   spotify.ts                 getAccessToken(), spotifyControl(), spotifyConfigured flag
   google-calendar.ts         OAuth, calendar list fetch, event fetch + normalization
+  finance.ts                 server-side paridade-risco-mobile API proxy helpers
   home-assistant.ts          server-side Home Assistant API wrapper
+  realtime-agent.ts          OpenAI Realtime session defaults and agent instructions
   calendar-settings.ts       selected Google Calendar ids in localStorage
   dock-settings.ts           night mode settings in localStorage
   utils.ts                   cn() (clsx + tailwind-merge)
@@ -146,9 +165,17 @@ Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.
 
 `lib/home-assistant.ts` exports `homeAssistantConfigured` (true when URL and token are present). Home Assistant API routes return `{ mock: true }` when not configured. The browser never receives the HA token; service calls go through `app/api/home-assistant/service/route.ts`.
 
+### Finance mock/real split
+
+`lib/finance.ts` exports `financeConfigured` (true when `FINANCE_API_URL` is present). The browser only calls `/api/finance/summary`; the dock server forwards to `paridade-risco-mobile` endpoints and returns mock data when not configured. Use `FINANCE_API_TOKEN` or `FINANCE_API_USER_ID` when the upstream API needs an authenticated user.
+
 ### Spotify mock/real split
 
 `lib/spotify.ts` exports `spotifyConfigured` (true when all three env vars are present). API routes return `{ mock: true }` when not configured; the `SpotifyBar` shows "Configure Spotify credentials" and disables controls.
+
+### OpenAI Realtime mock/real split
+
+`lib/realtime-agent.ts` exports `realtimeAgentConfigured` (true when `OPENAI_API_KEY` is present). The browser requests an ephemeral client secret from `app/api/realtime/session/route.ts`; the OpenAI API key is never sent to the browser. When not configured, the voice panel shows a setup state.
 
 ### Optimistic UI (SpotifyBar)
 

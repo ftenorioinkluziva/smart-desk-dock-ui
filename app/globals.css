@@ -198,3 +198,13 @@
 .animate-pomodoro-alarm {
   animation: pomodoro-alarm 0.6s ease-in-out infinite;
 }
+
+@keyframes finance-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.finance-ticker-track {
+  animation: finance-ticker-scroll 18s linear infinite;
+  will-change: transform;
+}

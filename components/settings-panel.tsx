@@ -17,7 +17,7 @@ type CalendarListResponse = {
   mock?: boolean
 }
 
-export function SettingsPanel() {
+export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const [calendars, setCalendars] = useState<CalendarOption[]>([])
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([])
@@ -74,13 +74,15 @@ export function SettingsPanel() {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="absolute right-[calc(var(--dock-pad-x)+var(--dock-safe-right))] bottom-[calc(var(--dock-pad-y)+var(--dock-safe-bottom)+clamp(2.65rem,6.6vh,3.2rem))] z-20 flex size-[clamp(1.7rem,4vw,2.1rem)] items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-secondary/60 hover:text-foreground"
-        aria-label="Configurações"
-      >
-        <Settings className="size-[clamp(0.9rem,2vw,1.1rem)]" />
-      </button>
+      {showTrigger && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="absolute right-[calc(var(--dock-pad-x)+var(--dock-safe-right))] bottom-[calc(var(--dock-pad-y)+var(--dock-safe-bottom)+clamp(2.65rem,6.6vh,3.2rem))] z-20 flex size-[clamp(1.7rem,4vw,2.1rem)] items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-secondary/60 hover:text-foreground"
+          aria-label="Configurações"
+        >
+          <Settings className="size-[clamp(0.9rem,2vw,1.1rem)]" />
+        </button>
+      )}
 
       {isOpen && (
         <div className="absolute inset-0 z-30 flex items-start justify-end bg-background/35 backdrop-blur-[2px] p-[calc(var(--dock-pad-y)+0.25rem)]">

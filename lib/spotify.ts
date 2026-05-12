@@ -29,9 +29,18 @@ export async function getAccessToken(): Promise<string> {
   return data.access_token
 }
 
-export type SpotifyAction = "play" | "pause" | "next" | "previous"
+export type SpotifyAction =
+  | "play"
+  | "pause"
+  | "next"
+  | "previous"
+  | "shuffle"
+  | "repeat"
+  | "volume"
+  | "transfer"
+  | "play-context"
 
-const CONTROL_ENDPOINTS: Record<SpotifyAction, { url: string; method: string }> = {
+const CONTROL_ENDPOINTS: Record<Exclude<SpotifyAction, "shuffle" | "repeat" | "volume" | "transfer" | "play-context">, { url: string; method: string }> = {
   play:     { url: "https://api.spotify.com/v1/me/player/play",     method: "PUT"  },
   pause:    { url: "https://api.spotify.com/v1/me/player/pause",    method: "PUT"  },
   next:     { url: "https://api.spotify.com/v1/me/player/next",     method: "POST" },
@@ -39,11 +48,59 @@ const CONTROL_ENDPOINTS: Record<SpotifyAction, { url: string; method: string }> 
 }
 
 /** Send a playback command to the Spotify Web API (requires Premium). */
-export async function spotifyControl(action: SpotifyAction): Promise<void> {
+export async function spotifyControl(
+  action: SpotifyAction,
+  options: {
+    state?: boolean
+    repeatState?: "track" | "context" | "off"
+    volumePercent?: number
+    deviceId?: string
+    play?: boolean
+    contextUri?: string
+  } = {}
+): Promise<void> {
   const token = await getAccessToken()
-  const { url, method } = CONTROL_ENDPOINTS[action]
+  const endpoint =
+    action === "shuffle"
+      ? {
+          url: `https://api.spotify.com/v1/me/player/shuffle?state=${options.state ? "true" : "false"}`,
+          method: "PUT",
+        }
+      : action === "repeat"
+        ? {
+            url: `https://api.spotify.com/v1/me/player/repeat?state=${options.repeatState ?? "off"}`,
+            method: "PUT",
+          }
+        : action === "volume"
+          ? {
+              url: `https://api.spotify.com/v1/me/player/volume?volume_percent=${Math.min(
+                100,
+                Math.max(0, Math.round(options.volumePercent ?? 0))
+              )}`,
+              method: "PUT",
+            }
+          : action === "transfer"
+            ? { url: "https://api.spotify.com/v1/me/player", method: "PUT" }
+            : action === "play-context"
+              ? {
+                  url: options.deviceId
+                    ? `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(options.deviceId)}`
+                    : "https://api.spotify.com/v1/me/player/play",
+                  method: "PUT",
+                }
+          : CONTROL_ENDPOINTS[action]
+  const { url, method } = endpoint
   await fetch(url, {
     method,
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(action === "transfer" || action === "play-context" ? { "Content-Type": "application/json" } : {}),
+    },
+    body:
+      action === "transfer"
+        ? JSON.stringify({ device_ids: [options.deviceId], play: options.play ?? true })
+        : action === "play-context"
+          ? JSON.stringify({ context_uri: options.contextUri, position_ms: 0 })
+        : undefined,
   })
 }

@@ -6,6 +6,17 @@ const CALENDAR_TIMEZONE = process.env.GOOGLE_CALENDAR_TIMEZONE ?? process.env.WE
 
 export const googleCalendarConfigured = Boolean(CLIENT_ID && CLIENT_SECRET && REFRESH_TOKEN)
 
+export class GoogleCalendarAuthError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "GoogleCalendarAuthError"
+  }
+}
+
+export function isGoogleCalendarAuthError(error: unknown): error is GoogleCalendarAuthError {
+  return error instanceof GoogleCalendarAuthError
+}
+
 type GoogleCalendarEvent = {
   id: string
   summary?: string
@@ -65,7 +76,21 @@ async function getAccessToken(): Promise<string> {
 
   if (!response.ok) {
     const errorBody = await response.text()
-    throw new Error(`Google OAuth token refresh failed: ${response.status} ${errorBody}`)
+    let errorCode: string | undefined
+
+    try {
+      const parsed = JSON.parse(errorBody) as { error?: string }
+      errorCode = parsed.error
+    } catch {
+      // Keep the original response body in the message below.
+    }
+
+    const message = `Google OAuth token refresh failed: ${response.status} ${errorBody}`
+    if (response.status === 400 && errorCode === "invalid_grant") {
+      throw new GoogleCalendarAuthError(message)
+    }
+
+    throw new Error(message)
   }
 
   const data = await response.json() as { access_token?: string }

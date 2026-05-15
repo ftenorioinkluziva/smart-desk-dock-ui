@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server"
-import { DEFAULT_CALENDAR_ID, fetchGoogleCalendarEvents, googleCalendarConfigured } from "@/lib/google-calendar"
+import {
+  DEFAULT_CALENDAR_ID,
+  fetchGoogleCalendarEvents,
+  googleCalendarConfigured,
+  isGoogleCalendarAuthError,
+} from "@/lib/google-calendar"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -24,6 +29,18 @@ export async function GET(request: Request) {
     })
     return NextResponse.json({ events })
   } catch (error) {
+    if (isGoogleCalendarAuthError(error)) {
+      console.warn("Google Calendar authorization expired. Generate a new GOOGLE_REFRESH_TOKEN.")
+      return NextResponse.json(
+        {
+          events: [],
+          authExpired: true,
+          error: "Google Calendar authorization expired. Generate a new GOOGLE_REFRESH_TOKEN.",
+        },
+        { status: 401 },
+      )
+    }
+
     console.error("Google Calendar API error:", error)
     return NextResponse.json({ events: [], error: "Calendar fetch failed" }, { status: 502 })
   }

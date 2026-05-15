@@ -168,35 +168,24 @@
   padding-bottom: calc(var(--dock-pad-y) + var(--dock-safe-bottom));
 }
 
-/* Pomodoro alarm animations */
-@keyframes pomodoro-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+/* Productivity completion animations */
+@keyframes productivity-complete {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.05); opacity: 0.95; }
 }
 
-@keyframes pomodoro-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.08); opacity: 1; }
+@keyframes alert-icon {
+  0%, 100% { transform: rotate(0deg); opacity: 1; }
+  25% { transform: rotate(-8deg); opacity: 0.82; }
+  75% { transform: rotate(8deg); opacity: 0.82; }
 }
 
-@keyframes pomodoro-alarm {
-  0%, 100% { transform: scale(1); }
-  10% { transform: scale(1.02); }
-  20% { transform: scale(0.98); }
-  30% { transform: scale(1.01); }
-  40% { transform: scale(1); }
+.animate-productivity-complete {
+  animation: productivity-complete 1.8s ease-in-out infinite;
 }
 
-.animate-pomodoro-blink {
-  animation: pomodoro-blink 1s ease-in-out infinite;
-}
-
-.animate-pomodoro-pulse {
-  animation: pomodoro-pulse 1.5s ease-in-out infinite;
-}
-
-.animate-pomodoro-alarm {
-  animation: pomodoro-alarm 0.6s ease-in-out infinite;
+.animate-alert-icon {
+  animation: alert-icon 1.2s ease-in-out infinite;
 }
 
 @keyframes finance-ticker-scroll {

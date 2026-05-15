@@ -1,9 +1,19 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Check, Settings, X } from "lucide-react"
+import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { Bell, Check, Clock3, Eye, Settings, Volume2, Vibrate, X } from "lucide-react"
 import { readSelectedCalendarIds, writeSelectedCalendarIds } from "@/lib/calendar-settings"
 import { readNightModeSettings, writeNightModeSettings, type NightModeSettings } from "@/lib/dock-settings"
+import {
+  readProductivityAlertSettings,
+  readPomodoroDurations,
+  writePomodoroDurations,
+  writeProductivityAlertSettings,
+  type PomodoroDurations,
+  type PomodoroMode,
+  type ProductivityAlertPreference,
+  type ProductivityAlertSettings,
+} from "@/lib/productivity-settings"
 
 type CalendarOption = {
   id: string
@@ -17,11 +27,25 @@ type CalendarListResponse = {
   mock?: boolean
 }
 
+const ALERT_OPTIONS: Array<{ value: ProductivityAlertPreference; label: string; description: string; icon: ReactNode }> = [
+  { value: "visual", label: "Visual", description: "Sem vibração ou som.", icon: <Eye className="size-3.5" /> },
+  { value: "visual-vibration", label: "Vibração", description: "Usa vibração quando o aparelho suporta.", icon: <Vibrate className="size-3.5" /> },
+  { value: "visual-sound", label: "Som", description: "Toca um aviso curto no navegador.", icon: <Volume2 className="size-3.5" /> },
+]
+
+const POMODORO_DURATION_FIELDS: Array<{ mode: PomodoroMode; label: string }> = [
+  { mode: "focus", label: "Foco" },
+  { mode: "short-break", label: "Pausa" },
+  { mode: "long-break", label: "Longa" },
+]
+
 export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const [calendars, setCalendars] = useState<CalendarOption[]>([])
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([])
   const [nightModeSettings, setNightModeSettings] = useState<NightModeSettings>(() => readNightModeSettings())
+  const [alertSettings, setAlertSettings] = useState<ProductivityAlertSettings>(() => readProductivityAlertSettings())
+  const [pomodoroDurations, setPomodoroDurations] = useState<PomodoroDurations>(() => readPomodoroDurations())
   const [isLoading, setIsLoading] = useState(false)
 
   const fetchCalendars = useCallback(async () => {
@@ -53,6 +77,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
   useEffect(() => {
     if (isOpen) {
       setNightModeSettings(readNightModeSettings())
+      setAlertSettings(readProductivityAlertSettings())
+      setPomodoroDurations(readPomodoroDurations())
       fetchCalendars()
     }
   }, [fetchCalendars, isOpen])
@@ -70,6 +96,27 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
   function updateNightModeSettings(nextSettings: NightModeSettings) {
     setNightModeSettings(nextSettings)
     writeNightModeSettings(nextSettings)
+  }
+
+  function updateAlertPreference(preference: ProductivityAlertPreference) {
+    const nextSettings = { preference }
+    setAlertSettings(nextSettings)
+    writeProductivityAlertSettings(nextSettings)
+  }
+
+  function updatePomodoroDuration(mode: PomodoroMode, value: string) {
+    const parsedMinutes = Number(value.replace(",", "."))
+    const minutes = Number.isFinite(parsedMinutes)
+      ? Math.max(1, Math.min(180, Math.round(parsedMinutes)))
+      : Math.round(pomodoroDurations[mode] / 60)
+
+    const nextDurations = {
+      ...pomodoroDurations,
+      [mode]: minutes * 60,
+    }
+
+    setPomodoroDurations(nextDurations)
+    writePomodoroDurations(nextDurations)
   }
 
   return (
@@ -93,7 +140,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                   Configurações
                 </div>
                 <div className="text-muted-foreground" style={{ fontSize: "clamp(0.62rem,1.5vw,0.75rem)" }}>
-                  Agendas exibidas
+                  Dock e agenda
                 </div>
               </div>
               <button
@@ -106,7 +153,61 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
             </div>
 
             <div className="mt-3 flex max-h-[12rem] flex-col gap-1 overflow-y-auto">
-              <div className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+                  <Clock3 className="size-3.5 text-muted-foreground" />
+                  Produtividade
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  {POMODORO_DURATION_FIELDS.map((field) => (
+                    <label key={field.mode} className="flex flex-col gap-1 text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.4vw,0.68rem)" }}>
+                      {field.label}
+                      <input
+                        type="number"
+                        min={1}
+                        max={180}
+                        step={1}
+                        inputMode="numeric"
+                        value={Math.round(pomodoroDurations[field.mode] / 60)}
+                        onChange={(event) => updatePomodoroDuration(field.mode, event.target.value)}
+                        className="rounded-md border border-border/50 bg-background px-2 py-1 text-center text-foreground outline-none focus:border-ring"
+                        aria-label={`Duração de ${field.label.toLowerCase()} em minutos`}
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="mt-2 flex items-center gap-1.5 text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
+                  <Bell className="size-3" />
+                  Alerta
+                </div>
+                <div className="mt-1 grid grid-cols-3 gap-1.5">
+                  {ALERT_OPTIONS.map((option) => {
+                    const selected = alertSettings.preference === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => updateAlertPreference(option.value)}
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 transition-colors ${
+                          selected
+                            ? "border-border/70 bg-background text-foreground"
+                            : "border-border/30 bg-secondary/20 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                        }`}
+                        title={option.description}
+                        aria-pressed={selected}
+                      >
+                        {option.icon}
+                        <span className="font-medium" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
+                          {option.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
                 <label className="flex items-center justify-between gap-3">
                   <span className="text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.86rem)" }}>
                     Modo noturno automático
@@ -139,6 +240,10 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                     />
                   </label>
                 </div>
+              </section>
+
+              <div className="mb-1 text-muted-foreground" style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}>
+                Agendas exibidas
               </div>
 
               {isLoading && (

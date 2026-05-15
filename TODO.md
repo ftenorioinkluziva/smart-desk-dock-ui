@@ -33,18 +33,18 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
 
 ## P1 - Pomodoro e Timer sem quebrar a musica
 
-- [ ] Adicionar vibracao opcional para Pomodoro e Timer.
+- [x] Adicionar vibracao opcional para Pomodoro e Timer.
   - Usar `navigator.vibrate()` quando disponivel.
   - Ter padroes diferentes para Pomodoro e Timer.
   - Nao depender de vibracao para comunicar o fim; manter alerta visual forte.
   - Considerar que iOS Safari pode nao suportar Vibration API.
 
-- [ ] Melhorar alerta visual de conclusao.
+- [x] Melhorar alerta visual de conclusao.
   - Usar animacao mais clara no estado concluido.
   - Evitar piscadas agressivas demais em ambiente escuro.
   - Manter controles grandes: proxima fase, dispensar, reiniciar.
 
-- [ ] Adicionar configuracao de alerta.
+- [x] Adicionar configuracao de alerta.
   - Opcoes: visual apenas, visual + vibracao, visual + som.
   - Padrao recomendado: visual + vibracao quando suportado.
   - Salvar preferencia em `localStorage`.

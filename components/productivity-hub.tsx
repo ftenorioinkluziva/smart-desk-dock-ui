@@ -6,21 +6,19 @@ import {
   PRODUCTIVITY_CONTROL_EVENT,
   type ProductivityControlDetail,
 } from "@/lib/productivity-actions"
+import {
+  PRODUCTIVITY_ALERT_SETTINGS_EVENT,
+  POMODORO_DURATIONS_EVENT,
+  DEFAULT_POMODORO_DURATIONS,
+  readPomodoroDurations,
+  readProductivityAlertSettings,
+  triggerProductivityAlert,
+  type PomodoroDurations,
+  type PomodoroMode,
+  type ProductivityAlertSettings,
+} from "@/lib/productivity-settings"
 
 type Tab = "pomodoro" | "timer" | "stopwatch"
-type PomodoroMode = "focus" | "short-break" | "long-break"
-
-const DEFAULT_POMODORO_DURATIONS: Record<PomodoroMode, number> = {
-  "focus": 25 * 60,
-  "short-break": 5 * 60,
-  "long-break": 15 * 60,
-}
-
-const POMODORO_CONFIG_FIELDS: Array<{ mode: PomodoroMode; label: string }> = [
-  { mode: "focus", label: "Foco" },
-  { mode: "short-break", label: "Pausa" },
-  { mode: "long-break", label: "Pausa longa" },
-]
 
 const MODE_LABELS: Record<PomodoroMode, string> = {
   "focus": "Foco",
@@ -35,19 +33,37 @@ const TAB_LABELS: Record<Tab, string> = {
 }
 
 const TIMER_PRESETS = [5, 10, 15, 30]
-const POMODORO_DURATIONS_STORAGE_KEY = "focus-dock-pomodoro-durations"
 
-function toMinutesDrafts(durations: Record<PomodoroMode, number>): Record<PomodoroMode, string> {
-  return {
-    "focus": String(Math.round(durations["focus"] / 60)),
-    "short-break": String(Math.round(durations["short-break"] / 60)),
-    "long-break": String(Math.round(durations["long-break"] / 60)),
-  }
+function useProductivityAlertSettings() {
+  const [alertSettings, setAlertSettings] = useState<ProductivityAlertSettings>(() => readProductivityAlertSettings())
+
+  useEffect(() => {
+    const handleSettingsChange = (event: Event) => {
+      const detail = (event as CustomEvent<ProductivityAlertSettings>).detail
+      setAlertSettings(detail ?? readProductivityAlertSettings())
+    }
+
+    window.addEventListener(PRODUCTIVITY_ALERT_SETTINGS_EVENT, handleSettingsChange)
+    return () => window.removeEventListener(PRODUCTIVITY_ALERT_SETTINGS_EVENT, handleSettingsChange)
+  }, [])
+
+  return alertSettings
 }
 
-function normalizeStoredDuration(value: unknown, fallback: number): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return fallback
-  return Math.max(60, Math.min(10800, Math.round(value)))
+function usePomodoroDurations() {
+  const [durations, setDurations] = useState<PomodoroDurations>(() => readPomodoroDurations())
+
+  useEffect(() => {
+    const handleDurationChange = (event: Event) => {
+      const detail = (event as CustomEvent<PomodoroDurations>).detail
+      setDurations(detail ?? readPomodoroDurations())
+    }
+
+    window.addEventListener(POMODORO_DURATIONS_EVENT, handleDurationChange)
+    return () => window.removeEventListener(POMODORO_DURATIONS_EVENT, handleDurationChange)
+  }, [])
+
+  return durations
 }
 
 // ── Shared sub-components ──────────────────────────────────────────────────
@@ -67,7 +83,7 @@ function ControlButton({
   variant?: "primary" | "secondary" | "alert"
   icon?: React.ReactNode
 }) {
-  const base = "flex items-center justify-center gap-2 w-full rounded-2xl font-medium tracking-wide transition-all duration-150 active:scale-[0.96] select-none"
+  const base = "flex items-center justify-center gap-2 w-full rounded-2xl font-medium transition-all duration-150 active:scale-[0.96] select-none"
   const py = "py-[clamp(0.45rem,1.3vh,0.7rem)]"
   const size = "text-[clamp(0.65rem,1.9vw,0.85rem)]"
 
@@ -111,7 +127,7 @@ export function ProductivityHub() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-[clamp(0.3rem,0.9vh,0.5rem)] rounded-lg text-center font-medium tracking-wide transition-all duration-150 active:scale-[0.97] ${
+            className={`flex-1 py-[clamp(0.3rem,0.9vh,0.5rem)] rounded-lg text-center font-medium transition-all duration-150 active:scale-[0.97] ${
               activeTab === tab
                 ? "bg-secondary text-foreground border border-border/60"
                 : "text-muted-foreground hover:text-foreground/80"
@@ -137,12 +153,12 @@ export function ProductivityHub() {
 
 function PomodoroView({ command }: { command: ProductivityControlDetail | null }) {
   const [mode, setMode] = useState<PomodoroMode>("focus")
-  const [durations, setDurations] = useState<Record<PomodoroMode, number>>(DEFAULT_POMODORO_DURATIONS)
-  const [durationDrafts, setDurationDrafts] = useState<Record<PomodoroMode, string>>(toMinutesDrafts(DEFAULT_POMODORO_DURATIONS))
   const [totalSeconds, setTotalSeconds] = useState(DEFAULT_POMODORO_DURATIONS["focus"])
   const [isRunning, setIsRunning] = useState(false)
   const [isAlertVisible, setIsAlertVisible] = useState(false)
   const [sessions, setSessions] = useState(0)
+  const alertSettings = useProductivityAlertSettings()
+  const durations = usePomodoroDurations()
 
   const duration = durations[mode]
   const progress = ((duration - totalSeconds) / duration) * 100
@@ -151,33 +167,11 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
   const strokeDashoffset = circumference - (progress / 100) * circumference
 
   useEffect(() => {
-    try {
-      const rawValue = window.localStorage.getItem(POMODORO_DURATIONS_STORAGE_KEY)
-      if (!rawValue) return
-      const parsed = JSON.parse(rawValue) as Partial<Record<PomodoroMode, unknown>>
-      const loadedDurations: Record<PomodoroMode, number> = {
-        "focus": normalizeStoredDuration(parsed["focus"], DEFAULT_POMODORO_DURATIONS["focus"]),
-        "short-break": normalizeStoredDuration(parsed["short-break"], DEFAULT_POMODORO_DURATIONS["short-break"]),
-        "long-break": normalizeStoredDuration(parsed["long-break"], DEFAULT_POMODORO_DURATIONS["long-break"]),
-      }
-
-      setDurations(loadedDurations)
-      setDurationDrafts(toMinutesDrafts(loadedDurations))
-      setTotalSeconds(loadedDurations["focus"])
-    } catch {
-      window.localStorage.removeItem(POMODORO_DURATIONS_STORAGE_KEY)
-    }
-  }, [])
-
-  useEffect(() => {
-    window.localStorage.setItem(POMODORO_DURATIONS_STORAGE_KEY, JSON.stringify(durations))
-  }, [durations])
-
-  useEffect(() => {
     if (!isRunning) return
     if (totalSeconds <= 0) {
       setIsRunning(false)
       setIsAlertVisible(true)
+      triggerProductivityAlert("pomodoro", alertSettings)
       if (mode === "focus") setSessions((p) => p + 1)
       return
     }
@@ -185,7 +179,12 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
       setTotalSeconds((p) => (p <= 1 ? (clearInterval(id), 0) : p - 1))
     }, 1000)
     return () => clearInterval(id)
-  }, [isRunning, totalSeconds, mode])
+  }, [alertSettings, isRunning, totalSeconds, mode])
+
+  useEffect(() => {
+    if (isRunning || isAlertVisible) return
+    setTotalSeconds(durations[mode])
+  }, [durations, isAlertVisible, isRunning, mode])
 
   const switchMode = useCallback((m: PomodoroMode) => {
     setMode(m)
@@ -239,32 +238,6 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
     setIsRunning(true)
   }, [durations, mode, sessions])
 
-  const applyDurationDraft = useCallback((targetMode: PomodoroMode) => {
-    const rawValue = durationDrafts[targetMode].trim()
-    const parsedMinutes = Number(rawValue.replace(",", "."))
-    const fallbackMinutes = Math.round(durations[targetMode] / 60)
-    const normalizedMinutes = Number.isFinite(parsedMinutes)
-      ? Math.max(1, Math.min(180, Math.round(parsedMinutes)))
-      : fallbackMinutes
-
-    const normalizedSeconds = normalizedMinutes * 60
-
-    setDurationDrafts((prev) => ({
-      ...prev,
-      [targetMode]: String(normalizedMinutes),
-    }))
-    setDurations((prev) => ({
-      ...prev,
-      [targetMode]: normalizedSeconds,
-    }))
-
-    if (targetMode === mode) {
-      setTotalSeconds(normalizedSeconds)
-      setIsRunning(false)
-      setIsAlertVisible(false)
-    }
-  }, [durationDrafts, durations, mode])
-
   const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
   const arcColor = isAlertVisible ? "text-destructive" : mode === "focus" ? "text-accent" : "text-chart-2"
@@ -274,12 +247,10 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
 
       {/* Left: ring timer */}
       <div className="flex flex-col items-center justify-center flex-1">
-        <div
-          className={`relative flex items-center justify-center ${isAlertVisible ? "animate-pomodoro-alarm" : ""}`}
-        >
+        <div className="relative flex items-center justify-center">
           {isAlertVisible && (
-            <div className="absolute -inset-2 rounded-full animate-pomodoro-pulse pointer-events-none">
-              <div className="w-full h-full rounded-full border-2 border-destructive/40" />
+            <div className="absolute -inset-3 rounded-full animate-productivity-complete pointer-events-none">
+              <div className="h-full w-full rounded-full border-2 border-destructive/45 bg-destructive/5" />
             </div>
           )}
 
@@ -293,19 +264,19 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
               fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
-              className={`transition-all duration-1000 ease-linear ${arcColor} ${isAlertVisible ? "animate-pomodoro-blink" : ""}`}
+              className={`transition-all duration-1000 ease-linear ${arcColor}`}
             />
           </svg>
 
-          <div className={`absolute flex flex-col items-center ${isAlertVisible ? "animate-pomodoro-blink" : ""}`}>
+          <div className="absolute flex flex-col items-center">
             <span
-              className={`font-extralight tabular-nums font-mono tracking-tight leading-none ${isAlertVisible ? "text-destructive" : "text-foreground"}`}
+              className={`font-extralight tabular-nums font-mono leading-none ${isAlertVisible ? "text-destructive" : "text-foreground"}`}
               style={{ fontSize: "clamp(2rem,8.5vw,4rem)" }}
             >
               {mins}:{secs}
             </span>
             <span
-              className={`uppercase tracking-[0.14em] font-medium leading-none mt-0.5 ${isAlertVisible ? "text-destructive/80" : "text-muted-foreground"}`}
+              className={`uppercase font-medium leading-none mt-0.5 ${isAlertVisible ? "text-destructive/80" : "text-muted-foreground"}`}
               style={{ fontSize: "clamp(0.6rem,1.7vw,0.85rem)" }}
             >
               {isAlertVisible ? "Concluído!" : MODE_LABELS[mode]}
@@ -321,70 +292,34 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
 
         {/* Mode selector */}
         {!isAlertVisible ? (
-          <div className="flex flex-wrap gap-[clamp(0.2rem,0.6vw,0.35rem)]">
+          <div className="grid grid-cols-1 gap-[clamp(0.18rem,0.5vh,0.3rem)]">
             {(Object.keys(durations) as PomodoroMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => switchMode(m)}
-                className={`flex items-center gap-1 px-[clamp(0.4rem,1.2vw,0.6rem)] py-[clamp(0.25rem,0.7vh,0.35rem)] rounded-xl font-medium tracking-wide transition-all duration-150 active:scale-[0.96] ${
+                className={`flex items-center justify-between gap-2 px-[clamp(0.45rem,1.2vw,0.65rem)] py-[clamp(0.26rem,0.7vh,0.38rem)] rounded-xl font-medium transition-all duration-150 active:scale-[0.96] ${
                   mode === m
-                    ? "bg-secondary text-foreground border border-border/60"
-                    : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/40"
+                    ? "bg-secondary/80 text-foreground border border-border/60"
+                    : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/35"
                 }`}
                 style={{ fontSize: "clamp(0.55rem,1.5vw,0.72rem)" }}
               >
-                {m === "focus" ? <Brain className="size-2.5 shrink-0" /> : <Coffee className="size-2.5 shrink-0" />}
-                {MODE_LABELS[m]}
+                <span className="flex items-center gap-1.5">
+                  {m === "focus" ? <Brain className="size-2.5 shrink-0" /> : <Coffee className="size-2.5 shrink-0" />}
+                  {MODE_LABELS[m]}
+                </span>
+                <span className="font-mono text-muted-foreground/75">{Math.round(durations[m] / 60)}m</span>
               </button>
             ))}
           </div>
         ) : (
           <div className="flex items-center gap-1.5">
-            <BellRing className="size-3.5 text-destructive animate-pomodoro-blink shrink-0" />
+            <BellRing className="size-3.5 text-destructive animate-alert-icon shrink-0" />
             <span className="text-destructive font-semibold" style={{ fontSize: "clamp(0.65rem,1.8vw,0.85rem)" }}>
               Fase concluída!
             </span>
           </div>
         )}
-
-        {/* Duration settings */}
-        <div className="rounded-xl border border-border/40 bg-secondary/25 p-[clamp(0.3rem,0.8vh,0.45rem)]">
-          <div className="text-muted-foreground font-medium mb-[clamp(0.2rem,0.6vh,0.3rem)]" style={{ fontSize: "clamp(0.52rem,1.45vw,0.68rem)" }}>
-            Duração (min)
-          </div>
-          <div className="grid grid-cols-3 gap-[clamp(0.2rem,0.6vw,0.3rem)]">
-            {POMODORO_CONFIG_FIELDS.map(({ mode: fieldMode, label }) => (
-              <label key={fieldMode} className="flex flex-col gap-[clamp(0.08rem,0.25vh,0.14rem)]">
-                <span className="text-muted-foreground" style={{ fontSize: "clamp(0.48rem,1.35vw,0.62rem)" }}>
-                  {label}
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  max={180}
-                  step={1}
-                  inputMode="numeric"
-                  value={durationDrafts[fieldMode]}
-                  onChange={(event) => {
-                    setDurationDrafts((prev) => ({
-                      ...prev,
-                      [fieldMode]: event.target.value,
-                    }))
-                  }}
-                  onBlur={() => applyDurationDraft(fieldMode)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.currentTarget.blur()
-                    }
-                  }}
-                  className="w-full rounded-lg border border-border/60 bg-background/80 px-1.5 py-1 text-center text-foreground outline-none transition-colors focus:border-border"
-                  style={{ fontSize: "clamp(0.58rem,1.6vw,0.76rem)" }}
-                  aria-label={`Duração de ${label.toLowerCase()} em minutos`}
-                />
-              </label>
-            ))}
-          </div>
-        </div>
 
         {/* Sessions progress */}
         <div className="flex items-center gap-1.5">
@@ -447,19 +382,21 @@ function TimerView({ command }: { command: ProductivityControlDetail | null }) {
   const [isRunning, setIsRunning] = useState(false)
   const [isAlertVisible, setIsAlertVisible] = useState(false)
   const initialRef = useRef(5 * 60)
+  const alertSettings = useProductivityAlertSettings()
 
   useEffect(() => {
     if (!isRunning) return
     if (totalSeconds <= 0) {
       setIsRunning(false)
       setIsAlertVisible(true)
+      triggerProductivityAlert("timer", alertSettings)
       return
     }
     const id = setInterval(() => {
       setTotalSeconds((p) => (p <= 1 ? (clearInterval(id), 0) : p - 1))
     }, 1000)
     return () => clearInterval(id)
-  }, [isRunning, totalSeconds])
+  }, [alertSettings, isRunning, totalSeconds])
 
   const reset = useCallback(() => {
     setIsRunning(false)
@@ -511,35 +448,51 @@ function TimerView({ command }: { command: ProductivityControlDetail | null }) {
   const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
   const progress = ((initialRef.current - totalSeconds) / initialRef.current) * 100
+  const radius = 54
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (Math.max(0, Math.min(100, progress)) / 100) * circumference
 
   return (
     <div className="w-full flex items-center gap-[clamp(0.75rem,2.5vw,1.5rem)]">
 
-      {/* Left: time + progress bar */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-[clamp(0.4rem,1.1vh,0.65rem)]">
-        <span
-          className={`font-extralight tabular-nums font-mono tracking-tight leading-none transition-colors ${
-            isAlertVisible ? "text-destructive animate-pomodoro-blink" : "text-foreground"
-          }`}
-          style={{ fontSize: "clamp(2.8rem,13vw,6rem)" }}
-        >
-          {mins}:{secs}
-        </span>
+      {/* Left: ring timer */}
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="relative flex items-center justify-center">
+          {isAlertVisible && (
+            <div className="absolute -inset-3 rounded-full animate-productivity-complete pointer-events-none">
+              <div className="h-full w-full rounded-full border-2 border-destructive/45 bg-destructive/5" />
+            </div>
+          )}
 
-        {/* Progress bar */}
-        <div className="h-[clamp(0.2rem,0.5vh,0.3rem)] w-full rounded-full bg-secondary overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${isAlertVisible ? "bg-destructive" : "bg-accent"}`}
-            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-          />
+          <svg
+            viewBox="0 0 120 120"
+            className="h-[clamp(8.5rem,30vw,14rem)] w-[clamp(8.5rem,30vw,14rem)] -rotate-90"
+          >
+            <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="4" className="text-secondary" />
+            <circle
+              cx="60" cy="60" r={radius}
+              fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              className={`transition-all duration-1000 ease-linear ${isAlertVisible ? "text-destructive" : "text-accent"}`}
+            />
+          </svg>
+
+          <div className="absolute flex flex-col items-center">
+            <span
+              className={`font-extralight tabular-nums font-mono leading-none transition-colors ${isAlertVisible ? "text-destructive" : "text-foreground"}`}
+              style={{ fontSize: "clamp(2rem,8.5vw,4rem)" }}
+            >
+              {mins}:{secs}
+            </span>
+            <span
+              className={`uppercase font-medium leading-none mt-0.5 ${isAlertVisible ? "text-destructive/80" : "text-muted-foreground"}`}
+              style={{ fontSize: "clamp(0.6rem,1.7vw,0.85rem)" }}
+            >
+              {isAlertVisible ? "Concluído!" : isRunning ? "Timer" : "Pronto"}
+            </span>
+          </div>
         </div>
-
-        <span
-          className="text-muted-foreground leading-none text-center"
-          style={{ fontSize: "clamp(0.6rem,1.7vw,0.8rem)" }}
-        >
-          {isAlertVisible ? "Timer concluído!" : isRunning ? "Em contagem…" : "Pronto para iniciar"}
-        </span>
       </div>
 
       <Divider />
@@ -553,7 +506,7 @@ function TimerView({ command }: { command: ProductivityControlDetail | null }) {
             <button
               key={m}
               onClick={() => applyPreset(m)}
-              className={`py-[clamp(0.3rem,0.8vh,0.45rem)] rounded-xl font-medium tracking-wide transition-all duration-150 active:scale-[0.96] ${
+              className={`py-[clamp(0.3rem,0.8vh,0.45rem)] rounded-xl font-medium transition-all duration-150 active:scale-[0.96] ${
                 initialRef.current === m * 60
                   ? "bg-secondary text-foreground border border-border/60"
                   : "bg-secondary/40 text-muted-foreground hover:text-foreground/80 hover:bg-secondary/70"
@@ -632,7 +585,7 @@ function StopwatchView({ command }: { command: ProductivityControlDetail | null 
       {/* Left: elapsed time */}
       <div className="flex-1 flex flex-col items-center justify-center gap-[clamp(0.35rem,0.9vh,0.55rem)]">
         <span
-          className="font-extralight text-foreground tabular-nums font-mono tracking-tight leading-none"
+          className="font-extralight text-foreground tabular-nums font-mono leading-none"
           style={{ fontSize: "clamp(2.8rem,13vw,6rem)" }}
         >
           {hrs > 0 && `${hrs.toString().padStart(2, "0")}:`}{mins}:{secs}

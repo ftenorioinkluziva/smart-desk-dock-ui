@@ -73,17 +73,19 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
   - Permitir selecao multipla no app.
   - Aplicar selecao ao Painel Hoje e ao calendario mensal.
 
-- [ ] Criar painel de configuracoes.
-  - Duracoes do Pomodoro.
-  - Preferencia de alerta.
-  - Tema/brilho.
-  - Cidade exibida do clima.
-  - Agenda padrao, quando houver multiplas agendas.
+- [x] Criar painel de configuracoes.
+  - [x] Duracoes do Pomodoro.
+  - [x] Preferencia de alerta.
+  - [x] Agenda padrao, quando houver multiplas agendas.
   - [x] Mostrar a engrenagem de configuracoes somente na primeira tela.
 
-- [ ] Persistir preferencias locais.
-  - Usar chaves versionadas em `localStorage`.
-  - Ter fallback seguro se dados antigos estiverem invalidos.
+- [ ] Expandir configuracoes restantes.
+  - Tema/brilho.
+  - Cidade exibida do clima.
+
+- [x] Persistir preferencias locais.
+  - [x] Usar chaves versionadas em `localStorage`.
+  - [x] Ter fallback seguro se dados antigos estiverem invalidos.
 
 ## P2 - Controle de casa inteligente
 

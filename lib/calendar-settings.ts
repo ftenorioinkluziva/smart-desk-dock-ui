@@ -1,16 +1,23 @@
-export const CALENDAR_IDS_STORAGE_KEY = "focus-dock-calendar-ids"
+export const LEGACY_CALENDAR_IDS_STORAGE_KEY = "focus-dock-calendar-ids"
+export const CALENDAR_IDS_STORAGE_KEY = "focus-dock-calendar-ids-v1"
 export const CALENDAR_SETTINGS_EVENT = "focus-dock-calendar-settings"
+
+function normalizeCalendarIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return Array.from(new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)))
+}
 
 export function readSelectedCalendarIds(): string[] {
   if (typeof window === "undefined") return []
 
   try {
     const rawValue = window.localStorage.getItem(CALENDAR_IDS_STORAGE_KEY)
+      ?? window.localStorage.getItem(LEGACY_CALENDAR_IDS_STORAGE_KEY)
     if (!rawValue) return []
     const parsed = JSON.parse(rawValue) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    return normalizeCalendarIds(parsed)
   } catch {
+    window.localStorage.removeItem(CALENDAR_IDS_STORAGE_KEY)
     return []
   }
 }

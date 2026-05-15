@@ -1,6 +1,7 @@
 export const PRODUCTIVITY_ALERT_SETTINGS_STORAGE_KEY = "focus-dock-productivity-alert-settings-v1"
 export const PRODUCTIVITY_ALERT_SETTINGS_EVENT = "focus-dock-productivity-alert-settings"
-export const POMODORO_DURATIONS_STORAGE_KEY = "focus-dock-pomodoro-durations"
+export const LEGACY_POMODORO_DURATIONS_STORAGE_KEY = "focus-dock-pomodoro-durations"
+export const POMODORO_DURATIONS_STORAGE_KEY = "focus-dock-pomodoro-durations-v1"
 export const POMODORO_DURATIONS_EVENT = "focus-dock-pomodoro-durations"
 
 export type ProductivityAlertPreference = "visual" | "visual-vibration" | "visual-sound"
@@ -65,6 +66,7 @@ export function readPomodoroDurations(): PomodoroDurations {
 
   try {
     const rawValue = window.localStorage.getItem(POMODORO_DURATIONS_STORAGE_KEY)
+      ?? window.localStorage.getItem(LEGACY_POMODORO_DURATIONS_STORAGE_KEY)
     if (!rawValue) return DEFAULT_POMODORO_DURATIONS
 
     const parsed = JSON.parse(rawValue) as Partial<Record<PomodoroMode, unknown>>

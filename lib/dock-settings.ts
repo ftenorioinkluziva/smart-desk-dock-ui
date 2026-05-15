@@ -1,4 +1,5 @@
-export const NIGHT_MODE_SETTINGS_STORAGE_KEY = "focus-dock-night-mode-settings"
+export const LEGACY_NIGHT_MODE_SETTINGS_STORAGE_KEY = "focus-dock-night-mode-settings"
+export const NIGHT_MODE_SETTINGS_STORAGE_KEY = "focus-dock-night-mode-settings-v1"
 export const NIGHT_MODE_SETTINGS_EVENT = "focus-dock-night-mode-settings"
 
 export type NightModeSettings = {
@@ -22,6 +23,7 @@ export function readNightModeSettings(): NightModeSettings {
 
   try {
     const rawValue = window.localStorage.getItem(NIGHT_MODE_SETTINGS_STORAGE_KEY)
+      ?? window.localStorage.getItem(LEGACY_NIGHT_MODE_SETTINGS_STORAGE_KEY)
     if (!rawValue) return DEFAULT_NIGHT_MODE_SETTINGS
     const parsed = JSON.parse(rawValue) as Partial<NightModeSettings>
 
@@ -31,6 +33,7 @@ export function readNightModeSettings(): NightModeSettings {
       end: isValidTime(parsed.end) ? parsed.end : DEFAULT_NIGHT_MODE_SETTINGS.end,
     }
   } catch {
+    window.localStorage.removeItem(NIGHT_MODE_SETTINGS_STORAGE_KEY)
     return DEFAULT_NIGHT_MODE_SETTINGS
   }
 }

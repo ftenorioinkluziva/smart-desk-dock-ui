@@ -26,6 +26,7 @@ type FinanceDockSummary = {
   driftPercentage: number
   unrealizedGain: number
   assets: FinanceAsset[]
+  prices: { ticker: string; name: string; price: number; priceDate: string; calculationType: string }[]
   updatedAt: string
   mock?: boolean
   error?: string
@@ -39,6 +40,7 @@ const FALLBACK: FinanceDockSummary = {
   driftPercentage: 0,
   unrealizedGain: 0,
   assets: [],
+  prices: [],
   updatedAt: new Date().toISOString(),
   mock: true,
 }
@@ -65,8 +67,11 @@ function formatCompactCurrency(value: number) {
   return formatCurrency(value)
 }
 
-function formatQuote(value: number | null | undefined) {
+function formatQuote(value: number | null | undefined, calculationType?: string) {
   if (typeof value !== "number" || Number.isNaN(value)) return "sem cotação"
+  if (calculationType === "PERCENTUAL") {
+    return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
+  }
   return value.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -380,13 +385,10 @@ export function FinancePanel() {
           <div className="finance-ticker-track flex w-max items-center py-1">
             {[0, 1].map((group) => (
               <div key={group} className="flex shrink-0 items-center gap-[clamp(0.9rem,2.5vw,1.4rem)] pr-[clamp(0.9rem,2.5vw,1.4rem)]">
-                {summary.assets.map((asset) => (
-                  <div key={`${group}-${asset.id}`} className="flex shrink-0 items-center gap-2 font-mono text-[clamp(0.58rem,1.35vw,0.68rem)]">
-                    <span className="font-semibold text-foreground">{asset.ticker}</span>
-                    <span className="text-muted-foreground">{formatQuote(asset.currentPrice)}</span>
-                    <span className={typeof asset.dailyChangePercentage === "number" && asset.dailyChangePercentage < 0 ? "text-destructive" : "text-accent"}>
-                      {formatDailyChange(asset.dailyChangePercentage)}
-                    </span>
+                {summary.prices.map((p) => (
+                  <div key={`${group}-${p.ticker}`} className="flex shrink-0 items-center gap-2 font-mono text-[clamp(0.58rem,1.35vw,0.68rem)]">
+                    <span className="font-semibold text-foreground">{p.ticker}</span>
+                    <span className="text-muted-foreground">{formatQuote(p.price, p.calculationType)}</span>
                   </div>
                 ))}
               </div>

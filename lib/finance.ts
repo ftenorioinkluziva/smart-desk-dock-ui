@@ -66,8 +66,17 @@ export type FinanceDockSummary = {
   driftPercentage: number
   unrealizedGain: number
   assets: FinanceAssetSummary[]
+  prices: AssetPrice[]
   updatedAt: string
   mock?: boolean
+}
+
+export type AssetPrice = {
+  ticker: string
+  name: string
+  price: number
+  priceDate: string
+  calculationType: string
 }
 
 export async function financeLogin(email: string, password: string) {
@@ -169,8 +178,35 @@ function buildAssets(summary: FinanceSummary): FinanceAssetSummary[] {
   })
 }
 
+function stripSuffix(ticker: string): string {
+  return ticker.replace(/\.SA$/, "")
+}
+
+export async function fetchAssetPrices(token: string): Promise<AssetPrice[]> {
+  return financeFetch<AssetPrice[]>("/api/assets/prices", token)
+}
+
 export async function fetchFinanceDockSummary(token?: string): Promise<FinanceDockSummary> {
-  const summary = await financeFetch<FinanceSummary>("/api/portfolio/summary", token)
+  if (!token) throw new Error("Token required")
+
+  const [summary, prices] = await Promise.all([
+    financeFetch<FinanceSummary>("/api/portfolio/summary", token),
+    fetchAssetPrices(token).catch(() => [] as AssetPrice[]),
+  ])
+
+  const pricesByTicker = new Map<string, number>()
+  for (const p of prices) {
+    pricesByTicker.set(stripSuffix(p.ticker), p.price)
+  }
+
+  const assets = buildAssets(summary)
+
+  for (const asset of assets) {
+    const livePrice = pricesByTicker.get(asset.ticker)
+    if (livePrice !== undefined) {
+      asset.currentPrice = livePrice
+    }
+  }
 
   return {
     totalValue: summary.totalValue,
@@ -179,7 +215,8 @@ export async function fetchFinanceDockSummary(token?: string): Promise<FinanceDo
     cashBalance: summary.cashBalance,
     driftPercentage: summary.basketDriftPercentage,
     unrealizedGain: summary.unrealizedGain,
-    assets: buildAssets(summary),
+    assets,
+    prices,
     updatedAt: new Date().toISOString(),
   }
 }
@@ -198,6 +235,16 @@ export function getMockFinanceDockSummary(): FinanceDockSummary {
       { id: "mock-asset-3", ticker: "IMAB11", label: "Inflação", shares: 251, percentage: 24.8, targetPercentage: 25, currentPrice: 126.91, currentValue: 31855, gain: 1240, gainPercentage: 4.1, dailyChangePercentage: 0.2 },
       { id: "mock-asset-4", ticker: "GOLD11", label: "Ouro", shares: 180, percentage: 12.1, targetPercentage: 10, currentPrice: 86.33, currentValue: 15540, gain: 1280, gainPercentage: 9, dailyChangePercentage: 1.1 },
       { id: "mock-asset-5", ticker: "CASH", label: "Caixa", shares: null, percentage: 5.6, targetPercentage: 5, currentPrice: null, currentValue: 7230, gain: 0, gainPercentage: 0, dailyChangePercentage: null },
+    ],
+    prices: [
+      { ticker: "IVVB11.SA", name: "ETF IVVB11", price: 189.06, priceDate: new Date().toISOString(), calculationType: "PRECO" },
+      { ticker: "BOVA11.SA", name: "ETF BOVA11", price: 140.22, priceDate: new Date().toISOString(), calculationType: "PRECO" },
+      { ticker: "IMAB11.SA", name: "ETF IMAB11", price: 126.91, priceDate: new Date().toISOString(), calculationType: "PRECO" },
+      { ticker: "GOLD11.SA", name: "ETF GOLD11", price: 86.33, priceDate: new Date().toISOString(), calculationType: "PRECO" },
+      { ticker: "BTC-USD", name: "Bitcoin", price: 73498.54, priceDate: new Date().toISOString(), calculationType: "PRECO" },
+      { ticker: "BNB-USD", name: "BNB", price: 640.08, priceDate: new Date().toISOString(), calculationType: "PRECO" },
+      { ticker: "B5P211.SA", name: "ETF B5P211", price: 108.01, priceDate: new Date().toISOString(), calculationType: "PRECO" },
+      { ticker: "USDBRL", name: "Dólar", price: 5.82, priceDate: new Date().toISOString(), calculationType: "PRECO" },
     ],
     updatedAt: new Date().toISOString(),
     mock: true,

@@ -83,7 +83,7 @@ function ControlButton({
   variant?: "primary" | "secondary" | "alert"
   icon?: React.ReactNode
 }) {
-  const base = "flex items-center justify-center gap-2 w-full rounded-2xl font-medium transition-all duration-150 active:scale-[0.96] select-none"
+  const base = "flex items-center justify-center gap-2 w-full rounded-2xl font-medium transition-transform duration-150 active:scale-[0.96] select-none"
   const py = "py-[clamp(0.45rem,1.3vh,0.7rem)]"
   const size = "text-[clamp(0.65rem,1.9vw,0.85rem)]"
 
@@ -94,7 +94,7 @@ function ControlButton({
   }
 
   return (
-    <button onClick={onClick} aria-label={label} className={`${base} ${py} ${size} ${variants[variant]}`}>
+    <button onClick={onClick} aria-label={label} className={`${base} ${py} ${size} ${variants[variant]} focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1`}>
       {icon && <span className="flex items-center [&>svg]:size-3.5">{icon}</span>}
       {label}
     </button>
@@ -120,14 +120,15 @@ export function ProductivityHub() {
   }, [])
 
   return (
-    <div className="flex flex-col h-full w-full dock-px gap-[clamp(0.3rem,0.9vh,0.55rem)]">
+    <section aria-labelledby="productivity-heading" className="flex flex-col h-full w-full dock-px gap-[clamp(0.3rem,0.9vh,0.55rem)]">
+      <h2 id="productivity-heading" className="sr-only">Produtividade</h2>
       {/* Tab bar — full width, readable tap targets */}
       <div className="flex items-stretch rounded-xl bg-secondary/30 border border-border/30 p-[clamp(0.15rem,0.4vh,0.25rem)] shrink-0 gap-[clamp(0.15rem,0.4vw,0.25rem)]">
         {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-[clamp(0.3rem,0.9vh,0.5rem)] rounded-lg text-center font-medium transition-all duration-150 active:scale-[0.97] ${
+            className={`flex-1 py-[clamp(0.3rem,0.9vh,0.5rem)] rounded-lg text-center font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97] ${
               activeTab === tab
                 ? "bg-secondary text-foreground border border-border/60"
                 : "text-muted-foreground hover:text-foreground/80"
@@ -145,7 +146,7 @@ export function ProductivityHub() {
         {activeTab === "timer" && <TimerView command={command} />}
         {activeTab === "stopwatch" && <StopwatchView command={command} />}
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -244,6 +245,7 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
 
   return (
     <div className="w-full flex items-center gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+      <h3 className="sr-only">Pomodoro</h3>
 
       {/* Left: ring timer */}
       <div className="flex flex-col items-center justify-center flex-1">
@@ -264,7 +266,7 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
               fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
-              className={`transition-all duration-1000 ease-linear ${arcColor}`}
+               className={`transition-[stroke-dashoffset] duration-1000 ease-linear ${arcColor}`}
             />
           </svg>
 
@@ -297,7 +299,7 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
               <button
                 key={m}
                 onClick={() => switchMode(m)}
-                className={`flex items-center justify-between gap-2 px-[clamp(0.45rem,1.2vw,0.65rem)] py-[clamp(0.26rem,0.7vh,0.38rem)] rounded-xl font-medium transition-all duration-150 active:scale-[0.96] ${
+                className={`flex items-center justify-between gap-2 px-[clamp(0.45rem,1.2vw,0.65rem)] py-[clamp(0.26rem,0.7vh,0.38rem)] rounded-xl font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] ${
                   mode === m
                     ? "bg-secondary/80 text-foreground border border-border/60"
                     : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/35"
@@ -454,6 +456,7 @@ function TimerView({ command }: { command: ProductivityControlDetail | null }) {
 
   return (
     <div className="w-full flex items-center gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+      <h3 className="sr-only">Timer</h3>
 
       {/* Left: ring timer */}
       <div className="flex flex-1 flex-col items-center justify-center">
@@ -474,7 +477,7 @@ function TimerView({ command }: { command: ProductivityControlDetail | null }) {
               fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
-              className={`transition-all duration-1000 ease-linear ${isAlertVisible ? "text-destructive" : "text-accent"}`}
+               className={`transition-[stroke-dashoffset,color] duration-1000 ease-linear ${isAlertVisible ? "text-destructive" : "text-accent"}`}
             />
           </svg>
 
@@ -506,7 +509,7 @@ function TimerView({ command }: { command: ProductivityControlDetail | null }) {
             <button
               key={m}
               onClick={() => applyPreset(m)}
-              className={`py-[clamp(0.3rem,0.8vh,0.45rem)] rounded-xl font-medium transition-all duration-150 active:scale-[0.96] ${
+               className={`py-[clamp(0.3rem,0.8vh,0.45rem)] rounded-xl font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] ${
                 initialRef.current === m * 60
                   ? "bg-secondary text-foreground border border-border/60"
                   : "bg-secondary/40 text-muted-foreground hover:text-foreground/80 hover:bg-secondary/70"
@@ -581,6 +584,7 @@ function StopwatchView({ command }: { command: ProductivityControlDetail | null 
 
   return (
     <div className="w-full flex items-center gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+      <h3 className="sr-only">Cronômetro</h3>
 
       {/* Left: elapsed time */}
       <div className="flex-1 flex flex-col items-center justify-center gap-[clamp(0.35rem,0.9vh,0.55rem)]">
@@ -594,13 +598,13 @@ function StopwatchView({ command }: { command: ProductivityControlDetail | null 
         {/* Thin animated bar when running */}
         <div className="h-[clamp(0.2rem,0.5vh,0.3rem)] w-full rounded-full bg-secondary overflow-hidden">
           {isRunning && (
-            <div
-              className="h-full rounded-full bg-accent/60"
-              style={{
-                width: `${((elapsed % 60) / 60) * 100}%`,
-                transition: "width 1s linear",
-              }}
-            />
+          <div
+            className="h-full rounded-full bg-accent/60 origin-left"
+            style={{
+              transform: `scaleX(${((elapsed % 60) / 60)})`,
+              transition: "transform 1s linear",
+            }}
+          />
           )}
         </div>
 

@@ -375,8 +375,9 @@ export function TodayPanel() {
   ])
 
   return (
-    <div className="grid h-full w-full dock-px items-center gap-[clamp(0.55rem,1.5vw,1rem)]" style={{ gridTemplateColumns: "minmax(0, 1.25fr) minmax(12rem, 0.75fr)" }}>
-      <div className="flex min-w-0 flex-col justify-center">
+      <section aria-labelledby="today-heading" className="grid h-full w-full dock-px items-center gap-[clamp(0.55rem,1.5vw,1rem)]" style={{ gridTemplateColumns: "minmax(0, 1.25fr) minmax(12rem, 0.75fr)" }}>
+        <h2 id="today-heading" className="sr-only">Hoje</h2>
+        <div className="flex min-w-0 flex-col justify-center">
         <div className="flex min-w-0 items-baseline leading-none">
           <span className="min-w-0 font-extralight text-foreground tabular-nums font-mono tracking-tight" style={{ fontSize: "clamp(4.3rem,15vw,8rem)" }}>
             {hours}:{minutes}
@@ -410,6 +411,6 @@ export function TodayPanel() {
           </div>
         </section>
       </div>
-    </div>
+    </section>
   )
 }

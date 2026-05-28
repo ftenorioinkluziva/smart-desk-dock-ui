@@ -56,13 +56,14 @@ export function NightDock() {
     <button
       type="button"
       onClick={() => setIsDimmed((current) => !current)}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden text-left"
+      className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       aria-label="Alternar brilho do modo noturno"
     >
       <div
         className={`flex flex-col items-center transition-[opacity,transform] duration-700 ${isDimmed ? "opacity-55" : "opacity-85"}`}
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
       >
+        <h2 className="sr-only">Modo Noturno</h2>
         <div className="flex items-baseline leading-none">
           <span className="font-extralight text-foreground tabular-nums font-mono tracking-tight" style={{ fontSize: "clamp(5rem,20vw,10.5rem)" }}>
             {hours}:{minutes}

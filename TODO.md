@@ -49,10 +49,12 @@ Backlog para evoluir o Focus Dock como um painel de mesa discreto, com foco em u
   - Padrao recomendado: visual + vibracao quando suportado.
   - Salvar preferencia em `localStorage`.
 
-- [ ] Avaliar notificacoes do navegador/PWA.
-  - Solicitar permissao apenas a partir de acao explicita do usuario.
-  - Usar como opcional, nao como dependencia.
-  - Documentar limitacoes em iOS/iPadOS.
+- [x] Avaliar notificacoes do navegador/PWA.
+  - [x] Solicitar permissao apenas a partir de acao explicita do usuario.
+  - [x] Usar como opcional, nao como dependencia.
+  - [x] Documentar limitacoes em iOS/iPadOS.
+  - Implementacao atual: notificacao local quando a pagina/app esta aberto e a permissao foi concedida.
+  - Push em background fica fora do MVP porque exige service worker, assinatura Web Push e validacao especifica em PWA instalada.
 
 ## P1 - Painel Hoje
 

@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-28T08:12:00-03:00",
+  "title": "Design System: Focus Dock",
+  "extensions": {
+    "colorMeta": {
+      "cockpit-void": {
+        "role": "neutral",
+        "displayName": "Cockpit Void",
+        "canonical": "oklch(0.07 0 0)",
+        "tonalRamp": ["oklch(0.03 0 0)", "oklch(0.05 0 0)", "oklch(0.07 0 0)", "oklch(0.09 0 0)", "oklch(0.11 0 0)", "oklch(0.13 0 0)", "oklch(0.15 0 0)", "oklch(0.17 0 0)"]
+      },
+      "panel-surface": {
+        "role": "neutral",
+        "displayName": "Panel Surface",
+        "canonical": "oklch(0.13 0 0)",
+        "tonalRamp": ["oklch(0.07 0 0)", "oklch(0.10 0 0)", "oklch(0.13 0 0)", "oklch(0.16 0 0)", "oklch(0.19 0 0)", "oklch(0.22 0 0)", "oklch(0.25 0 0)", "oklch(0.28 0 0)"]
+      },
+      "gauge-housing": {
+        "role": "neutral",
+        "displayName": "Gauge Housing",
+        "canonical": "oklch(0.2 0 0)",
+        "tonalRamp": ["oklch(0.12 0 0)", "oklch(0.16 0 0)", "oklch(0.20 0 0)", "oklch(0.24 0 0)", "oklch(0.28 0 0)", "oklch(0.32 0 0)", "oklch(0.36 0 0)", "oklch(0.40 0 0)"]
+      },
+      "frame-line": {
+        "role": "neutral",
+        "displayName": "Frame Line",
+        "canonical": "oklch(0.22 0 0)",
+        "tonalRamp": ["oklch(0.14 0 0)", "oklch(0.18 0 0)", "oklch(0.22 0 0)", "oklch(0.26 0 0)", "oklch(0.30 0 0)", "oklch(0.34 0 0)", "oklch(0.38 0 0)", "oklch(0.42 0 0)"]
+      },
+      "dim-readout": {
+        "role": "neutral",
+        "displayName": "Dim Readout",
+        "canonical": "oklch(0.55 0 0)",
+        "tonalRamp": ["oklch(0.30 0 0)", "oklch(0.38 0 0)", "oklch(0.46 0 0)", "oklch(0.52 0 0)", "oklch(0.55 0 0)", "oklch(0.62 0 0)", "oklch(0.70 0 0)", "oklch(0.80 0 0)"]
+      },
+      "instrument-white": {
+        "role": "neutral",
+        "displayName": "Instrument White",
+        "canonical": "oklch(0.95 0 0)",
+        "tonalRamp": ["oklch(0.70 0 0)", "oklch(0.78 0 0)", "oklch(0.85 0 0)", "oklch(0.90 0 0)", "oklch(0.93 0 0)", "oklch(0.95 0 0)", "oklch(0.97 0 0)", "oklch(0.99 0 0)"]
+      },
+      "signal-green": {
+        "role": "primary",
+        "displayName": "Signal Green",
+        "canonical": "oklch(0.72 0.19 155)",
+        "tonalRamp": ["oklch(0.15 0.03 155)", "oklch(0.25 0.06 155)", "oklch(0.35 0.10 155)", "oklch(0.50 0.15 155)", "oklch(0.62 0.18 155)", "oklch(0.72 0.19 155)", "oklch(0.82 0.14 155)", "oklch(0.92 0.06 155)"]
+      },
+      "alert-red": {
+        "role": "tertiary",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": ["oklch(0.15 0.04 27)", "oklch(0.25 0.08 27)", "oklch(0.35 0.14 27)", "oklch(0.45 0.20 27)", "oklch(0.52 0.24 27)", "oklch(0.577 0.245 27.325)", "oklch(0.65 0.20 27)", "oklch(0.80 0.10 27)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Clock exclusively. JetBrains Mono extralight at 7.5rem max. No other panel uses this size or weight." },
+      "headline": { "displayName": "Headline", "purpose": "Panel titles, temperature, large finance figures, timer display. Bold weight for sub-second scanning." },
+      "title": { "displayName": "Title", "purpose": "Button labels, track names, event titles, card headings, tab labels. The workhorse hierarchy step." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, artist names, event details, weather, Pomodoro phase labels. 1.4 line-height for arm's-length readability." },
+      "label": { "displayName": "Label", "purpose": "Date, AM/PM, event time markers, badge text. Uppercase with wide tracking to create a separate visual register." }
+    },
+    "shadows": [
+      { "name": "interactive-hover", "value": "0 1px 4px rgba(0,0,0,0.6)", "purpose": "Primary button hover only. The single shadow in the system. No element carries a shadow at rest." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "150ms ease-in-out", "purpose": "Default state transitions: hover, focus ring, opacity, color." },
+      { "name": "scale-press", "value": "150ms ease-in-out", "purpose": "Active state scale-down. All interactive elements scale to 0.96 on tap/click." },
+      { "name": "pomodoro-pulse", "value": "1.8s ease-in-out infinite", "purpose": "Pomodoro completion border pulse animation." },
+      { "name": "ticker-scroll", "value": "18s linear infinite", "purpose": "Finance panel horizontal ticker. Uses translateX, animates transform only." }
+    ],
+    "breakpoints": [
+      { "name": "landscape-compact", "value": "max-height: 340px", "purpose": "Smallest landscape phones. Reduces all dock spacing, sizing, and control dimensions proportionally." },
+      { "name": "landscape-medium", "value": "min-height: 341px and max-height: 390px", "purpose": "Mid-size landscape viewport (iPhone SE, 8). Step between compact and default." },
+      { "name": "landscape-default", "value": "min-height: 391px", "purpose": "Standard landscape viewport. Uses nominal dock sizing at max values." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Affirmative action. Instrument White on Cockpit Void. Hover gets the system's only shadow. Scales to 0.96 on tap.",
+      "html": "<button class=\"ds-btn-primary\">Play</button>",
+      "css": ".ds-btn-primary { background: oklch(0.95 0 0); color: oklch(0.07 0 0); padding: clamp(0.5rem, 1.4vw, 0.75rem) clamp(1rem, 2.8vw, 1.75rem); border-radius: 14px; border: none; font-family: Inter, system-ui, sans-serif; font-size: clamp(0.8rem, 2vw, 1rem); font-weight: 500; line-height: 1.3; cursor: pointer; transition: opacity 150ms ease-in-out, box-shadow 150ms ease-in-out; } .ds-btn-primary:hover { opacity: 0.9; box-shadow: 0 1px 4px rgba(0,0,0,0.6); } .ds-btn-primary:active { transform: scale(0.96); } .ds-btn-primary:focus-visible { outline: 3px solid oklch(0.72 0.19 155); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral action. Gauge Housing with Frame Line border. Hover raises text to Instrument White. No shadow at any state.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { background: oklch(0.2 0 0); color: oklch(0.55 0 0); padding: clamp(0.5rem, 1.4vw, 0.75rem) clamp(1rem, 2.8vw, 1.75rem); border-radius: 14px; border: 1px solid oklch(0.22 0 0); font-family: Inter, system-ui, sans-serif; font-size: clamp(0.8rem, 2vw, 1rem); font-weight: 500; line-height: 1.3; cursor: pointer; transition: color 150ms ease-in-out; } .ds-btn-secondary:hover { color: oklch(0.95 0 0); } .ds-btn-secondary:active { transform: scale(0.96); } .ds-btn-secondary:focus-visible { outline: 3px solid oklch(0.72 0.19 155); outline-offset: 2px; }"
+    },
+    {
+      "name": "Alert Button",
+      "kind": "button",
+      "refersTo": "control-button-alert",
+      "description": "Active state. Signal Green background. Used exclusively for running timers, playback indicators. Should not appear at rest for inactive elements.",
+      "html": "<button class=\"ds-btn-alert\">Running</button>",
+      "css": ".ds-btn-alert { background: oklch(0.72 0.19 155); color: oklch(0.07 0 0); padding: clamp(0.35rem, 0.9vh, 0.6rem) clamp(0.75rem, 1.8vw, 1.4rem); border-radius: 20px; border: none; font-family: Inter, system-ui, sans-serif; font-size: clamp(0.8rem, 2vw, 1rem); font-weight: 500; line-height: 1.3; cursor: pointer; transition: opacity 150ms ease-in-out, box-shadow 150ms ease-in-out; } .ds-btn-alert:hover { opacity: 0.85; box-shadow: 0 1px 4px rgba(0,0,0,0.6); } .ds-btn-alert:active { transform: scale(0.96); } .ds-btn-alert:focus-visible { outline: 3px solid oklch(0.95 0 0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Panel Surface container with Frame Line border. No shadow at rest. Three variants: default (border), urgent (Signal Green tint), ghost (transparent).",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Up Next</div><div class=\"ds-card-body\">Team standup at 10:00</div></div>",
+      "css": ".ds-card { background: oklch(0.13 0 0); border: 1px solid oklch(0.22 0 0); border-radius: 16px; padding: clamp(0.4rem, 1.2vh, 0.875rem) clamp(0.75rem, 2.4vw, 2.5rem); color: oklch(0.95 0 0); font-family: Inter, system-ui, sans-serif; } .ds-card-title { font-size: clamp(0.8rem, 2vw, 1rem); font-weight: 500; line-height: 1.3; margin-bottom: 4px; } .ds-card-body { font-size: clamp(0.7rem, 1.6vw, 0.85rem); font-weight: 400; line-height: 1.4; color: oklch(0.55 0 0); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Flat stroke input. Gauge Housing bg with Frame Line border. Signal Green ring on focus. No glow, no shadow.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search\" />",
+      "css": ".ds-input { background: oklch(0.2 0 0); color: oklch(0.95 0 0); border: 1px solid oklch(0.22 0 0); border-radius: 14px; padding: clamp(0.5rem, 1.5vw, 1rem); font-family: Inter, system-ui, sans-serif; font-size: clamp(0.7rem, 1.6vw, 0.85rem); outline: none; width: 100%; transition: border-color 150ms ease-in-out; } .ds-input::placeholder { color: oklch(0.55 0 0); } .ds-input:focus { border-color: oklch(0.72 0.19 155); box-shadow: 0 0 0 3px oklch(0.72 0.19 155 / 0.25); }"
+    },
+    {
+      "name": "Tab Bar (Segmented Control)",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "ProductivityHub mode switcher. Active tab gets Gauge Housing bg with Frame Line border. Inactive tabs are transparent with Dim Readout text.",
+      "html": "<div class=\"ds-tab-bar\"><button class=\"ds-tab ds-tab-active\">Focus</button><button class=\"ds-tab\">Break</button></div>",
+      "css": ".ds-tab-bar { display: flex; background: oklch(0.2 0 0 / 0.3); border: 1px solid oklch(0.22 0 0 / 0.3); border-radius: 16px; padding: 2px; } .ds-tab { flex: 1; padding: clamp(0.25rem, 0.6vh, 0.4rem) clamp(0.5rem, 1.2vw, 0.75rem); background: transparent; color: oklch(0.55 0 0); border: none; border-radius: 14px; font-family: Inter, system-ui, sans-serif; font-size: clamp(0.65rem, 1.4vw, 0.78rem); font-weight: 500; cursor: pointer; transition: background 150ms ease-in-out, color 150ms ease-in-out; } .ds-tab-active { background: oklch(0.2 0 0); color: oklch(0.95 0 0); border: 1px solid oklch(0.22 0 0 / 0.6); } .ds-tab:hover { color: oklch(0.95 0 0 / 0.8); }"
+    },
+    {
+      "name": "Slider",
+      "kind": "custom",
+      "refersTo": "slider-thumb",
+      "description": "Volume/brightness slider. Track is Gauge Housing. Fill is Signal Green. Thumb is Instrument White and hidden when idle, visible only during active drag.",
+      "html": "<div class=\"ds-slider\"><div class=\"ds-slider-track\"><div class=\"ds-slider-fill\" style=\"width: 60%\"></div></div></div>",
+      "css": ".ds-slider { padding: 8px 0; } .ds-slider-track { position: relative; height: 6px; background: oklch(0.2 0 0); border-radius: 14px; cursor: pointer; } .ds-slider-fill { position: absolute; top: 0; left: 0; height: 100%; background: oklch(0.72 0.19 155); border-radius: 14px; } .ds-slider:active .ds-slider-thumb, .ds-slider:hover .ds-slider-thumb { display: block; } .ds-slider-thumb { display: none; position: absolute; top: 50%; width: 16px; height: 16px; background: oklch(0.95 0 0); border-radius: 9999px; transform: translate(-50%, -50%); pointer-events: none; }"
+    },
+    {
+      "name": "Pagination Dot",
+      "kind": "nav",
+      "refersTo": "pagination-dot",
+      "description": "Carousel page indicator at bottom center. Active dot is Instrument White. Inactive dots are Frame Line. No labels, no chevrons, no visible scrollbar.",
+      "html": "<div style=\"display: flex; gap: 8px; justify-content: center;\"><div class=\"ds-dot ds-dot-active\"></div><div class=\"ds-dot\"></div><div class=\"ds-dot\"></div></div>",
+      "css": ".ds-dot { width: 6px; height: 6px; border-radius: 9999px; background: oklch(0.22 0 0); transition: background 150ms ease-in-out; } .ds-dot-active { background: oklch(0.95 0 0); }"
+    },
+    {
+      "name": "SpotifyBar (Persistent Bottom Bar)",
+      "kind": "custom",
+      "refersTo": "spotify-bar",
+      "description": "Always-visible bottom bar outside the carousel. Album art thumbnail, track name, artist, and playback controls. Signal Green play button. Optimistic UI with 1500ms poll.",
+      "html": "<div class=\"ds-spotify-bar\"><img class=\"ds-spotify-art\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='oklch(0.2 0 0)' width='40' height='40'/%3E%3C/svg%3E\" alt=\"\"/><div class=\"ds-spotify-info\"><div class=\"ds-spotify-track\">No track</div><div class=\"ds-spotify-artist\">Not playing</div></div><button class=\"ds-spotify-play\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><polygon points=\"6,3 20,12 6,21\"/></svg></button></div>",
+      "css": ".ds-spotify-bar { display: flex; align-items: center; width: 100%; gap: clamp(0.45rem, 1.4vw, 0.75rem); padding: 0 clamp(0.75rem, 2.4vw, 2.5rem); } .ds-spotify-art { width: clamp(2rem, 4.5vw, 2.5rem); height: clamp(2rem, 4.5vw, 2.5rem); border-radius: 6px; background: oklch(0.2 0 0); flex-shrink: 0; } .ds-spotify-info { flex: 1; min-width: 0; } .ds-spotify-track { font-size: clamp(0.8rem, 2vw, 1rem); font-weight: 500; line-height: 1.3; color: oklch(0.95 0 0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-spotify-artist { font-size: clamp(0.7rem, 1.6vw, 0.85rem); line-height: 1.4; color: oklch(0.55 0 0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-spotify-play { display: flex; align-items: center; justify-content: center; width: clamp(1.7rem, 4.2vw, 2.2rem); height: clamp(1.7rem, 4.2vw, 2.2rem); border-radius: 9999px; background: oklch(0.72 0.19 155); color: oklch(0.07 0 0); border: none; cursor: pointer; transition: opacity 150ms ease-in-out; flex-shrink: 0; } .ds-spotify-play:hover { opacity: 0.9; } .ds-spotify-play:active { transform: scale(0.96); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Cockpit",
+    "overview": "A phone in landscape, mounted at eye level beside the monitor. The ambient light of the room, not the glow of the screen. You glance right, read the time, the next event, the temperature, and return to work. No tap, no swipe, no cognitive load. The dock is a secondary instrument panel, designed to be read at a distance and ignored the rest of the time.\n\nFocus Dock is dark by necessity, not by fashion. In a dim room or bright office, the deep background (Cockpit Void) recedes while the text (Instrument White) resolves immediately. The green accent (Signal Green) is the single active voice. It marks what is happening now: the track that is playing, the timer that is running, the element that is focused. Everything else is luminance, nothing else is colored.\n\nThe cockpit metaphor is structural, not decorative. Instruments are fixed in position (one panel per viewport, no scroll). Labels are minimal (every pixel of type earns its place). Controls are large and few (1-2 taps per action). The interface does not surprise, does not animate unprompted, does not demand attention. It waits.",
+    "keyCharacteristics": [
+      "Dark background with tonal layering (void, panel, housing, frame) for depth without shadows",
+      "One saturated accent used for active state only, never for decoration",
+      "Large monospaced numbers as the primary data type (time, countdown, finance)",
+      "Fluid clamp-based sizing that scales across landscape phone heights (340px to 420px+)",
+      "Flat at rest; shadows appear only on interactive elements in hover state",
+      "Safe-area-aware edges for notched phones in landscape",
+      "Every panel is exactly one viewport wide, zero scroll within panels"
+    ],
+    "rules": [
+      { "name": "The Single Signal Rule", "body": "Signal Green is the only saturated color in the system. Every element that communicates active state uses it. No secondary accent, no warm tone, no alternative hue. Its rarity is the point: if everything is green, nothing is active.", "section": "colors" },
+      { "name": "The No-Tint Rule", "body": "Every non-signal surface is an achromatic gray on the luminance ladder. No tinted grays, no warm or cool bias, no colored surfaces. The only hue in the system is Signal Green.", "section": "colors" },
+      { "name": "The Luminance Ladder Rule", "body": "Hierarchy between surfaces is expressed through lightness alone. Void (0.07), panel (0.13), housing (0.20), frame (0.22). Higher luminance means higher in the stacking context. This rule makes elevation invisible.", "section": "colors" },
+      { "name": "The Display Monopoly Rule", "body": "The Display hierarchy is reserved exclusively for the clock. No other panel uses type at this size or weight. Timer counts and finance figures use Headline weight in JetBrains Mono.", "section": "typography" },
+      { "name": "The Upper-Label Rule", "body": "All metadata at Label hierarchy uses uppercase with wide tracking. Date, AM/PM, event time markers, badge text. Lowercase labels at this size are indistinguishable from body text.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Every surface is flat at rest. Shadows appear only as a response to interaction (hover on primary button). Audit: if a card has a visible shadow when the user is not touching or hovering any element, the rule is broken.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Signal Green on exactly one element per viewport at rest. Two maximum if there is a clear primary/secondary relationship. If you count three green elements, remove one.",
+      "Do rely on the luminance ladder for hierarchy before reaching for borders, badges, or backgrounds. Void (0.07), panel (0.13), housing (0.20), frame (0.22), text (0.55), text-highlight (0.95).",
+      "Do use Display hierarchy exclusively for the clock. The clock has a monopoly on 200-weight type at 7.5rem.",
+      "Do keep every panel to exactly one viewport width. No inner scrolling, no overflow within panels. The carousel is the only scroll axis.",
+      "Do use clamp() for every dimensional value. Fixed values break across the 340px to 420px+ height range.",
+      "Do respect safe areas. env(safe-area-inset-*) must wrap every edge-adjacent element.",
+      "Do apply active:scale-[0.96] on every interactive element as the primary tactile feedback mechanism.",
+      "Do truncate single-line text with truncate class. At 667px viewport width, overflow is inevitable."
+    ],
+    "donts": [
+      "Don't use Signal Green for static elements. A green icon that does not indicate active state is a bug. A green heading is a bug. If it is green, something must be happening.",
+      "Don't introduce a second accent color. Not blue for links. Not red for errors. Signal Green is the single voice.",
+      "Don't use decorative background colors on surfaces. No tinted cards, no gradient panels, no glass backgrounds, no translucent overlays.",
+      "Don't use side-stripe borders. border-left or border-right at more than 1px as an accent is prohibited.",
+      "Don't use gradient text. Emphasis comes from weight and scale, not color transitions.",
+      "Don't use the hero-metric template. Numbers stand on their own. A single temperature, a single financial figure, a single timer value.",
+      "Don't use identical card grids. Each panel has a unique layout structure designed for its content type.",
+      "Don't animate layout properties. No transitions on width, height, top, left, margin, padding. Animate opacity and transform only.",
+      "Don't show the slider thumb when idle. The thumb appears only during active drag.",
+      "Don't show scrollbars. The carousel uses scrollbar-hide. Individual panels have no scroll."
+    ]
+  }
+}

@@ -120,9 +120,11 @@ function EventRow({
           type="text"
           value={editTitle}
           onChange={(e) => onEditTitleChange(e.target.value)}
-          className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-ring/60"
+          placeholder="Título"
+          className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-ring/60 placeholder:text-muted-foreground/40"
           style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
           autoFocus
+          aria-label="Título do evento"
           onKeyDown={(e) => e.key === "Enter" && onSaveEdit()}
         />
         <input
@@ -130,21 +132,22 @@ function EventRow({
           value={editTime}
           onChange={(e) => onEditTimeChange(e.target.value)}
           placeholder="Horário"
-          className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-ring/60 placeholder:text-muted-foreground/40"
+          className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-ring/60 placeholder:text-muted-foreground/40"
           style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
+          aria-label="Horário do evento"
           onKeyDown={(e) => e.key === "Enter" && onSaveEdit()}
         />
         <div className="flex gap-1.5">
           <button
             onClick={onSaveEdit}
-            className="px-2 py-0.5 rounded bg-accent/20 text-accent font-medium transition-colors hover:bg-accent/30"
+            className="px-2 py-0.5 rounded bg-accent/20 text-accent font-medium transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring"
             style={{ fontSize: "clamp(0.55rem,1.4vw,0.68rem)" }}
           >
             Salvar
           </button>
           <button
             onClick={onCancelEdit}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring"
             style={{ fontSize: "clamp(0.55rem,1.4vw,0.68rem)" }}
           >
             Cancelar
@@ -161,7 +164,7 @@ function EventRow({
           if (!isGoogleCalendarConnected) onToggleComplete(event.id)
         }}
         disabled={isGoogleCalendarConnected}
-        className={`size-[clamp(0.8rem,2vw,1rem)] shrink-0 rounded border-[1.5px] flex items-center justify-center transition-colors ${
+        className={`size-[clamp(0.8rem,2vw,1rem)] shrink-0 rounded border-[1.5px] flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
           event.completed
             ? "bg-accent border-accent"
             : isGoogleCalendarConnected
@@ -194,14 +197,14 @@ function EventRow({
         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onStartEdit(event)}
-            className="size-[clamp(1rem,2.5vw,1.3rem)] flex items-center justify-center text-muted-foreground/50 hover:text-foreground transition-colors rounded hover:bg-secondary/60"
+            className="size-[clamp(1rem,2.5vw,1.3rem)] flex items-center justify-center text-muted-foreground/50 hover:text-foreground transition-colors rounded hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Editar"
           >
             <Edit3 className="size-2.5" />
           </button>
           <button
             onClick={() => onDeleteEvent(event.id)}
-            className="size-[clamp(1rem,2.5vw,1.3rem)] flex items-center justify-center text-muted-foreground/50 hover:text-destructive transition-colors rounded hover:bg-secondary/60"
+            className="size-[clamp(1rem,2.5vw,1.3rem)] flex items-center justify-center text-muted-foreground/50 hover:text-destructive transition-colors rounded hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Remover"
           >
             <Trash2 className="size-2.5" />
@@ -386,10 +389,12 @@ export function CalendarPage() {
   const weekdayName = WEEKDAY_PT_SHORT[selectedDate.getDay()] ?? "Domingo"
 
   return (
-    <div
+    <section
+      aria-labelledby="agenda-heading"
       className="flex h-full w-full dock-px py-[clamp(0.3rem,0.9vh,0.6rem)] overflow-hidden"
       style={{ gap: "var(--dock-gap)" }}
     >
+      <h2 id="agenda-heading" className="sr-only">Agenda</h2>
       {/* ── Left 1/3: date header + events ── */}
       <div
         className="flex flex-col h-full shrink-0"
@@ -519,18 +524,20 @@ export function CalendarPage() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Título"
-                  className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-ring/60"
+          className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-ring/60"
+          style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
+          autoFocus
+          aria-label="Novo título"
+          onKeyDown={(e) => e.key === "Enter" && addEvent()}
+        />
+        <input
+          type="text"
+          value={newTime}
+          onChange={(e) => setNewTime(e.target.value)}
+          placeholder="Horário"
+          className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-ring/60"
                   style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
-                  autoFocus
-                  onKeyDown={(e) => e.key === "Enter" && addEvent()}
-                />
-                <input
-                  type="text"
-                  value={newTime}
-                  onChange={(e) => setNewTime(e.target.value)}
-                  placeholder="Horário"
-                  className="w-full bg-secondary text-foreground rounded px-1.5 py-0.5 outline-none placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-ring/60"
-                  style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}
+                  aria-label="Novo horário"
                   onKeyDown={(e) => e.key === "Enter" && addEvent()}
                 />
                 <div className="flex items-center gap-1">
@@ -539,7 +546,7 @@ export function CalendarPage() {
                       <button
                         key={color}
                         onClick={() => setNewColorIdx(i)}
-                        className={`size-3 rounded-full ${color} transition-transform ${
+                        className={`size-3 rounded-full ${color} transition-transform focus-visible:ring-2 focus-visible:ring-ring ${
                           newColorIdx === i ? "scale-125 ring-1 ring-foreground/40" : "opacity-50 hover:opacity-80"
                         }`}
                         aria-label={`Cor ${i + 1}`}
@@ -548,14 +555,14 @@ export function CalendarPage() {
                   </div>
                   <button
                     onClick={addEvent}
-                    className="px-2 py-0.5 rounded bg-accent/20 text-accent font-medium transition-colors hover:bg-accent/30"
+                    className="px-2 py-0.5 rounded bg-accent/20 text-accent font-medium transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring"
                     style={{ fontSize: "clamp(0.55rem,1.4vw,0.65rem)" }}
                   >
                     OK
                   </button>
                   <button
                     onClick={() => { setShowAdd(false); setNewTitle(""); setNewTime("") }}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                     style={{ fontSize: "clamp(0.55rem,1.4vw,0.65rem)" }}
                   >
                     ✕
@@ -565,7 +572,7 @@ export function CalendarPage() {
             ) : (
               <button
                 onClick={() => setShowAdd(true)}
-                className="flex items-center gap-1 text-muted-foreground/60 hover:text-foreground transition-colors"
+                className="flex items-center gap-1 text-muted-foreground/60 hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                 style={{ fontSize: "clamp(0.68rem,1.8vw,0.82rem)" }}
               >
                 <Plus className="size-3.5" />
@@ -587,7 +594,7 @@ export function CalendarPage() {
           <button
             onClick={prevMonth}
             aria-label="Mês anterior"
-            className="size-[clamp(1.4rem,3.5vw,1.8rem)] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors active:scale-95"
+            className="size-[clamp(1.4rem,3.5vw,1.8rem)] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -600,7 +607,7 @@ export function CalendarPage() {
           <button
             onClick={nextMonth}
             aria-label="Próximo mês"
-            className="size-[clamp(1.4rem,3.5vw,1.8rem)] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors active:scale-95"
+            className="size-[clamp(1.4rem,3.5vw,1.8rem)] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
           >
             <ChevronRight className="size-4" />
           </button>
@@ -634,7 +641,7 @@ export function CalendarPage() {
               <button
                 key={day}
                 onClick={() => setSelectedDay(day)}
-                className={`relative w-full h-full flex items-center justify-center rounded-xl transition-all duration-150 active:scale-90 font-mono tabular-nums ${
+                className={`relative w-full h-full flex items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-90 font-mono tabular-nums ${
                   selected
                     ? "bg-foreground text-background font-semibold"
                     : todayMark
@@ -642,6 +649,7 @@ export function CalendarPage() {
                     : "text-foreground/65 hover:text-foreground hover:bg-secondary/50"
                 }`}
                 style={{ fontSize: "clamp(0.72rem,1.9vw,0.92rem)" }}
+                aria-label={`Dia ${day} de ${MONTH_NAMES_PT[currentMonth]} de ${currentYear}${selected ? ', selecionado' : ''}`}
               >
                 <span>{day}</span>
                 {markers && (
@@ -659,7 +667,7 @@ export function CalendarPage() {
           })}
         </div>
       </div>
-    </div>
+    </section>
   )
 }
 

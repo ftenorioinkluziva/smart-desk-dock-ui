@@ -28,12 +28,12 @@ export function VoiceAgentPanel() {
   const isBusy = status === "connecting" || status === "thinking"
 
   return (
-    <div className="dock-px flex h-full w-full flex-col items-center justify-between overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)]">
+    <section aria-labelledby="voice-heading" className="dock-px flex h-full w-full flex-col items-center justify-between overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)]">
       <div className="flex min-h-[clamp(2.8rem,10vh,4rem)] w-full max-w-[34rem] flex-col items-center justify-center text-center">
-        <div className="flex items-center gap-2 text-[clamp(0.6rem,1.45vw,0.72rem)] font-medium uppercase tracking-normal text-accent/85">
+        <h2 id="voice-heading" className="flex items-center gap-2 text-[clamp(0.6rem,1.45vw,0.72rem)] font-medium uppercase tracking-normal text-accent/85">
           <Mic className="size-[clamp(0.82rem,1.8vw,1rem)]" />
           <span>Agente</span>
-        </div>
+        </h2>
 
         <p className="mt-1 max-w-[24rem] text-[clamp(0.62rem,1.45vw,0.75rem)] leading-snug text-muted-foreground/65">
           {isConfigured === false
@@ -55,7 +55,7 @@ export function VoiceAgentPanel() {
           disabled={isBusy}
           aria-label={isActive ? "Encerrar conversa por voz" : "Iniciar conversa por voz"}
           className={cn(
-            "relative flex aspect-square h-[min(51vh,14.75rem)] min-h-[8.5rem] items-center justify-center rounded-full border transition-all duration-300 disabled:pointer-events-none disabled:opacity-75",
+            "relative flex aspect-square h-[min(51vh,14.75rem)] min-h-[8.5rem] items-center justify-center rounded-full border transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-75",
             isActive
               ? "border-accent/60 bg-accent/15 text-accent shadow-[0_0_3.4rem_color-mix(in_oklch,var(--accent)_35%,transparent)]"
               : "border-border/35 bg-secondary/20 text-foreground hover:bg-secondary/40",
@@ -112,6 +112,6 @@ export function VoiceAgentPanel() {
           </div>
         )}
       </div>
-    </div>
+    </section>
   )
 }

@@ -37,9 +37,7 @@ HOME_ASSISTANT_URL=
 HOME_ASSISTANT_TOKEN=
 HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.tomada_mesa,scene.movie_mode
 
-FINANCE_API_URL=      # e.g. http://127.0.0.1:3001
-FINANCE_API_TOKEN=    # bearer token from paridade-risco-mobile, preferred
-FINANCE_API_USER_ID=  # alternative for local trusted use
+FINANCE_API_URL=      # e.g. http://127.0.0.1:3001 or https://paridade-risco-mobile-api.vercel.app
 
 OPENAI_API_KEY=
 OPENAI_REALTIME_MODEL=             # default: gpt-realtime-mini
@@ -167,7 +165,9 @@ Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.
 
 ### Finance mock/real split
 
-`lib/finance.ts` exports `financeConfigured` (true when `FINANCE_API_URL` is present). The browser only calls `/api/finance/summary`; the dock server forwards to `paridade-risco-mobile` endpoints and returns mock data when not configured. Use `FINANCE_API_TOKEN` or `FINANCE_API_USER_ID` when the upstream API needs an authenticated user.
+`lib/finance.ts` exports `financeConfigured` (true when `FINANCE_API_URL` is present). The browser only calls `/api/finance/summary` with a Bearer token obtained at login; the dock server forwards to `paridade-risco-mobile` endpoints and returns mock data when `FINANCE_API_URL` is not set.
+
+**Auth flow:** The finance panel shows a login form when no session exists. The user authenticates via `POST /api/auth/login` (proxied to upstream). The token is stored in `localStorage` and sent with every summary request. On 401, the session is cleared and the login form reappears.
 
 ### Spotify mock/real split
 

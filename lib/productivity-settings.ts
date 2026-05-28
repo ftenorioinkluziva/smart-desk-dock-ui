@@ -10,12 +10,14 @@ export type PomodoroMode = "focus" | "short-break" | "long-break"
 
 export type ProductivityAlertSettings = {
   preference: ProductivityAlertPreference
+  notificationEnabled: boolean
 }
 
 export type PomodoroDurations = Record<PomodoroMode, number>
 
 export const DEFAULT_PRODUCTIVITY_ALERT_SETTINGS: ProductivityAlertSettings = {
   preference: "visual-vibration",
+  notificationEnabled: false,
 }
 
 export const DEFAULT_POMODORO_DURATIONS: PomodoroDurations = {
@@ -47,6 +49,9 @@ export function readProductivityAlertSettings(): ProductivityAlertSettings {
       preference: VALID_ALERT_PREFERENCES.has(parsed.preference as ProductivityAlertPreference)
         ? parsed.preference as ProductivityAlertPreference
         : DEFAULT_PRODUCTIVITY_ALERT_SETTINGS.preference,
+      notificationEnabled: typeof parsed.notificationEnabled === "boolean"
+        ? parsed.notificationEnabled
+        : DEFAULT_PRODUCTIVITY_ALERT_SETTINGS.notificationEnabled,
     }
   } catch {
     window.localStorage.removeItem(PRODUCTIVITY_ALERT_SETTINGS_STORAGE_KEY)
@@ -91,6 +96,8 @@ export function writePomodoroDurations(durations: PomodoroDurations) {
 export function triggerProductivityAlert(kind: ProductivityAlertKind, settings: ProductivityAlertSettings) {
   if (typeof window === "undefined") return
 
+  showProductivityNotification(kind, settings)
+
   if (settings.preference === "visual-vibration") {
     const pattern = kind === "pomodoro" ? [160, 70, 160, 70, 320] : [300, 100, 300]
     window.navigator.vibrate?.(pattern)
@@ -99,6 +106,36 @@ export function triggerProductivityAlert(kind: ProductivityAlertKind, settings: 
 
   if (settings.preference === "visual-sound") {
     playCompletionTone(kind)
+  }
+}
+
+export function getNotificationPermission(): NotificationPermission | "unsupported" {
+  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported"
+  return window.Notification.permission
+}
+
+export async function requestProductivityNotificationPermission() {
+  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported"
+  return window.Notification.requestPermission()
+}
+
+function showProductivityNotification(kind: ProductivityAlertKind, settings: ProductivityAlertSettings) {
+  if (!settings.notificationEnabled || getNotificationPermission() !== "granted") return
+
+  try {
+    const title = kind === "pomodoro" ? "Pomodoro concluído" : "Timer concluído"
+    const body = kind === "pomodoro" ? "Hora de trocar a fase." : "O tempo terminou."
+    const notification = new window.Notification(title, {
+      body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      silent: settings.preference !== "visual-sound",
+      tag: `focus-dock-${kind}-complete`,
+    })
+
+    window.setTimeout(() => notification.close(), 7000)
+  } catch {
+    // Browser notification support varies, especially outside installed PWAs on Apple platforms.
   }
 }
 

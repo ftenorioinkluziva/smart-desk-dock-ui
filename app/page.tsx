@@ -11,8 +11,9 @@ import { HomeAssistantPanel } from "@/components/home-assistant-panel"
 import { SpotifyExpandedPanel } from "@/components/spotify-expanded-panel"
 import { FinancePanel } from "@/components/finance-panel"
 import { VoiceAgentPanel } from "@/components/voice-agent-panel"
+import { WindyMap } from "@/components/windy-map"
 import { isWithinNightMode, NIGHT_MODE_SETTINGS_EVENT, readNightModeSettings } from "@/lib/dock-settings"
-const PAGES = 9
+const PAGES = 10
 const NIGHT_DOCK_PAGE_INDEX = 2
 
 export default function Page() {
@@ -39,6 +40,18 @@ export default function Page() {
     if (!el) return
     el.scrollTo({ left: el.clientWidth * pageIndex, behavior: "smooth" })
   }, [])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowRight") {
+      e.preventDefault()
+      const next = Math.min(activePage + 1, PAGES - 1)
+      scrollToPage(next)
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault()
+      const prev = Math.max(activePage - 1, 0)
+      scrollToPage(prev)
+    }
+  }, [activePage, scrollToPage])
 
   useEffect(() => {
     const handleSettingsChange = () => setNightModeSettings(readNightModeSettings())
@@ -73,6 +86,7 @@ export default function Page() {
         ref={scrollRef}
         className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+        onKeyDown={handleKeyDown}
       >
         {/* Page 1: Today */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
@@ -119,23 +133,29 @@ export default function Page() {
           <SpotifyExpandedPanel />
         </section>
 
+        {/* Page 10: Windy Map */}
+        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
+          <WindyMap />
+        </section>
+
       </div>
 
       {/* Pagination Dots */}
       <div
-        className={`pointer-events-none absolute inset-x-0 bottom-[calc(var(--dock-safe-bottom)+0.25rem)] flex items-center justify-center gap-1 transition-opacity ${
+        className={`absolute inset-x-0 bottom-[calc(var(--dock-safe-bottom)+0.25rem)] flex items-center justify-center gap-1 transition-opacity ${
           activePage === PAGES - 1 ? "opacity-0" : "opacity-100"
         }`}
       >
         {Array.from({ length: PAGES }).map((_, i) => (
-          <span
+          <button
             key={i}
-            className={`rounded-full transition-all duration-300 ${
+            onClick={() => scrollToPage(i)}
+            className={`rounded-full transition-[width,height] duration-300 ${
               activePage === i
                 ? "w-[clamp(0.3rem,0.9vw,0.4rem)] h-[clamp(0.3rem,0.9vw,0.4rem)] bg-foreground"
                 : "w-[clamp(0.2rem,0.7vw,0.3rem)] h-[clamp(0.2rem,0.7vw,0.3rem)] bg-muted-foreground/40"
             }`}
-            aria-hidden="true"
+            aria-label={`Ir para painel ${i + 1}`}
           />
         ))}
       </div>

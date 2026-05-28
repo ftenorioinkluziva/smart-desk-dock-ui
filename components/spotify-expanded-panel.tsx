@@ -237,7 +237,7 @@ export function SpotifyExpandedPanel() {
   }
 
   return (
-    <div className="dock-px h-full w-full overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)] pb-[clamp(1rem,3vh,1.8rem)]">
+    <section aria-labelledby="spotify-heading" className="dock-px h-full w-full overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)] pb-[clamp(1rem,3vh,1.8rem)]">
       <div className="flex h-full min-h-0 flex-col gap-[clamp(0.6rem,1.8vh,1rem)]">
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(10rem,0.75fr)_minmax(0,1.35fr)] items-center gap-[clamp(1rem,3vw,2.5rem)]">
           <div className="flex min-h-0 items-center justify-center">
@@ -259,9 +259,9 @@ export function SpotifyExpandedPanel() {
 
         <div className="flex min-w-0 flex-col gap-[clamp(0.45rem,1.35vh,0.85rem)]">
           <div className="min-w-0">
-            <p className="text-[clamp(0.65rem,1.7vw,0.8rem)] font-medium uppercase tracking-normal text-spotify">
+            <h2 id="spotify-heading" className="text-[clamp(0.65rem,1.7vw,0.8rem)] font-medium uppercase tracking-normal text-spotify">
               {isMock ? "Spotify nao configurado" : nowPlaying.isPlaying ? "Tocando agora" : "Spotify pausado"}
-            </p>
+            </h2>
             <h1 className="mt-1 truncate pb-1 text-[clamp(1.55rem,4.6vw,3rem)] font-semibold leading-tight tracking-normal">
               {nowPlaying.track ?? (isMock ? "Configure o Spotify" : "Nada tocando")}
             </h1>
@@ -398,11 +398,11 @@ export function SpotifyExpandedPanel() {
       </div>
 
         <div className="min-w-0 shrink-0">
-          <div className="mb-1 flex items-center gap-2 text-[clamp(0.62rem,1.5vw,0.75rem)] font-medium uppercase tracking-normal text-muted-foreground">
+          <h3 className="mb-1 flex items-center gap-2 text-[clamp(0.62rem,1.5vw,0.75rem)] font-medium uppercase tracking-normal text-muted-foreground">
             <ListMusic className="size-[clamp(0.75rem,1.7vw,0.9rem)]" />
             <span>Playlists</span>
             {playlistError ? <span className="normal-case text-destructive">{playlistError}</span> : null}
-          </div>
+          </h3>
           <div className="flex min-w-0 gap-[clamp(0.45rem,1.2vw,0.7rem)] overflow-x-auto pb-1 scrollbar-hide">
             {playlists.length ? (
               playlists.map((playlist) => (
@@ -411,7 +411,7 @@ export function SpotifyExpandedPanel() {
                   type="button"
                   disabled={disabled}
                   onClick={() => handlePlaylistPlay(playlist)}
-                  className="flex h-[clamp(2.9rem,8vh,3.65rem)] w-[clamp(10rem,22vw,13.5rem)] shrink-0 items-center gap-2 rounded-md bg-secondary/45 px-2 text-left transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-40"
+                  className="flex h-[clamp(2.9rem,8vh,3.65rem)] w-[clamp(10rem,22vw,13.5rem)] shrink-0 items-center gap-2 rounded-md bg-secondary/45 px-2 text-left transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40"
                   aria-label={`Tocar playlist ${playlist.name}`}
                 >
                   <div className="size-[clamp(2.2rem,6.1vh,2.8rem)] shrink-0 overflow-hidden rounded-md bg-secondary">
@@ -442,6 +442,6 @@ export function SpotifyExpandedPanel() {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }

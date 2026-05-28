@@ -1,6 +1,4 @@
 const FINANCE_API_URL = process.env.FINANCE_API_URL?.replace(/\/$/, "")
-const FINANCE_API_TOKEN = process.env.FINANCE_API_TOKEN
-const FINANCE_API_USER_ID = process.env.FINANCE_API_USER_ID
 
 export const financeConfigured = Boolean(FINANCE_API_URL)
 
@@ -72,29 +70,51 @@ export type FinanceDockSummary = {
   mock?: boolean
 }
 
-function buildHeaders() {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+export async function financeLogin(email: string, password: string) {
+  if (!FINANCE_API_URL) throw new Error("Finance API URL is not configured")
+
+  const response = await fetch(`${FINANCE_API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Login failed: ${response.status}`)
   }
 
-  if (FINANCE_API_TOKEN) {
-    headers.Authorization = `Bearer ${FINANCE_API_TOKEN}`
-  }
-
-  if (FINANCE_API_USER_ID) {
-    headers["x-user-id"] = FINANCE_API_USER_ID
-  }
-
-  return headers
+  return await response.json() as { token: string; user: { id: string; email: string; role: string } }
 }
 
-async function financeFetch<T>(path: string): Promise<T> {
+export async function financeMe(token: string) {
+  if (!FINANCE_API_URL) throw new Error("Finance API URL is not configured")
+
+  const response = await fetch(`${FINANCE_API_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Auth check failed: ${response.status}`)
+  }
+
+  return await response.json() as { id: string; email: string; name?: string; role: string }
+}
+
+async function financeFetch<T>(path: string, token?: string): Promise<T> {
   if (!FINANCE_API_URL) {
     throw new Error("Finance API URL is not configured")
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
   const response = await fetch(`${FINANCE_API_URL}${path}`, {
-    headers: buildHeaders(),
+    headers,
     next: { revalidate: 300 },
   })
 
@@ -149,8 +169,8 @@ function buildAssets(summary: FinanceSummary): FinanceAssetSummary[] {
   })
 }
 
-export async function fetchFinanceDockSummary(): Promise<FinanceDockSummary> {
-  const summary = await financeFetch<FinanceSummary>("/api/portfolio/summary")
+export async function fetchFinanceDockSummary(token?: string): Promise<FinanceDockSummary> {
+  const summary = await financeFetch<FinanceSummary>("/api/portfolio/summary", token)
 
   return {
     totalValue: summary.totalValue,

@@ -187,7 +187,8 @@ export function HomeAssistantPanel() {
   }
 
   return (
-    <div className="flex h-full w-full dock-px items-center overflow-hidden">
+    <section aria-labelledby="ha-heading" className="flex h-full w-full dock-px items-center overflow-hidden">
+      <h2 id="ha-heading" className="sr-only">Casa Inteligente</h2>
       <section className="grid w-full min-w-0 grid-cols-3 gap-[clamp(0.45rem,1.3vw,0.85rem)]">
         {isLoading && visibleEntities.length === 0 && (
           Array.from({ length: 3 }).map((_, index) => (
@@ -220,7 +221,7 @@ export function HomeAssistantPanel() {
               <button
                 onClick={() => entity.domain !== "cover" && handleEntityPress(entity)}
                 disabled={isMock || pending || !entity.controllable || entity.domain === "cover"}
-                className="flex min-w-0 flex-1 flex-col items-start text-left disabled:opacity-60"
+                className="flex min-w-0 flex-1 flex-col items-start text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm disabled:opacity-60"
                 aria-label={`Controlar ${getEntityDisplayName(entity)}`}
               >
                 <div className="flex w-full items-center justify-between gap-2">
@@ -259,7 +260,7 @@ export function HomeAssistantPanel() {
                   <button
                     onClick={() => handleCoverCommand(entity, "open_cover")}
                     disabled={isMock || unavailable || Boolean(pendingEntityId)}
-                    className="flex h-8 items-center justify-center rounded-md bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-35"
+                    className="flex h-8 items-center justify-center rounded-md bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-35"
                     aria-label={`Abrir ${getEntityDisplayName(entity)}`}
                   >
                     <ArrowUp className="size-4" />
@@ -267,7 +268,7 @@ export function HomeAssistantPanel() {
                   <button
                     onClick={() => handleCoverCommand(entity, "stop_cover")}
                     disabled={isMock || unavailable || Boolean(pendingEntityId)}
-                    className="flex h-8 items-center justify-center rounded-md bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-35"
+                    className="flex h-8 items-center justify-center rounded-md bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-35"
                     aria-label={`Parar ${getEntityDisplayName(entity)}`}
                   >
                     <Square className="size-3.5" />
@@ -275,7 +276,7 @@ export function HomeAssistantPanel() {
                   <button
                     onClick={() => handleCoverCommand(entity, "close_cover")}
                     disabled={isMock || unavailable || Boolean(pendingEntityId)}
-                    className="flex h-8 items-center justify-center rounded-md bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-35"
+                    className="flex h-8 items-center justify-center rounded-md bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-35"
                     aria-label={`Fechar ${getEntityDisplayName(entity)}`}
                   >
                     <ArrowDown className="size-4" />
@@ -303,6 +304,6 @@ export function HomeAssistantPanel() {
           )
         })}
       </section>
-    </div>
+    </section>
   )
 }

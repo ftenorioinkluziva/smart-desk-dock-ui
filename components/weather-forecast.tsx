@@ -70,7 +70,8 @@ export function WeatherForecast() {
   const isLoaded = !!weather
 
   return (
-    <div className="flex items-center h-full w-full dock-px gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+    <section aria-labelledby="weather-heading" className="flex items-center h-full w-full dock-px gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+      <h2 id="weather-heading" className="sr-only">Clima</h2>
 
       {/* ── Left: current conditions ── */}
       <div className="flex flex-col justify-center gap-[clamp(0.25rem,0.8vh,0.5rem)] shrink-0">
@@ -86,7 +87,7 @@ export function WeatherForecast() {
         <div className="flex items-center gap-[clamp(0.5rem,1.5vw,0.875rem)]">
           <WeatherIcon
             condition={weather?.condition ?? "clear"}
-            className="size-[clamp(1.75rem,5vw,3rem)] text-chart-4 shrink-0"
+            className="size-[clamp(1.75rem,5vw,3rem)] text-foreground shrink-0"
           />
           <span
             className="font-extralight text-foreground tabular-nums font-mono leading-none tracking-tight"
@@ -132,7 +133,7 @@ export function WeatherForecast() {
 
             <WeatherIcon
               condition={day.condition}
-              className="size-[clamp(1.1rem,3vw,1.75rem)] text-chart-4 shrink-0"
+              className="size-[clamp(1.1rem,3vw,1.75rem)] text-foreground shrink-0"
             />
 
             <span
@@ -151,6 +152,6 @@ export function WeatherForecast() {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }

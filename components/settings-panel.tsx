@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Bell, Check, Clock3, Eye, Settings, Volume2, Vibrate, X } from "lucide-react"
 import { readSelectedCalendarIds, writeSelectedCalendarIds } from "@/lib/calendar-settings"
 import { readNightModeSettings, writeNightModeSettings, type NightModeSettings } from "@/lib/dock-settings"
 import {
+  getNotificationPermission,
   readProductivityAlertSettings,
   readPomodoroDurations,
+  requestProductivityNotificationPermission,
   writePomodoroDurations,
   writeProductivityAlertSettings,
   type PomodoroDurations,
@@ -46,7 +48,15 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
   const [nightModeSettings, setNightModeSettings] = useState<NightModeSettings>(() => readNightModeSettings())
   const [alertSettings, setAlertSettings] = useState<ProductivityAlertSettings>(() => readProductivityAlertSettings())
   const [pomodoroDurations, setPomodoroDurations] = useState<PomodoroDurations>(() => readPomodoroDurations())
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => getNotificationPermission())
+  const panelRef = useRef<HTMLDivElement>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      panelRef.current?.querySelector<HTMLElement>("button, input, [tabindex]:not([tabindex='-1'])")?.focus()
+    }
+  }, [isOpen])
 
   const fetchCalendars = useCallback(async () => {
     setIsLoading(true)
@@ -79,6 +89,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
       setNightModeSettings(readNightModeSettings())
       setAlertSettings(readProductivityAlertSettings())
       setPomodoroDurations(readPomodoroDurations())
+      setNotificationPermission(getNotificationPermission())
       fetchCalendars()
     }
   }, [fetchCalendars, isOpen])
@@ -99,7 +110,28 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
   }
 
   function updateAlertPreference(preference: ProductivityAlertPreference) {
-    const nextSettings = { preference }
+    const nextSettings = { ...alertSettings, preference }
+    setAlertSettings(nextSettings)
+    writeProductivityAlertSettings(nextSettings)
+  }
+
+  async function enableBrowserNotifications() {
+    const permission = await requestProductivityNotificationPermission()
+    setNotificationPermission(permission)
+
+    const nextSettings = {
+      ...alertSettings,
+      notificationEnabled: permission === "granted",
+    }
+    setAlertSettings(nextSettings)
+    writeProductivityAlertSettings(nextSettings)
+  }
+
+  function disableBrowserNotifications() {
+    const nextSettings = {
+      ...alertSettings,
+      notificationEnabled: false,
+    }
     setAlertSettings(nextSettings)
     writeProductivityAlertSettings(nextSettings)
   }
@@ -124,7 +156,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
       {showTrigger && (
         <button
           onClick={() => setIsOpen(true)}
-          className="absolute right-[calc(var(--dock-pad-x)+var(--dock-safe-right))] bottom-[calc(var(--dock-pad-y)+var(--dock-safe-bottom)+clamp(2.65rem,6.6vh,3.2rem))] z-20 flex size-[clamp(1.7rem,4vw,2.1rem)] items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-secondary/60 hover:text-foreground"
+          className="absolute right-[calc(var(--dock-pad-x)+var(--dock-safe-right))] bottom-[calc(var(--dock-pad-y)+var(--dock-safe-bottom)+clamp(2.65rem,6.6vh,3.2rem))] z-20 flex size-[clamp(1.7rem,4vw,2.1rem)] items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-secondary/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Configurações"
         >
           <Settings className="size-[clamp(0.9rem,2vw,1.1rem)]" />
@@ -132,8 +164,12 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
       )}
 
       {isOpen && (
-        <div className="absolute inset-0 z-30 flex items-start justify-end bg-background/35 backdrop-blur-[2px] p-[calc(var(--dock-pad-y)+0.25rem)]">
-          <div className="w-[min(20rem,92vw)] rounded-xl border border-border/50 bg-background/95 p-3 shadow-2xl">
+        <div
+          className="absolute inset-0 z-30 flex items-start justify-end bg-background/35 backdrop-blur-[2px] p-[calc(var(--dock-pad-y)+0.25rem)]"
+          onKeyDown={(e) => { if (e.key === "Escape") setIsOpen(false) }}
+          onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false) }}
+        >
+          <div ref={panelRef} className="w-[min(20rem,92vw)] rounded-xl border border-border/50 bg-background/95 p-3 shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-medium text-foreground" style={{ fontSize: "clamp(0.82rem,2vw,1rem)" }}>
@@ -145,7 +181,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Fechar configurações"
               >
                 <X className="size-4" />
@@ -171,8 +207,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                         inputMode="numeric"
                         value={Math.round(pomodoroDurations[field.mode] / 60)}
                         onChange={(event) => updatePomodoroDuration(field.mode, event.target.value)}
-                        className="rounded-md border border-border/50 bg-background px-2 py-1 text-center text-foreground outline-none focus:border-ring"
-                        aria-label={`Duração de ${field.label.toLowerCase()} em minutos`}
+                         className="rounded-md border border-border/50 bg-background px-2 py-1 text-center text-foreground outline-none focus-visible:border-ring"
+                         aria-label={`Duração de ${field.label.toLowerCase()} em minutos`}
                       />
                     </label>
                   ))}
@@ -189,11 +225,11 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                       <button
                         key={option.value}
                         onClick={() => updateAlertPreference(option.value)}
-                        className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 transition-colors ${
-                          selected
-                            ? "border-border/70 bg-background text-foreground"
-                            : "border-border/30 bg-secondary/20 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                        }`}
+                       className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                         selected
+                           ? "border-border/70 bg-background text-foreground"
+                           : "border-border/30 bg-secondary/20 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                       }`}
                         title={option.description}
                         aria-pressed={selected}
                       >
@@ -204,6 +240,42 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                       </button>
                     )
                   })}
+                </div>
+
+                <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-border/30 bg-background/45 px-2 py-1.5">
+                  <div className="min-w-0">
+                    <div className="text-foreground" style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}>
+                      Notificação do sistema
+                    </div>
+                    <div className="truncate text-muted-foreground" style={{ fontSize: "clamp(0.52rem,1.25vw,0.62rem)" }}>
+                      {notificationPermission === "unsupported"
+                        ? "Indisponível neste navegador"
+                        : notificationPermission === "denied"
+                          ? "Bloqueada no navegador"
+                          : alertSettings.notificationEnabled && notificationPermission === "granted"
+                            ? "Ativa para Pomodoro e Timer"
+                            : "Opcional, com permissão explícita"}
+                    </div>
+                  </div>
+
+                  {alertSettings.notificationEnabled && notificationPermission === "granted" ? (
+                    <button
+                      onClick={disableBrowserNotifications}
+                      className="shrink-0 rounded-lg border border-border/40 bg-secondary/40 px-2 py-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}
+                    >
+                      Desativar
+                    </button>
+                  ) : (
+                    <button
+                      onClick={enableBrowserNotifications}
+                      disabled={notificationPermission === "unsupported" || notificationPermission === "denied"}
+                      className="shrink-0 rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-45"
+                      style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}
+                    >
+                      Ativar
+                    </button>
+                  )}
                 </div>
               </section>
 
@@ -227,16 +299,16 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                       type="time"
                       value={nightModeSettings.start}
                       onChange={(event) => updateNightModeSettings({ ...nightModeSettings, start: event.target.value })}
-                      className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus:border-ring"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
-                    Fim
-                    <input
-                      type="time"
-                      value={nightModeSettings.end}
-                      onChange={(event) => updateNightModeSettings({ ...nightModeSettings, end: event.target.value })}
-                      className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus:border-ring"
+                       className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                     />
+                   </label>
+                   <label className="flex flex-col gap-1 text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
+                     Fim
+                     <input
+                       type="time"
+                       value={nightModeSettings.end}
+                       onChange={(event) => updateNightModeSettings({ ...nightModeSettings, end: event.target.value })}
+                       className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
                     />
                   </label>
                 </div>
@@ -264,7 +336,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                   <button
                     key={calendar.id}
                     onClick={() => toggleCalendar(calendar.id)}
-                    className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
                       selected ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                     }`}
                   >

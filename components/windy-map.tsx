@@ -1,12 +1,24 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 export function WindyMap() {
   const [interactive, setInteractive] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
   const exit = useCallback(() => setInteractive(false), [])
+
+  // iOS Safari workaround: force synchronous reflow after exiting interactive
+  // mode to release the iframe's touch event capture (WebKit bug).
+  useLayoutEffect(() => {
+    if (interactive) return
+    const el = wrapperRef.current
+    if (!el) return
+    el.style.display = "none"
+    void el.offsetHeight
+    el.style.display = ""
+  }, [interactive])
 
   useEffect(() => {
     if (!interactive) return
@@ -18,7 +30,7 @@ export function WindyMap() {
   return (
     <section aria-labelledby="windy-heading" className="flex h-full w-full items-center justify-center overflow-hidden relative">
       <h2 id="windy-heading" className="sr-only">Mapa do Clima</h2>
-      <div className={cn("size-full", !interactive && "pointer-events-none")}>
+      <div ref={wrapperRef} className={cn("size-full", !interactive && "pointer-events-none")}>
         <iframe
           src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=°C&metricWind=km/h&zoom=11&overlay=rain&product=ecmwf&level=surface&lat=-15.89&lon=-47.808&message=true"
           title="Mapa do Clima Windy"

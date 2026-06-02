@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
+import { getUserProfile } from "@/lib/user-profile"
 
 // WMO Weather Code → UI condition string
 function wmoToCondition(code: number): string {
@@ -62,12 +64,16 @@ function dateToWeekdayLabel(date: string): string {
 }
 
 export async function GET(request: Request) {
+  const user = await requireCurrentUser(request)
+  if (isAuthResponse(user)) return user
+
   const { searchParams } = new URL(request.url)
   const includeHourly = searchParams.get("hourly") === "true"
-  const lat = parseFloat(process.env.WEATHER_LAT ?? "-15.886953") // Brasília default
-  const lon = parseFloat(process.env.WEATHER_LON ?? "-47.813873")
-  const timezone = process.env.WEATHER_TIMEZONE ?? "America/Sao_Paulo"
-  const location = process.env.WEATHER_LOCATION ?? "Brasília"
+  const profile = await getUserProfile(user.id)
+  const lat = profile.weatherLat
+  const lon = profile.weatherLon
+  const timezone = profile.weatherTimezone
+  const location = profile.weatherLocation
 
   try {
     const params = new URLSearchParams({

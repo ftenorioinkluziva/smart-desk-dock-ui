@@ -1,46 +1,42 @@
-import { getAccessToken, spotifyConfigured } from "@/lib/spotify"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
+import { refreshSpotifyAccessToken, spotifyAppConfigured } from "@/lib/spotify"
 
-export async function GET() {
-  if (!spotifyConfigured) {
-    return Response.json({
-      isPlaying: false,
-      track: null,
-      artist: null,
-      albumArt: null,
-      album: null,
-      deviceName: null,
-      deviceType: null,
-      volumePercent: null,
-      shuffle: false,
-      repeat: "off",
-      progressMs: 0,
-      durationMs: 0,
-      mock: true,
-    })
+const EMPTY_SPOTIFY_STATE = {
+  isPlaying: false,
+  track: null,
+  artist: null,
+  albumArt: null,
+  album: null,
+  deviceName: null,
+  deviceType: null,
+  volumePercent: null,
+  shuffle: false,
+  repeat: "off",
+  progressMs: 0,
+  durationMs: 0,
+}
+
+export async function GET(request: Request) {
+  const user = await requireCurrentUser(request)
+  if (isAuthResponse(user)) return user
+
+  if (!spotifyAppConfigured) {
+    return Response.json({ ...EMPTY_SPOTIFY_STATE, mock: true, spotifyAuthRequired: true })
   }
 
   try {
-    const token = await getAccessToken()
+    const token = await refreshSpotifyAccessToken(user.id)
+    if (!token) {
+      return Response.json({ ...EMPTY_SPOTIFY_STATE, mock: true, spotifyAuthRequired: true })
+    }
+
     const res = await fetch(
       "https://api.spotify.com/v1/me/player",
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` } },
     )
 
     if (res.status === 204) {
-      return Response.json({
-        isPlaying: false,
-        track: null,
-        artist: null,
-        albumArt: null,
-        album: null,
-        deviceName: null,
-        deviceType: null,
-        volumePercent: null,
-        shuffle: false,
-        repeat: "off",
-        progressMs: 0,
-        durationMs: 0,
-      })
+      return Response.json(EMPTY_SPOTIFY_STATE)
     }
 
     if (!res.ok) throw new Error(`Spotify error: ${res.status}`)
@@ -68,32 +64,20 @@ export async function GET() {
 
     return Response.json({
       isPlaying: data.is_playing,
-      track:     data.item?.name                       ?? null,
-      artist:    data.item?.artists?.[0]?.name         ?? null,
-      albumArt:  data.item?.album?.images?.[0]?.url    ?? null,
-      album:     data.item?.album?.name                ?? null,
-      deviceName: data.device?.name                    ?? null,
-      deviceType: data.device?.type                    ?? null,
-      volumePercent: data.device?.volume_percent       ?? null,
-      shuffle:   data.shuffle_state                    ?? false,
-      repeat:    data.repeat_state                     ?? "off",
-      progressMs: data.progress_ms                     ?? 0,
-      durationMs: data.item?.duration_ms               ?? 0,
+      track: data.item?.name ?? null,
+      artist: data.item?.artists?.[0]?.name ?? null,
+      albumArt: data.item?.album?.images?.[0]?.url ?? null,
+      album: data.item?.album?.name ?? null,
+      deviceName: data.device?.name ?? null,
+      deviceType: data.device?.type ?? null,
+      volumePercent: data.device?.volume_percent ?? null,
+      shuffle: data.shuffle_state ?? false,
+      repeat: data.repeat_state ?? "off",
+      progressMs: data.progress_ms ?? 0,
+      durationMs: data.item?.duration_ms ?? 0,
     })
   } catch {
-    return Response.json({
-      isPlaying: false,
-      track: null,
-      artist: null,
-      albumArt: null,
-      album: null,
-      deviceName: null,
-      deviceType: null,
-      volumePercent: null,
-      shuffle: false,
-      repeat: "off",
-      progressMs: 0,
-      durationMs: 0,
-    })
+    return Response.json(EMPTY_SPOTIFY_STATE)
   }
 }
+

@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
-import { Bell, Check, Clock3, Eye, Settings, Volume2, Vibrate, X } from "lucide-react"
+import { Bell, Check, Clock3, Eye, KeyRound, LogOut, Settings, Volume2, Vibrate, X } from "lucide-react"
+import { authClient } from "@/lib/auth-client"
 import { readSelectedCalendarIds, writeSelectedCalendarIds } from "@/lib/calendar-settings"
 import { readNightModeSettings, writeNightModeSettings, type NightModeSettings } from "@/lib/dock-settings"
 import {
@@ -29,6 +30,26 @@ type CalendarListResponse = {
   mock?: boolean
 }
 
+type ProfileResponse = {
+  profile: {
+    weatherLat: number
+    weatherLon: number
+    weatherTimezone: string
+    weatherLocation: string
+    googleCalendarIds: string[]
+    googleCalendarTimezone: string
+    homeAssistantEntityIds: string[]
+    nightModeEnabled: boolean
+    nightModeStart: string
+    nightModeEnd: string
+    productivityAlertPreference: ProductivityAlertPreference
+    productivityNotificationEnabled: boolean
+    pomodoroFocusSeconds: number
+    pomodoroShortBreakSeconds: number
+    pomodoroLongBreakSeconds: number
+  }
+}
+
 const ALERT_OPTIONS: Array<{ value: ProductivityAlertPreference; label: string; description: string; icon: ReactNode }> = [
   { value: "visual", label: "Visual", description: "Sem vibração ou som.", icon: <Eye className="size-3.5" /> },
   { value: "visual-vibration", label: "Vibração", description: "Usa vibração quando o aparelho suporta.", icon: <Vibrate className="size-3.5" /> },
@@ -42,6 +63,7 @@ const POMODORO_DURATION_FIELDS: Array<{ mode: PomodoroMode; label: string }> = [
 ]
 
 export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean }) {
+  const { data: session } = authClient.useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [calendars, setCalendars] = useState<CalendarOption[]>([])
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([])
@@ -49,8 +71,76 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
   const [alertSettings, setAlertSettings] = useState<ProductivityAlertSettings>(() => readProductivityAlertSettings())
   const [pomodoroDurations, setPomodoroDurations] = useState<PomodoroDurations>(() => readPomodoroDurations())
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => getNotificationPermission())
+  const [weatherLocation, setWeatherLocation] = useState("Brasília")
+  const [weatherLat, setWeatherLat] = useState("-15.886953")
+  const [weatherLon, setWeatherLon] = useState("-47.813873")
+  const [weatherTimezone, setWeatherTimezone] = useState("America/Sao_Paulo")
+  const [openAiConfigured, setOpenAiConfigured] = useState(false)
+  const [openAiKey, setOpenAiKey] = useState("")
+  const [spotifyStatus, setSpotifyStatus] = useState<{ appConfigured: boolean; connected: boolean; displayName: string | null } | null>(null)
+  const [homeAssistantStatus, setHomeAssistantStatus] = useState<{ configured: boolean; hasUrl: boolean; hasToken: boolean; entityIds: string[] } | null>(null)
+  const [homeAssistantUrl, setHomeAssistantUrl] = useState("")
+  const [homeAssistantToken, setHomeAssistantToken] = useState("")
+  const [homeAssistantEntities, setHomeAssistantEntities] = useState("")
   const panelRef = useRef<HTMLDivElement>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  const patchProfile = useCallback(async (patch: Record<string, unknown>) => {
+    await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).catch(() => {})
+  }, [])
+
+  const fetchProfile = useCallback(async () => {
+    const response = await fetch("/api/profile")
+    if (!response.ok) return
+    const data = await response.json() as ProfileResponse
+    const profile = data.profile
+
+    setWeatherLocation(profile.weatherLocation)
+    setWeatherLat(String(profile.weatherLat))
+    setWeatherLon(String(profile.weatherLon))
+    setWeatherTimezone(profile.weatherTimezone)
+    setNightModeSettings({
+      enabled: profile.nightModeEnabled,
+      start: profile.nightModeStart,
+      end: profile.nightModeEnd,
+    })
+    setAlertSettings({
+      preference: profile.productivityAlertPreference,
+      notificationEnabled: profile.productivityNotificationEnabled,
+    })
+    setPomodoroDurations({
+      "focus": profile.pomodoroFocusSeconds,
+      "short-break": profile.pomodoroShortBreakSeconds,
+      "long-break": profile.pomodoroLongBreakSeconds,
+    })
+    setSelectedCalendarIds(profile.googleCalendarIds)
+    setHomeAssistantEntities(profile.homeAssistantEntityIds.join(","))
+  }, [])
+
+  const fetchIntegrationStatuses = useCallback(async () => {
+    const [openAiResponse, spotifyResponse, homeAssistantResponse] = await Promise.all([
+      fetch("/api/integrations/openai").catch(() => null),
+      fetch("/api/spotify/auth/status").catch(() => null),
+      fetch("/api/integrations/home-assistant").catch(() => null),
+    ])
+
+    if (openAiResponse?.ok) {
+      const data = await openAiResponse.json() as { configured: boolean }
+      setOpenAiConfigured(data.configured)
+    }
+    if (spotifyResponse?.ok) {
+      setSpotifyStatus(await spotifyResponse.json() as { appConfigured: boolean; connected: boolean; displayName: string | null })
+    }
+    if (homeAssistantResponse?.ok) {
+      const data = await homeAssistantResponse.json() as { configured: boolean; hasUrl: boolean; hasToken: boolean; entityIds: string[] }
+      setHomeAssistantStatus(data)
+      setHomeAssistantEntities(data.entityIds.join(","))
+    }
+  }, [])
 
   useEffect(() => {
     if (isOpen) {
@@ -90,9 +180,11 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
       setAlertSettings(readProductivityAlertSettings())
       setPomodoroDurations(readPomodoroDurations())
       setNotificationPermission(getNotificationPermission())
+      fetchProfile()
+      fetchIntegrationStatuses()
       fetchCalendars()
     }
-  }, [fetchCalendars, isOpen])
+  }, [fetchCalendars, fetchIntegrationStatuses, fetchProfile, isOpen])
 
   function toggleCalendar(calendarId: string) {
     const next = selectedCalendarIds.includes(calendarId)
@@ -102,17 +194,27 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
 
     setSelectedCalendarIds(normalized)
     writeSelectedCalendarIds(normalized)
+    patchProfile({ googleCalendarIds: normalized })
   }
 
   function updateNightModeSettings(nextSettings: NightModeSettings) {
     setNightModeSettings(nextSettings)
     writeNightModeSettings(nextSettings)
+    patchProfile({
+      nightModeEnabled: nextSettings.enabled,
+      nightModeStart: nextSettings.start,
+      nightModeEnd: nextSettings.end,
+    })
   }
 
   function updateAlertPreference(preference: ProductivityAlertPreference) {
     const nextSettings = { ...alertSettings, preference }
     setAlertSettings(nextSettings)
     writeProductivityAlertSettings(nextSettings)
+    patchProfile({
+      productivityAlertPreference: nextSettings.preference,
+      productivityNotificationEnabled: nextSettings.notificationEnabled,
+    })
   }
 
   async function enableBrowserNotifications() {
@@ -125,6 +227,10 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
     }
     setAlertSettings(nextSettings)
     writeProductivityAlertSettings(nextSettings)
+    patchProfile({
+      productivityAlertPreference: nextSettings.preference,
+      productivityNotificationEnabled: nextSettings.notificationEnabled,
+    })
   }
 
   function disableBrowserNotifications() {
@@ -134,6 +240,10 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
     }
     setAlertSettings(nextSettings)
     writeProductivityAlertSettings(nextSettings)
+    patchProfile({
+      productivityAlertPreference: nextSettings.preference,
+      productivityNotificationEnabled: nextSettings.notificationEnabled,
+    })
   }
 
   function updatePomodoroDuration(mode: PomodoroMode, value: string) {
@@ -149,6 +259,70 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
 
     setPomodoroDurations(nextDurations)
     writePomodoroDurations(nextDurations)
+    patchProfile({
+      pomodoroFocusSeconds: nextDurations["focus"],
+      pomodoroShortBreakSeconds: nextDurations["short-break"],
+      pomodoroLongBreakSeconds: nextDurations["long-break"],
+    })
+  }
+
+  async function saveWeatherSettings() {
+    await patchProfile({
+      weatherLocation,
+      weatherLat: Number(weatherLat),
+      weatherLon: Number(weatherLon),
+      weatherTimezone,
+      googleCalendarTimezone: weatherTimezone,
+    })
+  }
+
+  async function saveOpenAiKey() {
+    if (!openAiKey.trim()) return
+    const response = await fetch("/api/integrations/openai", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: openAiKey }),
+    })
+    if (response.ok) {
+      setOpenAiConfigured(true)
+      setOpenAiKey("")
+    }
+  }
+
+  async function clearOpenAiKey() {
+    await fetch("/api/integrations/openai", { method: "DELETE" })
+    setOpenAiConfigured(false)
+    setOpenAiKey("")
+  }
+
+  async function disconnectSpotify() {
+    await fetch("/api/spotify/auth/disconnect", { method: "POST" })
+    await fetchIntegrationStatuses()
+  }
+
+  async function saveHomeAssistantSettings() {
+    const response = await fetch("/api/integrations/home-assistant", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: homeAssistantUrl,
+        token: homeAssistantToken,
+        entityIds: homeAssistantEntities.split(",").map((item) => item.trim()).filter(Boolean),
+      }),
+    })
+    if (response.ok) {
+      setHomeAssistantUrl("")
+      setHomeAssistantToken("")
+      setHomeAssistantStatus(await response.json() as { configured: boolean; hasUrl: boolean; hasToken: boolean; entityIds: string[] })
+    }
+  }
+
+  async function clearHomeAssistantSettings() {
+    await fetch("/api/integrations/home-assistant", { method: "DELETE" })
+    setHomeAssistantStatus({ configured: false, hasUrl: false, hasToken: false, entityIds: [] })
+    setHomeAssistantUrl("")
+    setHomeAssistantToken("")
+    setHomeAssistantEntities("")
   }
 
   return (
@@ -188,7 +362,99 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
               </button>
             </div>
 
-            <div className="mt-3 flex max-h-[12rem] flex-col gap-1 overflow-y-auto">
+            <div className="mt-3 flex max-h-[calc(100dvh-6.5rem)] flex-col gap-1 overflow-y-auto">
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+                      {session?.user?.name ?? session?.user?.email ?? "Conta"}
+                    </div>
+                    <div className="truncate text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
+                      {session?.user?.email}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => authClient.signOut()}
+                    className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label="Sair"
+                  >
+                    <LogOut className="size-3.5" />
+                  </button>
+                </div>
+              </section>
+
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <div className="mb-2 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+                  Clima
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <input value={weatherLocation} onChange={(event) => setWeatherLocation(event.target.value)} onBlur={saveWeatherSettings} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder="Local" />
+                  <input value={weatherTimezone} onChange={(event) => setWeatherTimezone(event.target.value)} onBlur={saveWeatherSettings} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder="Timezone" />
+                  <input value={weatherLat} onChange={(event) => setWeatherLat(event.target.value)} onBlur={saveWeatherSettings} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder="Latitude" inputMode="decimal" />
+                  <input value={weatherLon} onChange={(event) => setWeatherLon(event.target.value)} onBlur={saveWeatherSettings} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder="Longitude" inputMode="decimal" />
+                </div>
+              </section>
+
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+                  <KeyRound className="size-3.5 text-muted-foreground" />
+                  OpenAI
+                  <span className="text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
+                    {openAiConfigured ? "configurado" : "pendente"}
+                  </span>
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    type="password"
+                    value={openAiKey}
+                    onChange={(event) => setOpenAiKey(event.target.value)}
+                    className="min-w-0 flex-1 rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                    placeholder="OpenAI API key"
+                  />
+                  <button type="button" onClick={saveOpenAiKey} className="rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground">Salvar</button>
+                  {openAiConfigured && <button type="button" onClick={clearOpenAiKey} className="rounded-lg border border-border/40 px-2 py-1 text-muted-foreground">Limpar</button>}
+                </div>
+              </section>
+
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <div className="mb-2 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+                  Spotify
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 truncate text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
+                    {!spotifyStatus?.appConfigured
+                      ? "App Spotify sem credenciais"
+                      : spotifyStatus.connected
+                        ? `Conectado: ${spotifyStatus.displayName ?? "Spotify"}`
+                        : "Conta Spotify não conectada"}
+                  </div>
+                  {spotifyStatus?.connected ? (
+                    <button type="button" onClick={disconnectSpotify} className="shrink-0 rounded-lg border border-border/40 px-2 py-1 text-muted-foreground">Desconectar</button>
+                  ) : (
+                    <a href="/api/spotify/auth/start" className="shrink-0 rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground">Conectar</a>
+                  )}
+                </div>
+              </section>
+
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <div className="mb-2 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+                  Home Assistant
+                </div>
+                <div className="mb-1 text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
+                  {homeAssistantStatus?.configured ? "Configurado" : "Pendente"}
+                </div>
+                <div className="grid grid-cols-1 gap-1.5">
+                  <input value={homeAssistantUrl} onChange={(event) => setHomeAssistantUrl(event.target.value)} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder={homeAssistantStatus?.hasUrl ? "URL configurada" : "Home Assistant URL"} />
+                  <input type="password" value={homeAssistantToken} onChange={(event) => setHomeAssistantToken(event.target.value)} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder={homeAssistantStatus?.hasToken ? "Token configurado" : "Token"} />
+                  <input value={homeAssistantEntities} onChange={(event) => setHomeAssistantEntities(event.target.value)} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder="Entidades favoritas separadas por vírgula" />
+                  <div className="flex gap-1.5">
+                    <button type="button" onClick={saveHomeAssistantSettings} className="rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground">Salvar</button>
+                    {homeAssistantStatus?.configured && <button type="button" onClick={clearHomeAssistantSettings} className="rounded-lg border border-border/40 px-2 py-1 text-muted-foreground">Limpar</button>}
+                  </div>
+                </div>
+              </section>
+
               <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
                 <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
                   <Clock3 className="size-3.5 text-muted-foreground" />

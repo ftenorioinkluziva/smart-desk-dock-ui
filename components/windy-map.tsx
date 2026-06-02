@@ -95,7 +95,7 @@ export function WindyMap() {
         <button
           type="button"
           onClick={exit}
-          className="absolute top-[clamp(0.3rem,0.8vh,0.5rem)] right-[clamp(0.3rem,0.8vw,0.5rem)] z-10 flex size-[clamp(1.4rem,3.5vw,1.8rem)] items-center justify-center rounded-full border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground"
+          className="absolute top-[clamp(5.7rem,24vh,6.6rem)] right-[clamp(0.3rem,0.8vw,0.5rem)] z-10 flex size-[clamp(1.4rem,3.5vw,1.8rem)] items-center justify-center rounded-full border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground"
           aria-label="Voltar ao carrossel"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

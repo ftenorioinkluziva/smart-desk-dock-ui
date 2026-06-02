@@ -260,13 +260,13 @@ export function SpotifyExpandedPanel() {
         <div className="flex min-w-0 flex-col gap-[clamp(0.45rem,1.35vh,0.85rem)]">
           <div className="min-w-0">
             <h2 id="spotify-heading" className="text-[clamp(0.65rem,1.7vw,0.8rem)] font-medium uppercase tracking-normal text-spotify">
-              {isMock ? "Spotify nao configurado" : nowPlaying.isPlaying ? "Tocando agora" : "Spotify pausado"}
+              {isMock ? "Spotify nao conectado" : nowPlaying.isPlaying ? "Tocando agora" : "Spotify pausado"}
             </h2>
             <h1 className="mt-1 truncate pb-1 text-[clamp(1.55rem,4.6vw,3rem)] font-semibold leading-tight tracking-normal">
-              {nowPlaying.track ?? (isMock ? "Configure o Spotify" : "Nada tocando")}
+              {nowPlaying.track ?? (isMock ? "Conecte sua conta Spotify" : "Nada tocando")}
             </h1>
             <p className="mt-1 truncate pb-0.5 text-[clamp(0.85rem,2.2vw,1.15rem)] leading-snug text-muted-foreground">
-              {nowPlaying.artist ?? "Conecte as credenciais para ativar este painel"}
+              {nowPlaying.artist ?? "Conecte sua conta para ativar este painel"}
             </p>
             {nowPlaying.album ? (
               <p className="truncate pb-0.5 text-[clamp(0.72rem,1.8vw,0.95rem)] leading-snug text-muted-foreground/80">
@@ -388,7 +388,7 @@ export function SpotifyExpandedPanel() {
                   ))
                 ) : (
                   <span className="min-w-0 truncate px-1 text-muted-foreground">
-                    {nowPlaying.deviceName ?? (isMock ? "Credenciais pendentes" : "Sem dispositivo ativo")}
+                    {nowPlaying.deviceName ?? (isMock ? "Conta pendente" : "Sem dispositivo ativo")}
                   </span>
                 )}
               </div>
@@ -436,7 +436,7 @@ export function SpotifyExpandedPanel() {
               ))
             ) : (
               <div className="flex h-[clamp(2.9rem,8vh,3.65rem)] min-w-[12rem] items-center rounded-md bg-secondary/35 px-3 text-[clamp(0.66rem,1.55vw,0.78rem)] text-muted-foreground">
-                {playlistError ?? (isMock ? "Configure o Spotify" : "Nenhuma playlist carregada")}
+                {playlistError ?? (isMock ? "Conecte sua conta Spotify" : "Nenhuma playlist carregada")}
               </div>
             )}
           </div>

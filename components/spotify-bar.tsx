@@ -98,7 +98,7 @@ export function SpotifyBar() {
           </>
         ) : (
           <span className="text-[clamp(0.65rem,1.6vw,0.8rem)] text-muted-foreground italic">
-            {isMock ? "Configure as credenciais do Spotify" : "Nada tocando"}
+            {isMock ? "Conecte sua conta Spotify" : "Nada tocando"}
           </span>
         )}
       </div>

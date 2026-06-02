@@ -4,9 +4,10 @@ import {
   buildRealtimeSessionPayload,
   REALTIME_MODEL,
   REALTIME_VOICE,
-  realtimeAgentConfigured,
   type RealtimeClientSecretResponse,
 } from "@/lib/realtime-agent"
+import { getIntegrationSecret } from "@/lib/integration-secrets"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
 
 type OpenAIRealtimeClientSecret = {
   value?: string
@@ -29,25 +30,30 @@ function extractClientSecret(data: OpenAIRealtimeSessionResponse) {
   }
 }
 
-async function requestRealtimeClientSecret(endpoint: string, body: unknown) {
+async function requestRealtimeClientSecret(endpoint: string, body: unknown, apiKey: string) {
   return fetch(endpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   })
 }
 
-export async function POST() {
-  if (!realtimeAgentConfigured) {
+export async function POST(request: Request) {
+  const user = await requireCurrentUser(request)
+  if (isAuthResponse(user)) return user
+
+  const apiKey = await getIntegrationSecret(user.id, "openai", "api_key")
+
+  if (!apiKey) {
     return NextResponse.json({
       configured: false,
       model: REALTIME_MODEL,
       voice: REALTIME_VOICE,
       mock: true,
-      error: "OPENAI_API_KEY is not configured",
+      error: "Configure sua chave OpenAI nas configurações",
     } satisfies RealtimeClientSecretResponse)
   }
 
@@ -55,12 +61,14 @@ export async function POST() {
     let response = await requestRealtimeClientSecret(
       "https://api.openai.com/v1/realtime/client_secrets",
       buildRealtimeSessionPayload(),
+      apiKey,
     )
 
     if (response.status === 404 || response.status === 400) {
       response = await requestRealtimeClientSecret(
         "https://api.openai.com/v1/realtime/sessions",
         buildLegacyRealtimeSessionPayload(),
+        apiKey,
       )
     }
 

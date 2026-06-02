@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { ArrowDownRight, ArrowUpRight, Banknote, BriefcaseBusiness, LogOut, Target } from "lucide-react"
-import { readFinanceAuth, saveFinanceAuth, clearFinanceAuth, type FinanceAuth } from "@/lib/finance-auth"
+
+type FinanceAuthUser = {
+  id: string
+  email: string
+  name?: string
+  role: string
+}
 
 type FinanceAsset = {
   id: string
@@ -107,7 +113,7 @@ function formatQuantity(value: number | null) {
   })
 }
 
-function FinanceLoginForm({ onLogin }: { onLogin: (auth: FinanceAuth) => void }) {
+function FinanceLoginForm({ onLogin }: { onLogin: (user: FinanceAuthUser) => void }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -119,7 +125,7 @@ function FinanceLoginForm({ onLogin }: { onLogin: (auth: FinanceAuth) => void })
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/finance/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -130,9 +136,8 @@ function FinanceLoginForm({ onLogin }: { onLogin: (auth: FinanceAuth) => void })
         throw new Error(data.error ?? "Falha na autenticação")
       }
 
-      const data = await response.json() as FinanceAuth
-      saveFinanceAuth(data)
-      onLogin(data)
+      const data = await response.json() as { user: FinanceAuthUser }
+      onLogin(data.user)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao conectar")
     } finally {
@@ -199,29 +204,36 @@ function FinanceLoginForm({ onLogin }: { onLogin: (auth: FinanceAuth) => void })
 }
 
 export function FinancePanel() {
-  const [auth, setAuth] = useState<FinanceAuth | null>(null)
+  const [financeUser, setFinanceUser] = useState<FinanceAuthUser | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [summary, setSummary] = useState<FinanceDockSummary>(FALLBACK)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
-    const stored = readFinanceAuth()
-    setAuth(stored)
-    setAuthReady(true)
+    async function loadFinanceUser() {
+      try {
+        const response = await fetch("/api/finance/auth/me")
+        if (response.ok) {
+          const data = await response.json() as { user: FinanceAuthUser }
+          setFinanceUser(data.user)
+        }
+      } finally {
+        setAuthReady(true)
+      }
+    }
+
+    loadFinanceUser()
   }, [])
 
-  const fetchSummary = useCallback(async (token: string) => {
+  const fetchSummary = useCallback(async () => {
     try {
       setHasError(false)
       setIsLoading(true)
-      const response = await fetch("/api/finance/summary", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const response = await fetch("/api/finance/summary")
 
       if (response.status === 401) {
-        clearFinanceAuth()
-        setAuth(null)
+        setFinanceUser(null)
         return
       }
 
@@ -239,24 +251,24 @@ export function FinancePanel() {
   }, [])
 
   useEffect(() => {
-    if (auth) {
-      fetchSummary(auth.token)
+    if (financeUser) {
+      fetchSummary()
     }
-  }, [auth, fetchSummary])
+  }, [financeUser, fetchSummary])
 
   useEffect(() => {
-    if (!auth) return
-    const refresh = setInterval(() => fetchSummary(auth.token), 5 * 60 * 1000)
+    if (!financeUser) return
+    const refresh = setInterval(() => fetchSummary(), 5 * 60 * 1000)
     return () => clearInterval(refresh)
-  }, [auth, fetchSummary])
+  }, [financeUser, fetchSummary])
 
-  const handleLogin = (newAuth: FinanceAuth) => {
-    setAuth(newAuth)
+  const handleLogin = (user: FinanceAuthUser) => {
+    setFinanceUser(user)
   }
 
-  const handleLogout = () => {
-    clearFinanceAuth()
-    setAuth(null)
+  const handleLogout = async () => {
+    await fetch("/api/finance/auth/me", { method: "DELETE" }).catch(() => {})
+    setFinanceUser(null)
     setSummary(FALLBACK)
   }
 
@@ -264,7 +276,7 @@ export function FinancePanel() {
     return null
   }
 
-  if (!auth) {
+  if (!financeUser) {
     return <FinanceLoginForm onLogin={handleLogin} />
   }
 
@@ -287,7 +299,7 @@ export function FinancePanel() {
           title="Desconectar"
         >
           <LogOut className="size-[clamp(0.6rem,1.3vw,0.75rem)]" />
-          <span className="hidden sm:inline">{auth.user.name ?? auth.user.email}</span>
+          <span className="hidden sm:inline">{financeUser.name ?? financeUser.email}</span>
         </button>
 
         <div className="grid min-h-0 w-full grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-[clamp(0.65rem,2vw,1.2rem)]">

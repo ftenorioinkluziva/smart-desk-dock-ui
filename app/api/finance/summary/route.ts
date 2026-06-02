@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { fetchFinanceDockSummary, financeConfigured, getMockFinanceDockSummary } from "@/lib/finance"
+import { deleteIntegrationProvider, getIntegrationSecret } from "@/lib/integration-secrets"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
 
 export async function GET(request: NextRequest) {
+  const user = await requireCurrentUser(request)
+  if (isAuthResponse(user)) return user
+
   if (!financeConfigured) {
     return NextResponse.json(getMockFinanceDockSummary())
   }
 
-  const authHeader = request.headers.get("authorization")
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined
+  const token = await getIntegrationSecret(user.id, "finance", "access_token")
 
   if (!token) {
-    return NextResponse.json({ error: "Autenticação necessária" }, { status: 401 })
+    return NextResponse.json({ financeAuthRequired: true, error: "Autenticação financeira necessária" }, { status: 401 })
   }
 
   try {
@@ -18,6 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(summary)
   } catch (error) {
     console.error("Finance summary API error:", error)
-    return NextResponse.json({ ...getMockFinanceDockSummary(), error: "Finance API fetch failed" }, { status: 502 })
+    await deleteIntegrationProvider(user.id, "finance")
+    return NextResponse.json({ financeAuthRequired: true, error: "Finance API fetch failed" }, { status: 401 })
   }
 }

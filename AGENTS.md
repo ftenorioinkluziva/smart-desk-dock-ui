@@ -8,15 +8,26 @@ Minimalist productivity dashboard optimized for a landscape phone screen (667 px
 
 ```bash
 pnpm install
+pnpm db:migrate   # after DATABASE_URL is configured
 pnpm dev          # http://localhost:3000
 ```
+
+Drizzle manages both Better Auth tables (`user`, `session`, `account`, `verification`) and app tables (`user_profiles`, `user_integration_secrets`). Use `pnpm db:generate` for schema changes and `pnpm db:migrate` to apply migrations.
 
 ### Required environment variables (`/.env.local`)
 
 ```
+BETTER_AUTH_URL=          # e.g. http://localhost:3000
+BETTER_AUTH_SECRET=
+DATABASE_URL=
+APP_ENCRYPTION_KEY=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
-SPOTIFY_REFRESH_TOKEN=
+SPOTIFY_REDIRECT_ORIGIN=  # default local fallback: http://127.0.0.1:3000
 ```
 
 ### Optional environment variables
@@ -27,19 +38,8 @@ WEATHER_LON=       # default: -47.813873
 WEATHER_TIMEZONE=  # default: America/Sao_Paulo
 WEATHER_LOCATION=  # default: Brasília
 
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_CALENDAR_ID=        # default: primary
-GOOGLE_CALENDAR_TIMEZONE=  # default: WEATHER_TIMEZONE or America/Sao_Paulo
-
-HOME_ASSISTANT_URL=
-HOME_ASSISTANT_TOKEN=
-HOME_ASSISTANT_ENTITIES=   # comma-separated favorites, e.g. light.sala,switch.tomada_mesa,scene.movie_mode
-
 FINANCE_API_URL=      # e.g. http://127.0.0.1:3001 or https://paridade-risco-mobile-api.vercel.app
 
-OPENAI_API_KEY=
 OPENAI_REALTIME_MODEL=             # default: gpt-realtime-mini
 OPENAI_REALTIME_VOICE=             # default: marin
 OPENAI_REALTIME_REASONING_EFFORT=  # default: low, used with gpt-realtime-2
@@ -48,19 +48,9 @@ OPENAI_REALTIME_REASONING_EFFORT=  # default: low, used with gpt-realtime-2
 #### Getting Spotify credentials
 
 1. Create an app at developer.spotify.com → copy Client ID and Secret
-2. Add redirect URI: `http://127.0.0.1:3000/callback` (note: `localhost` is blocked since Nov 2025)
-3. Authorize (replace `YOUR_CLIENT_ID`):
-   ```
-   https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state%20playlist-read-private
-   ```
-4. Copy `code` from the redirect URL, then exchange for a refresh token:
-   ```bash
-   curl.exe -X POST https://accounts.spotify.com/api/token \
-     -u "CLIENT_ID:CLIENT_SECRET" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "grant_type=authorization_code&code=CODE&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback"
-   ```
-5. Copy `refresh_token` from the response into `.env.local`
+2. Add redirect URI: `http://127.0.0.1:3000/api/spotify/auth/callback`
+3. Keep only `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` in `.env.local`
+4. Each signed-in Focus Dock user connects their own Spotify account from Settings
 
 ---
 
@@ -128,6 +118,11 @@ hooks/
   use-toast.ts
 
 lib/
+  auth.ts                    Better Auth + Google + Drizzle adapter
+  db.ts                      shared pg Pool
+  drizzle.ts                 Drizzle client using the shared pool
+  integration-secrets.ts     encrypted per-user integration secrets
+  user-profile.ts            per-user profile defaults and persistence
   spotify.ts                 getAccessToken(), spotifyControl(), spotifyConfigured flag
   google-calendar.ts         OAuth, calendar list fetch, event fetch + normalization
   finance.ts                 server-side paridade-risco-mobile API proxy helpers
@@ -157,25 +152,25 @@ Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.
 
 ### Google Calendar mock/real split
 
-`lib/google-calendar.ts` exports `googleCalendarConfigured` (true when client id, client secret, and refresh token are present). Calendar API routes return `{ mock: true }` when not configured. The settings panel can list connected calendars and stores the selected ids in `localStorage`.
+Google sign-in is handled by Better Auth. Calendar API routes require a signed-in user and use that user's Google OAuth account. The settings panel can list connected calendars and persists selected ids in the user profile, with `localStorage` only as a temporary migration fallback.
 
 ### Home Assistant mock/real split
 
-`lib/home-assistant.ts` exports `homeAssistantConfigured` (true when URL and token are present). Home Assistant API routes return `{ mock: true }` when not configured. The browser never receives the HA token; service calls go through `app/api/home-assistant/service/route.ts`.
+Home Assistant URL/token are per-user encrypted secrets. Home Assistant API routes return `{ configured: false, mock: true }` when not configured. The browser never receives the HA token; service calls go through `app/api/home-assistant/service/route.ts`.
 
 ### Finance mock/real split
 
-`lib/finance.ts` exports `financeConfigured` (true when `FINANCE_API_URL` is present). The browser only calls `/api/finance/summary` with a Bearer token obtained at login; the dock server forwards to `paridade-risco-mobile` endpoints and returns mock data when `FINANCE_API_URL` is not set.
+`lib/finance.ts` exports `financeConfigured` (true when `FINANCE_API_URL` is present). The browser never stores the Finance token. Finance login uses `/api/finance/auth/login`, stores the upstream token encrypted per Focus Dock user, and `/api/finance/summary` forwards to `paridade-risco-mobile` with the server-side token.
 
-**Auth flow:** The finance panel shows a login form when no session exists. The user authenticates via `POST /api/auth/login` (proxied to upstream). The token is stored in `localStorage` and sent with every summary request. On 401, the session is cleared and the login form reappears.
+**Auth flow:** The finance panel shows a login form when no Finance token exists for the signed-in Focus Dock user. The user authenticates via `POST /api/finance/auth/login` (proxied to upstream). On upstream 401, the encrypted token is cleared and the login form reappears.
 
 ### Spotify mock/real split
 
-`lib/spotify.ts` exports `spotifyConfigured` (true when all three env vars are present). API routes return `{ mock: true }` when not configured; the `SpotifyBar` shows "Configure Spotify credentials" and disables controls.
+Spotify uses global app credentials (`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`) plus per-user OAuth. API routes return `{ spotifyAuthRequired: true, mock: true }` when the signed-in user has not connected Spotify; the `SpotifyBar` shows a connect-account state and disables controls.
 
 ### OpenAI Realtime mock/real split
 
-`lib/realtime-agent.ts` exports `realtimeAgentConfigured` (true when `OPENAI_API_KEY` is present). The browser requests an ephemeral client secret from `app/api/realtime/session/route.ts`; the OpenAI API key is never sent to the browser. When not configured, the voice panel shows a setup state.
+OpenAI Realtime uses a per-user encrypted OpenAI API key. The browser requests an ephemeral client secret from `app/api/realtime/session/route.ts`; the OpenAI API key is never sent to the browser. When the user has not configured a key, the voice panel shows a setup state.
 
 ### Optimistic UI (SpotifyBar)
 
@@ -195,8 +190,8 @@ Local state flips immediately on button click → command sent → `setTimeout(f
 
 ## Known Limitations / Future Work
 
-- **Weather location is static.** Could be made configurable via settings panel.
-- **Settings UI is partial.** Calendar selection and night mode are configurable; alert preferences, weather city, and theme/brightness still need UI.
+- **Weather location is profile-based.** Defaults to Brasília until the signed-in user saves profile settings.
+- **Settings UI is partial.** Profile, OpenAI, Spotify, Finance and Home Assistant are configurable; theme/brightness still need UI.
 - **Spotify requires Premium** for playback control (play/pause/skip).
 - **No PWA offline support.** Service worker not implemented; weather/Spotify fail without network.
 - **iOS Home Screen behavior still needs device validation.** Manifest/icons and safe-area code are in place, but fullscreen behavior should be checked on a real iPhone/iPad.

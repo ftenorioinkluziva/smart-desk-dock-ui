@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server"
-import { callHomeAssistantService, homeAssistantConfigured, type HomeAssistantColorCommand } from "@/lib/home-assistant"
+import { callHomeAssistantService, type HomeAssistantColorCommand } from "@/lib/home-assistant"
+import { getIntegrationSecret } from "@/lib/integration-secrets"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
+import { getUserProfile } from "@/lib/user-profile"
 
 export async function POST(request: Request) {
-  if (!homeAssistantConfigured) {
-    return NextResponse.json({ error: "Home Assistant is not configured", mock: true }, { status: 503 })
+  const user = await requireCurrentUser(request)
+  if (isAuthResponse(user)) return user
+
+  const [url, token, profile] = await Promise.all([
+    getIntegrationSecret(user.id, "home_assistant", "url"),
+    getIntegrationSecret(user.id, "home_assistant", "token"),
+    getUserProfile(user.id),
+  ])
+
+  if (!url || !token) {
+    return NextResponse.json({ error: "Home Assistant is not configured", configured: false, mock: true }, { status: 503 })
   }
 
   try {
@@ -18,12 +30,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing entityId or action" }, { status: 400 })
     }
 
-    await callHomeAssistantService({
-      entityId: body.entityId,
-      action: body.action,
-      brightness: body.brightness,
-      color: body.color,
-    })
+    await callHomeAssistantService(
+      { url, token, entityIds: profile.homeAssistantEntityIds },
+      {
+        entityId: body.entityId,
+        action: body.action,
+        brightness: body.brightness,
+        color: body.color,
+      },
+    )
 
     return NextResponse.json({ ok: true })
   } catch (error) {

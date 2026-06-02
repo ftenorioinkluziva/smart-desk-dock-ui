@@ -1,7 +1,11 @@
-import { spotifyConfigured, spotifyControl, type SpotifyAction } from "@/lib/spotify"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
+import { spotifyAppConfigured, spotifyControl, type SpotifyAction } from "@/lib/spotify"
 
 export async function POST(req: Request) {
-  if (!spotifyConfigured) {
+  const user = await requireCurrentUser(req)
+  if (isAuthResponse(user)) return user
+
+  if (!spotifyAppConfigured) {
     return Response.json({ error: "Spotify not configured" }, { status: 503 })
   }
 
@@ -36,10 +40,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    await spotifyControl(action, { state, repeatState, volumePercent, deviceId, play, contextUri })
+    const ok = await spotifyControl(user.id, action, { state, repeatState, volumePercent, deviceId, play, contextUri })
+    if (!ok) {
+      return Response.json({ spotifyAuthRequired: true, error: "Spotify account is not connected" }, { status: 401 })
+    }
     return Response.json({ ok: true })
   } catch (err) {
     console.error("Spotify control error:", err)
     return Response.json({ error: "Playback control failed" }, { status: 502 })
   }
 }
+

@@ -1,4 +1,5 @@
-import { getAccessToken, spotifyConfigured } from "@/lib/spotify"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
+import { refreshSpotifyAccessToken, spotifyAppConfigured } from "@/lib/spotify"
 
 type SpotifyPlaylist = {
   id: string
@@ -10,13 +11,18 @@ type SpotifyPlaylist = {
   tracks?: { total?: number }
 }
 
-export async function GET() {
-  if (!spotifyConfigured) {
-    return Response.json({ playlists: [], mock: true })
+export async function GET(request: Request) {
+  const user = await requireCurrentUser(request)
+  if (isAuthResponse(user)) return user
+
+  if (!spotifyAppConfigured) {
+    return Response.json({ playlists: [], mock: true, spotifyAuthRequired: true })
   }
 
   try {
-    const token = await getAccessToken()
+    const token = await refreshSpotifyAccessToken(user.id)
+    if (!token) return Response.json({ playlists: [], mock: true, spotifyAuthRequired: true })
+
     const res = await fetch("https://api.spotify.com/v1/me/playlists?limit=20&offset=0", {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -49,3 +55,4 @@ export async function GET() {
     return Response.json({ playlists: [] })
   }
 }
+

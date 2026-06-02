@@ -1,32 +1,23 @@
 import { NextResponse } from "next/server"
-import {
-  fetchGoogleCalendarList,
-  googleCalendarConfigured,
-  isGoogleCalendarAuthError,
-} from "@/lib/google-calendar"
+import { fetchGoogleCalendarList } from "@/lib/google-calendar"
+import { getGoogleAccessToken } from "@/lib/google-oauth"
+import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
 
-export async function GET() {
-  if (!googleCalendarConfigured) {
-    return NextResponse.json({ calendars: [], mock: true })
+export async function GET(request: Request) {
+  const user = await requireCurrentUser(request)
+  if (isAuthResponse(user)) return user
+
+  const accessToken = await getGoogleAccessToken(request, user.id)
+  if (!accessToken) {
+    return NextResponse.json({ calendars: [], calendarAuthRequired: true }, { status: 403 })
   }
 
   try {
-    const calendars = await fetchGoogleCalendarList()
+    const calendars = await fetchGoogleCalendarList(accessToken)
     return NextResponse.json({ calendars })
   } catch (error) {
-    if (isGoogleCalendarAuthError(error)) {
-      console.warn("Google Calendar authorization expired. Generate a new GOOGLE_REFRESH_TOKEN.")
-      return NextResponse.json(
-        {
-          calendars: [],
-          authExpired: true,
-          error: "Google Calendar authorization expired. Generate a new GOOGLE_REFRESH_TOKEN.",
-        },
-        { status: 401 },
-      )
-    }
-
     console.error("Google Calendar list API error:", error)
     return NextResponse.json({ calendars: [], error: "Calendar list fetch failed" }, { status: 502 })
   }
 }
+

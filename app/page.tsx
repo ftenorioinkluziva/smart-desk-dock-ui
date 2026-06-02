@@ -12,6 +12,7 @@ import { SpotifyExpandedPanel } from "@/components/spotify-expanded-panel"
 import { FinancePanel } from "@/components/finance-panel"
 import { VoiceAgentPanel } from "@/components/voice-agent-panel"
 import { WindyMap } from "@/components/windy-map"
+import { AuthGate } from "@/components/auth-gate"
 import { isWithinNightMode, NIGHT_MODE_SETTINGS_EVENT, readNightModeSettings } from "@/lib/dock-settings"
 const PAGES = 10
 const NIGHT_DOCK_PAGE_INDEX = 2
@@ -78,6 +79,7 @@ export default function Page() {
   }, [activePage, nightModeSettings, scrollToPage])
 
   return (
+    <AuthGate>
     <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col dock-py">
       <SettingsPanel showTrigger={activePage === 0} />
 
@@ -161,5 +163,6 @@ export default function Page() {
         ))}
       </div>
     </div>
+    </AuthGate>
   )
 }

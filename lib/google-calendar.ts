@@ -1,11 +1,3 @@
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
-const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN
-export const DEFAULT_CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? "primary"
-const CALENDAR_TIMEZONE = process.env.GOOGLE_CALENDAR_TIMEZONE ?? process.env.WEATHER_TIMEZONE ?? "America/Sao_Paulo"
-
-export const googleCalendarConfigured = Boolean(CLIENT_ID && CLIENT_SECRET && REFRESH_TOKEN)
-
 export class GoogleCalendarAuthError extends Error {
   constructor(message: string) {
     super(message)
@@ -60,50 +52,9 @@ export type CalendarOption = {
 
 const EVENT_COLORS = ["bg-accent", "bg-chart-1", "bg-chart-2", "bg-chart-4", "bg-chart-5"]
 
-async function getAccessToken(): Promise<string> {
-  const basic = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64")
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: REFRESH_TOKEN!,
-    }),
-  })
-
-  if (!response.ok) {
-    const errorBody = await response.text()
-    let errorCode: string | undefined
-
-    try {
-      const parsed = JSON.parse(errorBody) as { error?: string }
-      errorCode = parsed.error
-    } catch {
-      // Keep the original response body in the message below.
-    }
-
-    const message = `Google OAuth token refresh failed: ${response.status} ${errorBody}`
-    if (response.status === 400 && errorCode === "invalid_grant") {
-      throw new GoogleCalendarAuthError(message)
-    }
-
-    throw new Error(message)
-  }
-
-  const data = await response.json() as { access_token?: string }
-  if (!data.access_token) {
-    throw new Error("Google OAuth response did not include an access token")
-  }
-
-  return data.access_token
-}
-
-function formatDateInTimezone(date: Date): string {
+function formatDateInTimezone(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: CALENDAR_TIMEZONE,
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -116,7 +67,7 @@ function formatDateInTimezone(date: Date): string {
   return year && month && day ? `${year}-${month}-${day}` : date.toISOString().slice(0, 10)
 }
 
-function formatTimeRange(event: GoogleCalendarEvent): string {
+function formatTimeRange(event: GoogleCalendarEvent, timezone: string): string {
   if (event.start?.date) return "Dia todo"
 
   const start = event.start?.dateTime ? new Date(event.start.dateTime) : null
@@ -125,6 +76,7 @@ function formatTimeRange(event: GoogleCalendarEvent): string {
   if (!start || Number.isNaN(start.getTime())) return "Sem horário"
 
   const formatter = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: timezone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -134,7 +86,7 @@ function formatTimeRange(event: GoogleCalendarEvent): string {
   return `${formatter.format(start)} - ${formatter.format(end)}`
 }
 
-export function normalizeCalendarEvent(event: GoogleCalendarEvent, index: number, calendarId: string): CalendarEvent | null {
+export function normalizeCalendarEvent(event: GoogleCalendarEvent, index: number, calendarId: string, timezone: string): CalendarEvent | null {
   const dateValue = event.start?.date ?? event.start?.dateTime
   if (!dateValue) return null
 
@@ -146,8 +98,8 @@ export function normalizeCalendarEvent(event: GoogleCalendarEvent, index: number
     id: `${calendarId}:${event.id}`,
     calendarId,
     title: event.summary?.trim() || "Sem título",
-    date: event.start?.date ?? formatDateInTimezone(new Date(dateValue)),
-    time: formatTimeRange(event),
+    date: event.start?.date ?? formatDateInTimezone(new Date(dateValue), timezone),
+    time: formatTimeRange(event, timezone),
     startDateTime,
     endDateTime,
     isAllDay,
@@ -157,15 +109,18 @@ export function normalizeCalendarEvent(event: GoogleCalendarEvent, index: number
 }
 
 export async function fetchGoogleCalendarEvents({
+  accessToken,
   calendarIds,
   timeMin,
   timeMax,
+  timezone,
 }: {
+  accessToken: string
   calendarIds: string[]
   timeMin: string
   timeMax: string
+  timezone: string
 }): Promise<CalendarEvent[]> {
-  const token = await getAccessToken()
   const params = new URLSearchParams({
     timeMin,
     timeMax,
@@ -178,7 +133,7 @@ export async function fetchGoogleCalendarEvents({
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
       {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         next: { revalidate: 300 },
       },
@@ -191,7 +146,7 @@ export async function fetchGoogleCalendarEvents({
 
     const data = await response.json() as { items?: GoogleCalendarEvent[] }
     return (data.items ?? [])
-      .map((event, eventIndex) => normalizeCalendarEvent(event, calendarIndex + eventIndex, calendarId))
+      .map((event, eventIndex) => normalizeCalendarEvent(event, calendarIndex + eventIndex, calendarId, timezone))
       .filter((event): event is CalendarEvent => Boolean(event))
   }))
 
@@ -204,11 +159,10 @@ export async function fetchGoogleCalendarEvents({
     })
 }
 
-export async function fetchGoogleCalendarList(): Promise<CalendarOption[]> {
-  const token = await getAccessToken()
+export async function fetchGoogleCalendarList(accessToken: string): Promise<CalendarOption[]> {
   const response = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     next: { revalidate: 300 },
   })

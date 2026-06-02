@@ -1,9 +1,3 @@
-const HOME_ASSISTANT_URL = process.env.HOME_ASSISTANT_URL?.replace(/\/$/, "")
-const HOME_ASSISTANT_TOKEN = process.env.HOME_ASSISTANT_TOKEN
-const HOME_ASSISTANT_ENTITIES = process.env.HOME_ASSISTANT_ENTITIES
-
-export const homeAssistantConfigured = Boolean(HOME_ASSISTANT_URL && HOME_ASSISTANT_TOKEN)
-
 type HomeAssistantState = {
   entity_id: string
   state: string
@@ -39,11 +33,10 @@ export type HomeAssistantColorCommand = {
   hsColor?: [number, number]
 }
 
-function getFavoriteEntityIds() {
-  return (HOME_ASSISTANT_ENTITIES ?? "")
-    .split(",")
-    .map((entityId) => entityId.trim())
-    .filter(Boolean)
+export type HomeAssistantConfig = {
+  url: string
+  token: string
+  entityIds: string[]
 }
 
 function normalizeEntity(entity: HomeAssistantState): HomeAssistantEntity {
@@ -68,15 +61,16 @@ function normalizeEntity(entity: HomeAssistantState): HomeAssistantEntity {
   }
 }
 
-async function homeAssistantFetch(path: string, init?: RequestInit) {
-  if (!HOME_ASSISTANT_URL || !HOME_ASSISTANT_TOKEN) {
+async function homeAssistantFetch(config: HomeAssistantConfig, path: string, init?: RequestInit) {
+  const url = config.url.replace(/\/$/, "")
+  if (!url || !config.token) {
     throw new Error("Home Assistant is not configured")
   }
 
-  const response = await fetch(`${HOME_ASSISTANT_URL}${path}`, {
+  const response = await fetch(`${url}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${HOME_ASSISTANT_TOKEN}`,
+      Authorization: `Bearer ${config.token}`,
       "Content-Type": "application/json",
       ...init?.headers,
     },
@@ -90,10 +84,10 @@ async function homeAssistantFetch(path: string, init?: RequestInit) {
   return response
 }
 
-export async function fetchHomeAssistantEntities(): Promise<HomeAssistantEntity[]> {
-  const response = await homeAssistantFetch("/api/states")
+export async function fetchHomeAssistantEntities(config: HomeAssistantConfig): Promise<HomeAssistantEntity[]> {
+  const response = await homeAssistantFetch(config, "/api/states")
   const states = await response.json() as HomeAssistantState[]
-  const favoriteEntityIds = getFavoriteEntityIds()
+  const favoriteEntityIds = config.entityIds
   const allowedDomains = new Set(["light", "switch", "scene", "script", "cover"])
 
   return states
@@ -112,17 +106,20 @@ export async function fetchHomeAssistantEntities(): Promise<HomeAssistantEntity[
     .slice(0, 12)
 }
 
-export async function callHomeAssistantService({
-  entityId,
-  action,
-  brightness,
-  color,
-}: {
-  entityId: string
-  action: "toggle" | "turn_on" | "turn_off" | "open_cover" | "close_cover" | "stop_cover"
-  brightness?: number
-  color?: HomeAssistantColorCommand
-}) {
+export async function callHomeAssistantService(
+  config: HomeAssistantConfig,
+  {
+    entityId,
+    action,
+    brightness,
+    color,
+  }: {
+    entityId: string
+    action: "toggle" | "turn_on" | "turn_off" | "open_cover" | "close_cover" | "stop_cover"
+    brightness?: number
+    color?: HomeAssistantColorCommand
+  },
+) {
   const [domain] = entityId.split(".")
   if (!domain || !["light", "switch", "scene", "script", "cover"].includes(domain)) {
     throw new Error("Unsupported Home Assistant entity domain")
@@ -147,8 +144,9 @@ export async function callHomeAssistantService({
     ]
   }
 
-  await homeAssistantFetch(`/api/services/${domain}/${service}`, {
+  await homeAssistantFetch(config, `/api/services/${domain}/${service}`, {
     method: "POST",
     body: JSON.stringify(body),
   })
 }
+

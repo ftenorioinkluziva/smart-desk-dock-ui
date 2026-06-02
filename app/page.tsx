@@ -84,6 +84,7 @@ export default function Page() {
       {/* Carousel content area */}
       <div
         ref={scrollRef}
+        data-dock-carousel
         className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
         onKeyDown={handleKeyDown}

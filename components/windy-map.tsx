@@ -6,8 +6,41 @@ import { cn } from "@/lib/utils"
 export function WindyMap() {
   const [interactive, setInteractive] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const touchStartRef = useRef<{ x: number; y: number; page: number } | null>(null)
 
   const exit = useCallback(() => setInteractive(false), [])
+
+  const scrollCarouselBy = useCallback((direction: -1 | 1, fromPage?: number) => {
+    const carousel = wrapperRef.current?.closest<HTMLElement>("[data-dock-carousel]")
+    if (!carousel) return
+
+    const currentPage = fromPage ?? Math.round(carousel.scrollLeft / carousel.clientWidth)
+    const maxPage = Math.max(0, Math.round(carousel.scrollWidth / carousel.clientWidth) - 1)
+    const nextPage = Math.min(maxPage, Math.max(0, currentPage + direction))
+    carousel.scrollTo({ left: carousel.clientWidth * nextPage, behavior: "smooth" })
+  }, [])
+
+  const handleSwipeStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (interactive) return
+    const touch = event.touches[0]
+    const carousel = wrapperRef.current?.closest<HTMLElement>("[data-dock-carousel]")
+    const page = carousel ? Math.round(carousel.scrollLeft / carousel.clientWidth) : 0
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, page }
+  }, [interactive])
+
+  const handleSwipeEnd = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (interactive) return
+    const start = touchStartRef.current
+    touchStartRef.current = null
+    if (!start) return
+
+    const touch = event.changedTouches[0]
+    const dx = touch.clientX - start.x
+    const dy = touch.clientY - start.y
+
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.2) return
+    scrollCarouselBy(dx > 0 ? -1 : 1, start.page)
+  }, [interactive, scrollCarouselBy])
 
   // iOS Safari workaround: force synchronous reflow after exiting interactive
   // mode to release the iframe's touch event capture (WebKit bug).
@@ -34,20 +67,28 @@ export function WindyMap() {
         <iframe
           src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=°C&metricWind=km/h&zoom=11&overlay=rain&product=ecmwf&level=surface&lat=-15.89&lon=-47.808&message=true"
           title="Mapa do Clima Windy"
-          className="size-full"
+          className={cn("size-full", !interactive && "pointer-events-none")}
           loading="lazy"
           allow="fullscreen"
         />
       </div>
 
       {!interactive && (
-        <button
-          type="button"
-          onClick={() => setInteractive(true)}
-          className="absolute bottom-[clamp(0.4rem,1.2vh,0.7rem)] left-1/2 -translate-x-1/2 z-10 rounded-full border border-border/40 bg-background/80 px-3 py-1 text-[clamp(0.6rem,1.5vw,0.72rem)] text-foreground backdrop-blur-sm transition-colors hover:bg-background/95"
-        >
-          Toque para interagir
-        </button>
+        <>
+          <div
+            className="absolute inset-0 z-10 touch-pan-x"
+            aria-hidden="true"
+            onTouchStart={handleSwipeStart}
+            onTouchEnd={handleSwipeEnd}
+          />
+          <button
+            type="button"
+            onClick={() => setInteractive(true)}
+            className="absolute bottom-[clamp(0.4rem,1.2vh,0.7rem)] left-1/2 z-20 -translate-x-1/2 rounded-full border border-border/40 bg-background/80 px-3 py-1 text-[clamp(0.6rem,1.5vw,0.72rem)] text-foreground backdrop-blur-sm transition-colors hover:bg-background/95"
+          >
+            Toque para interagir
+          </button>
+        </>
       )}
 
       {interactive && (

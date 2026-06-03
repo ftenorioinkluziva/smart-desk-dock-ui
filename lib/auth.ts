@@ -4,8 +4,21 @@ import { nextCookies } from "better-auth/next-js"
 import * as schema from "@/db/schema"
 import { drizzleDb } from "@/lib/drizzle"
 
+function parseTrustedOrigins() {
+  const origins = [
+    process.env.BETTER_AUTH_URL,
+    process.env.BETTER_AUTH_TRUSTED_ORIGINS,
+  ]
+    .flatMap((value) => value?.split(",") ?? [])
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  return Array.from(new Set(origins))
+}
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  trustedOrigins: parseTrustedOrigins(),
   secret: process.env.BETTER_AUTH_SECRET ?? "focus-dock-development-secret-change-me",
   database: drizzleAdapter(drizzleDb, {
     provider: "pg",

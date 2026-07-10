@@ -75,7 +75,7 @@ Exemplo:
 ```env
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
-SPOTIFY_REFRESH_TOKEN=
+SPOTIFY_REDIRECT_ORIGIN=https://dock.blackboxinovacao.com.br
 
 WEATHER_LAT=-15.886953
 WEATHER_LON=-47.813873
@@ -94,6 +94,18 @@ HOME_ASSISTANT_ENTITIES=light.abajur,switch.luz_escritorio_switch_1,cover.teto_s
 ```
 
 Use `HOME_ASSISTANT_URL=http://127.0.0.1:8123` quando o Home Assistant rodar na mesma maquina do app.
+
+No painel do Spotify Developer, cadastre exatamente esta Redirect URI para o dominio publico:
+
+```text
+https://dock.blackboxinovacao.com.br/api/spotify/auth/callback
+```
+
+Para desenvolvimento local, mantenha tambem:
+
+```text
+http://127.0.0.1:3000/api/spotify/auth/callback
+```
 
 ## 4. Login no GHCR
 

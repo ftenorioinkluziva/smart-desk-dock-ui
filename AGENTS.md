@@ -27,7 +27,7 @@ GOOGLE_CLIENT_SECRET=
 
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
-SPOTIFY_REDIRECT_ORIGIN=  # default local fallback: http://127.0.0.1:3000
+SPOTIFY_REDIRECT_ORIGIN=  # production: https://dock.blackboxinovacao.com.br; local fallback: http://127.0.0.1:3000
 ```
 
 ### Optional environment variables
@@ -48,7 +48,9 @@ OPENAI_REALTIME_REASONING_EFFORT=  # default: low, used with gpt-realtime-2
 #### Getting Spotify credentials
 
 1. Create an app at developer.spotify.com → copy Client ID and Secret
-2. Add redirect URI: `http://127.0.0.1:3000/api/spotify/auth/callback`
+2. Add every redirect URI used by the app:
+   - Local: `http://127.0.0.1:3000/api/spotify/auth/callback`
+   - Production: `https://dock.blackboxinovacao.com.br/api/spotify/auth/callback`
 3. Keep only `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` in `.env.local`
 4. Each signed-in Focus Dock user connects their own Spotify account from Settings
 

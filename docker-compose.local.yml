@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: smart-desk-dock-db-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: focusdock
+      POSTGRES_USER: focusdock
+      POSTGRES_PASSWORD: focusdock
+    ports:
+      - "5434:5432"
+    volumes:
+      - smart-desk-dock-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U focusdock -d focusdock"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  smart-desk-dock:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smart-desk-dock-ui:local
+    container_name: smart-desk-dock-local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      BETTER_AUTH_URL: http://localhost:3001
+      DATABASE_URL: postgresql://focusdock:focusdock@db:5432/focusdock
+    ports:
+      - "3001:3000"
+
+volumes:
+  smart-desk-dock-postgres:

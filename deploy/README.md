@@ -73,6 +73,10 @@ nano /opt/smart-desk-dock/.env
 Exemplo:
 
 ```env
+POSTGRES_DB=focusdock
+POSTGRES_USER=focusdock
+POSTGRES_PASSWORD=cole-aqui-um-segredo-hex-gerado-localmente
+
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
 SPOTIFY_REDIRECT_ORIGIN=https://dock.blackboxinovacao.com.br
@@ -91,6 +95,14 @@ GOOGLE_CALENDAR_TIMEZONE=America/Sao_Paulo
 HOME_ASSISTANT_URL=http://127.0.0.1:8123
 HOME_ASSISTANT_TOKEN=
 HOME_ASSISTANT_ENTITIES=light.abajur,switch.luz_escritorio_switch_1,cover.teto_sala_door_1
+```
+
+O banco de produção é o PostgreSQL local do próprio Docker. Não coloque `DATABASE_URL` do Neon neste arquivo: o compose monta a URL interna usando `POSTGRES_*` e conecta o app ao serviço `db` pela rede privada do Compose. O volume `smart-desk-dock-postgres` mantém os dados quando o container é recriado.
+
+Gere a senha como texto hexadecimal para que ela possa ser usada com segurança na URL interna:
+
+```bash
+openssl rand -hex 32
 ```
 
 Use `HOME_ASSISTANT_URL=http://127.0.0.1:8123` quando o Home Assistant rodar na mesma maquina do app.
@@ -127,6 +139,8 @@ docker compose pull
 docker compose up -d
 ```
 
+Na primeira subida, o app aguarda o PostgreSQL ficar saudável e aplica automaticamente os arquivos em `drizzle/` antes de iniciar o Next.js. Atualizações futuras repetem essa etapa de forma idempotente.
+
 Logs:
 
 ```bash
@@ -159,5 +173,7 @@ docker ps
 docker compose logs -f
 docker compose restart smart-desk-dock
 docker compose pull && docker compose up -d
+docker compose ps
+docker compose logs -f db smart-desk-dock
 docker compose down
 ```

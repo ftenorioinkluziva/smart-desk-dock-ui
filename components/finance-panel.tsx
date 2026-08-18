@@ -90,15 +90,6 @@ function formatPercentage(value: number) {
   return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
 }
 
-function formatSignedPercentage(value: number) {
-  return `${value >= 0 ? "+" : ""}${formatPercentage(value)}`
-}
-
-function formatDailyChange(value: number | null | undefined) {
-  if (typeof value !== "number" || Number.isNaN(value)) return "--"
-  return formatSignedPercentage(value)
-}
-
 function formatUpdateTime(value: string) {
   return new Date(value).toLocaleTimeString("pt-BR", {
     hour: "2-digit",

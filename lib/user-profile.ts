@@ -1,24 +1,10 @@
 import { eq, sql } from "drizzle-orm"
 import { userProfiles } from "@/db/schema"
 import { drizzleDb } from "@/lib/drizzle"
+import { DEFAULT_DOCK_APPEARANCE, isDockAccentId, isDockThemeId } from "@/lib/dock-theme"
+import { userProfileSchema, type UserProfile, type UserProfilePatch } from "@/lib/operations/contracts"
 
-export type UserProfile = {
-  weatherLat: number
-  weatherLon: number
-  weatherTimezone: string
-  weatherLocation: string
-  googleCalendarIds: string[]
-  googleCalendarTimezone: string
-  homeAssistantEntityIds: string[]
-  nightModeEnabled: boolean
-  nightModeStart: string
-  nightModeEnd: string
-  productivityAlertPreference: "visual" | "visual-vibration" | "visual-sound"
-  productivityNotificationEnabled: boolean
-  pomodoroFocusSeconds: number
-  pomodoroShortBreakSeconds: number
-  pomodoroLongBreakSeconds: number
-}
+export type { UserProfile } from "@/lib/operations/contracts"
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
   weatherLat: -15.886953,
@@ -36,6 +22,8 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   pomodoroFocusSeconds: 25 * 60,
   pomodoroShortBreakSeconds: 5 * 60,
   pomodoroLongBreakSeconds: 15 * 60,
+  themePreset: DEFAULT_DOCK_APPEARANCE.themePreset,
+  accentPreset: DEFAULT_DOCK_APPEARANCE.accentPreset,
 }
 
 type UserProfileRow = {
@@ -54,6 +42,8 @@ type UserProfileRow = {
   pomodoroFocusSeconds: number | null
   pomodoroShortBreakSeconds: number | null
   pomodoroLongBreakSeconds: number | null
+  themePreset: string | null
+  accentPreset: string | null
 }
 
 function normalizeStringArray(value: unknown, fallback: string[]) {
@@ -75,7 +65,7 @@ function normalizeAlertPreference(value: string | null): UserProfile["productivi
 function mapProfile(row?: UserProfileRow): UserProfile {
   if (!row) return DEFAULT_USER_PROFILE
 
-  return {
+  return userProfileSchema.parse({
     weatherLat: typeof row.weatherLat === "number" ? row.weatherLat : DEFAULT_USER_PROFILE.weatherLat,
     weatherLon: typeof row.weatherLon === "number" ? row.weatherLon : DEFAULT_USER_PROFILE.weatherLon,
     weatherTimezone: row.weatherTimezone ?? DEFAULT_USER_PROFILE.weatherTimezone,
@@ -93,7 +83,9 @@ function mapProfile(row?: UserProfileRow): UserProfile {
     pomodoroFocusSeconds: row.pomodoroFocusSeconds ?? DEFAULT_USER_PROFILE.pomodoroFocusSeconds,
     pomodoroShortBreakSeconds: row.pomodoroShortBreakSeconds ?? DEFAULT_USER_PROFILE.pomodoroShortBreakSeconds,
     pomodoroLongBreakSeconds: row.pomodoroLongBreakSeconds ?? DEFAULT_USER_PROFILE.pomodoroLongBreakSeconds,
-  }
+    themePreset: isDockThemeId(row.themePreset) ? row.themePreset : DEFAULT_USER_PROFILE.themePreset,
+    accentPreset: isDockAccentId(row.accentPreset) ? row.accentPreset : DEFAULT_USER_PROFILE.accentPreset,
+  })
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile> {
@@ -101,9 +93,9 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
   return mapProfile(rows[0])
 }
 
-export async function updateUserProfile(userId: string, patch: Partial<UserProfile>): Promise<UserProfile> {
+export async function updateUserProfile(userId: string, patch: UserProfilePatch): Promise<UserProfile> {
   const current = await getUserProfile(userId)
-  const next: UserProfile = {
+  const next = userProfileSchema.parse({
     ...current,
     ...patch,
     googleCalendarIds: patch.googleCalendarIds
@@ -112,7 +104,7 @@ export async function updateUserProfile(userId: string, patch: Partial<UserProfi
     homeAssistantEntityIds: patch.homeAssistantEntityIds
       ? normalizeOptionalStringArray(patch.homeAssistantEntityIds)
       : current.homeAssistantEntityIds,
-  }
+  })
 
   await drizzleDb
     .insert(userProfiles)
@@ -133,6 +125,8 @@ export async function updateUserProfile(userId: string, patch: Partial<UserProfi
       pomodoroFocusSeconds: next.pomodoroFocusSeconds,
       pomodoroShortBreakSeconds: next.pomodoroShortBreakSeconds,
       pomodoroLongBreakSeconds: next.pomodoroLongBreakSeconds,
+      themePreset: next.themePreset,
+      accentPreset: next.accentPreset,
       updatedAt: sql`NOW()`,
     })
     .onConflictDoUpdate({
@@ -153,6 +147,8 @@ export async function updateUserProfile(userId: string, patch: Partial<UserProfi
         pomodoroFocusSeconds: next.pomodoroFocusSeconds,
         pomodoroShortBreakSeconds: next.pomodoroShortBreakSeconds,
         pomodoroLongBreakSeconds: next.pomodoroLongBreakSeconds,
+        themePreset: next.themePreset,
+        accentPreset: next.accentPreset,
         updatedAt: sql`NOW()`,
       },
     })

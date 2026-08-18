@@ -1,3 +1,7 @@
+import { OperationFailure, upstreamError, validationError } from "@/lib/operations/errors"
+import { parseAllowedHomeAssistantHosts, validateHomeAssistantUrl } from "@/lib/operations/home-assistant-policy"
+import { z } from "zod"
+
 type HomeAssistantState = {
   entity_id: string
   state: string
@@ -14,6 +18,22 @@ type HomeAssistantState = {
     [key: string]: unknown
   }
 }
+
+const homeAssistantStateSchema: z.ZodType<HomeAssistantState> = z.object({
+  entity_id: z.string(),
+  state: z.string(),
+  attributes: z.object({
+    friendly_name: z.string().optional(),
+    brightness: z.number().optional(),
+    color_temp_kelvin: z.number().optional(),
+    hs_color: z.tuple([z.number(), z.number()]).optional(),
+    rgb_color: z.tuple([z.number(), z.number(), z.number()]).optional(),
+    device_class: z.string().optional(),
+    unit_of_measurement: z.string().optional(),
+    supported_color_modes: z.array(z.string()).optional(),
+    supported_features: z.number().optional(),
+  }).passthrough().optional(),
+}).passthrough()
 
 export type HomeAssistantEntity = {
   entityId: string
@@ -62,12 +82,14 @@ function normalizeEntity(entity: HomeAssistantState): HomeAssistantEntity {
 }
 
 async function homeAssistantFetch(config: HomeAssistantConfig, path: string, init?: RequestInit) {
-  const url = config.url.replace(/\/$/, "")
-  if (!url || !config.token) {
-    throw new Error("Home Assistant is not configured")
-  }
+  if (!config.token) throw new OperationFailure(validationError("Home Assistant is not configured"))
+  const validatedUrl = validateHomeAssistantUrl(
+    config.url,
+    parseAllowedHomeAssistantHosts(process.env.HOME_ASSISTANT_ALLOWED_HOSTS),
+  )
+  if (!validatedUrl.ok) throw new OperationFailure(validatedUrl.error)
 
-  const response = await fetch(`${url}${path}`, {
+  const response = await fetch(`${validatedUrl.value}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${config.token}`,
@@ -75,10 +97,16 @@ async function homeAssistantFetch(config: HomeAssistantConfig, path: string, ini
       ...init?.headers,
     },
     next: { revalidate: 0 },
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
   })
 
   if (!response.ok) {
-    throw new Error(`Home Assistant request failed: ${response.status}`)
+    throw new OperationFailure(upstreamError(
+      response.status === 429 ? "HOME_ASSISTANT_RATE_LIMITED" : "HOME_ASSISTANT_REQUEST_FAILED",
+      "Home Assistant request failed",
+      { retryable: response.status === 429 || response.status >= 500 },
+    ))
   }
 
   return response
@@ -86,7 +114,11 @@ async function homeAssistantFetch(config: HomeAssistantConfig, path: string, ini
 
 export async function fetchHomeAssistantEntities(config: HomeAssistantConfig): Promise<HomeAssistantEntity[]> {
   const response = await homeAssistantFetch(config, "/api/states")
-  const states = await response.json() as HomeAssistantState[]
+  const parsed = z.array(homeAssistantStateSchema).safeParse(await response.json())
+  if (!parsed.success) {
+    throw new OperationFailure(upstreamError("HOME_ASSISTANT_RESPONSE_INVALID", "Home Assistant returned an invalid states response", { retryable: false }))
+  }
+  const states = parsed.data
   const favoriteEntityIds = config.entityIds
   const allowedDomains = new Set(["light", "switch", "scene", "script", "cover"])
 
@@ -122,7 +154,26 @@ export async function callHomeAssistantService(
 ) {
   const [domain] = entityId.split(".")
   if (!domain || !["light", "switch", "scene", "script", "cover"].includes(domain)) {
-    throw new Error("Unsupported Home Assistant entity domain")
+    throw new OperationFailure(validationError("Unsupported Home Assistant entity domain", ["entityId"]))
+  }
+  if (config.entityIds.length > 0 && !config.entityIds.includes(entityId)) {
+    throw new OperationFailure({
+      code: "HOME_ASSISTANT_ENTITY_NOT_ALLOWED",
+      category: "authorization",
+      message: "Home Assistant entity is not in the user's favorites",
+      retryable: false,
+    })
+  }
+
+  const allowedActions: Record<string, ReadonlySet<string>> = {
+    light: new Set(["toggle", "turn_on", "turn_off"]),
+    switch: new Set(["toggle", "turn_on", "turn_off"]),
+    cover: new Set(["open_cover", "close_cover", "stop_cover"]),
+    scene: new Set(["turn_on"]),
+    script: new Set(["turn_on"]),
+  }
+  if (!allowedActions[domain]?.has(action)) {
+    throw new OperationFailure(validationError("Action is not supported by this Home Assistant entity", ["action"]))
   }
 
   const service = domain === "scene" || domain === "script"
@@ -149,4 +200,3 @@ export async function callHomeAssistantService(
     body: JSON.stringify(body),
   })
 }
-

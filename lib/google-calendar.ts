@@ -1,3 +1,6 @@
+import { z } from "zod"
+import { OperationFailure, upstreamError } from "@/lib/operations/errors"
+
 export class GoogleCalendarAuthError extends Error {
   constructor(message: string) {
     super(message)
@@ -29,6 +32,17 @@ type GoogleCalendarListItem = {
   backgroundColor?: string
   selected?: boolean
 }
+
+const googleCalendarEventSchema: z.ZodType<GoogleCalendarEvent> = z.object({
+  id: z.string(),
+  summary: z.string().optional(),
+  start: z.object({ date: z.string().optional(), dateTime: z.string().optional() }).passthrough().optional(),
+  end: z.object({ date: z.string().optional(), dateTime: z.string().optional() }).passthrough().optional(),
+}).passthrough()
+
+const googleCalendarListItemSchema: z.ZodType<GoogleCalendarListItem> = z.object({
+  id: z.string(), summary: z.string(), primary: z.boolean().optional(), backgroundColor: z.string().optional(), selected: z.boolean().optional(),
+}).passthrough()
 
 export type CalendarEvent = {
   id: string
@@ -136,16 +150,19 @@ export async function fetchGoogleCalendarEvents({
           Authorization: `Bearer ${accessToken}`,
         },
         next: { revalidate: 300 },
+        signal: AbortSignal.timeout(10_000),
       },
     )
 
     if (!response.ok) {
-      const errorBody = await response.text()
-      throw new Error(`Google Calendar request failed for ${calendarId}: ${response.status} ${errorBody}`)
+      throw new OperationFailure(upstreamError("GOOGLE_CALENDAR_REQUEST_FAILED", "Google Calendar request failed", {
+        retryable: response.status === 429 || response.status >= 500,
+      }))
     }
 
-    const data = await response.json() as { items?: GoogleCalendarEvent[] }
-    return (data.items ?? [])
+    const parsed = z.object({ items: z.array(googleCalendarEventSchema).optional() }).passthrough().safeParse(await response.json())
+    if (!parsed.success) throw new OperationFailure(upstreamError("GOOGLE_CALENDAR_RESPONSE_INVALID", "Google Calendar returned an invalid response", { retryable: false }))
+    return (parsed.data.items ?? [])
       .map((event, eventIndex) => normalizeCalendarEvent(event, calendarIndex + eventIndex, calendarId, timezone))
       .filter((event): event is CalendarEvent => Boolean(event))
   }))
@@ -165,15 +182,18 @@ export async function fetchGoogleCalendarList(accessToken: string): Promise<Cale
       Authorization: `Bearer ${accessToken}`,
     },
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(10_000),
   })
 
   if (!response.ok) {
-    const errorBody = await response.text()
-    throw new Error(`Google Calendar list request failed: ${response.status} ${errorBody}`)
+    throw new OperationFailure(upstreamError("GOOGLE_CALENDAR_LIST_FAILED", "Google Calendar list request failed", {
+      retryable: response.status === 429 || response.status >= 500,
+    }))
   }
 
-  const data = await response.json() as { items?: GoogleCalendarListItem[] }
-  return (data.items ?? [])
+  const parsed = z.object({ items: z.array(googleCalendarListItemSchema).optional() }).passthrough().safeParse(await response.json())
+  if (!parsed.success) throw new OperationFailure(upstreamError("GOOGLE_CALENDAR_RESPONSE_INVALID", "Google Calendar returned an invalid list response", { retryable: false }))
+  return (parsed.data.items ?? [])
     .filter((calendar) => calendar.selected !== false)
     .map((calendar) => ({
       id: calendar.id,

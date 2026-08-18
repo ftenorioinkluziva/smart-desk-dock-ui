@@ -313,7 +313,7 @@ export function CalendarPage() {
         setEvents(data.events)
         setIsGoogleCalendarConnected(true)
         setHasCalendarError(false)
-      } catch (error) {
+      } catch {
         if (!cancelled) {
           setIsGoogleCalendarConnected(false)
           setHasCalendarError(true)

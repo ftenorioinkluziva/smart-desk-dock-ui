@@ -3,6 +3,7 @@ import { fetchHomeAssistantEntities } from "@/lib/home-assistant"
 import { getIntegrationSecret } from "@/lib/integration-secrets"
 import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
 import { getUserProfile } from "@/lib/user-profile"
+import { operationErrorResponse, unexpectedUpstreamOperationError } from "@/lib/http/operation-response"
 
 export async function GET(request: Request) {
   const user = await requireCurrentUser(request)
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
     })
     return NextResponse.json({ entities })
   } catch (error) {
-    console.error("Home Assistant entities API error:", error)
-    return NextResponse.json({ entities: [], error: "Home Assistant fetch failed" }, { status: 502 })
+    const operationError = unexpectedUpstreamOperationError(error, "Home Assistant fetch failed")
+    console.error("Home Assistant entities API error", { code: operationError.code, retryable: operationError.retryable })
+    return operationErrorResponse(operationError, { extra: { entities: [] } })
   }
 }

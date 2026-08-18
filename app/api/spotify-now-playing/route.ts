@@ -1,83 +1,18 @@
 import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
-import { refreshSpotifyAccessToken, spotifyAppConfigured } from "@/lib/spotify"
-
-const EMPTY_SPOTIFY_STATE = {
-  isPlaying: false,
-  track: null,
-  artist: null,
-  albumArt: null,
-  album: null,
-  deviceName: null,
-  deviceType: null,
-  volumePercent: null,
-  shuffle: false,
-  repeat: "off",
-  progressMs: 0,
-  durationMs: 0,
-}
+import { EMPTY_SPOTIFY_STATE, getSpotifyNowPlaying, spotifyAppConfigured } from "@/lib/spotify"
+import { unexpectedUpstreamOperationError } from "@/lib/http/operation-response"
 
 export async function GET(request: Request) {
   const user = await requireCurrentUser(request)
   if (isAuthResponse(user)) return user
-
-  if (!spotifyAppConfigured) {
-    return Response.json({ ...EMPTY_SPOTIFY_STATE, mock: true, spotifyAuthRequired: true })
-  }
+  if (!spotifyAppConfigured) return Response.json({ ...EMPTY_SPOTIFY_STATE, mock: true, spotifyAuthRequired: true })
 
   try {
-    const token = await refreshSpotifyAccessToken(user.id)
-    if (!token) {
-      return Response.json({ ...EMPTY_SPOTIFY_STATE, mock: true, spotifyAuthRequired: true })
-    }
-
-    const res = await fetch(
-      "https://api.spotify.com/v1/me/player",
-      { headers: { Authorization: `Bearer ${token}` } },
-    )
-
-    if (res.status === 204) {
-      return Response.json(EMPTY_SPOTIFY_STATE)
-    }
-
-    if (!res.ok) throw new Error(`Spotify error: ${res.status}`)
-
-    const data = await res.json() as {
-      is_playing: boolean
-      shuffle_state?: boolean
-      repeat_state?: "off" | "track" | "context"
-      progress_ms?: number
-      device?: {
-        name?: string
-        type?: string
-        volume_percent?: number | null
-      }
-      item?: {
-        name: string
-        artists: Array<{ name: string }>
-        duration_ms?: number
-        album: {
-          name?: string
-          images: Array<{ url: string }>
-        }
-      }
-    }
-
-    return Response.json({
-      isPlaying: data.is_playing,
-      track: data.item?.name ?? null,
-      artist: data.item?.artists?.[0]?.name ?? null,
-      albumArt: data.item?.album?.images?.[0]?.url ?? null,
-      album: data.item?.album?.name ?? null,
-      deviceName: data.device?.name ?? null,
-      deviceType: data.device?.type ?? null,
-      volumePercent: data.device?.volume_percent ?? null,
-      shuffle: data.shuffle_state ?? false,
-      repeat: data.repeat_state ?? "off",
-      progressMs: data.progress_ms ?? 0,
-      durationMs: data.item?.duration_ms ?? 0,
-    })
-  } catch {
-    return Response.json(EMPTY_SPOTIFY_STATE)
+    const playback = await getSpotifyNowPlaying(user.id)
+    return Response.json(playback ?? { ...EMPTY_SPOTIFY_STATE, mock: true, spotifyAuthRequired: true })
+  } catch (error) {
+    const operationError = unexpectedUpstreamOperationError(error, "Spotify now playing failed")
+    console.error("Spotify now-playing operation failed", { code: operationError.code, retryable: operationError.retryable })
+    return Response.json({ ...EMPTY_SPOTIFY_STATE, operationError })
   }
 }
-

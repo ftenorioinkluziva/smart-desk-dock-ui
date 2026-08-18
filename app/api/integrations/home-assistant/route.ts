@@ -2,6 +2,9 @@ import { NextResponse } from "next/server"
 import { deleteIntegrationProvider, getIntegrationSecret, getIntegrationStatus, setIntegrationSecret } from "@/lib/integration-secrets"
 import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
 import { getUserProfile, updateUserProfile } from "@/lib/user-profile"
+import { operationErrorResponse, parseJsonBody } from "@/lib/http/operation-response"
+import { homeAssistantSettingsSchema } from "@/lib/operations/contracts"
+import { parseAllowedHomeAssistantHosts, validateHomeAssistantUrl } from "@/lib/operations/home-assistant-policy"
 
 export async function GET(request: Request) {
   const user = await requireCurrentUser(request)
@@ -21,14 +24,19 @@ export async function PATCH(request: Request) {
   const user = await requireCurrentUser(request)
   if (isAuthResponse(user)) return user
 
-  const body = await request.json() as {
-    url?: string
-    token?: string
-    entityIds?: string[]
-  }
+  const parsed = await parseJsonBody(request, homeAssistantSettingsSchema)
+  if (!parsed.ok) return operationErrorResponse(parsed.error)
+  const body = parsed.value
 
-  if (body.url?.trim()) await setIntegrationSecret(user.id, "home_assistant", "url", body.url.trim())
-  if (body.token?.trim()) await setIntegrationSecret(user.id, "home_assistant", "token", body.token.trim())
+  if (body.url) {
+    const validatedUrl = validateHomeAssistantUrl(
+      body.url,
+      parseAllowedHomeAssistantHosts(process.env.HOME_ASSISTANT_ALLOWED_HOSTS),
+    )
+    if (!validatedUrl.ok) return operationErrorResponse(validatedUrl.error)
+    await setIntegrationSecret(user.id, "home_assistant", "url", validatedUrl.value)
+  }
+  if (body.token) await setIntegrationSecret(user.id, "home_assistant", "token", body.token)
   if (Array.isArray(body.entityIds)) {
     await updateUserProfile(user.id, { homeAssistantEntityIds: body.entityIds })
   }
@@ -52,4 +60,3 @@ export async function DELETE(request: Request) {
   await deleteIntegrationProvider(user.id, "home_assistant")
   return NextResponse.json({ configured: false, hasUrl: false, hasToken: false })
 }
-

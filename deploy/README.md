@@ -77,6 +77,10 @@ POSTGRES_DB=focusdock
 POSTGRES_USER=focusdock
 POSTGRES_PASSWORD=cole-aqui-um-segredo-hex-gerado-localmente
 
+BETTER_AUTH_URL=https://dock.blackboxinovacao.com.br
+BETTER_AUTH_SECRET=cole-aqui-outro-segredo-hex
+APP_ENCRYPTION_KEY=cole-aqui-outro-segredo-hex
+
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
 SPOTIFY_REDIRECT_ORIGIN=https://dock.blackboxinovacao.com.br
@@ -92,20 +96,18 @@ GOOGLE_REFRESH_TOKEN=
 GOOGLE_CALENDAR_ID=primary
 GOOGLE_CALENDAR_TIMEZONE=America/Sao_Paulo
 
-HOME_ASSISTANT_URL=http://127.0.0.1:8123
-HOME_ASSISTANT_TOKEN=
-HOME_ASSISTANT_ENTITIES=light.abajur,switch.luz_escritorio_switch_1,cover.teto_sala_door_1
+HOME_ASSISTANT_ALLOWED_HOSTS=host.docker.internal
 ```
 
 O banco de produção é o PostgreSQL local do próprio Docker. Não coloque `DATABASE_URL` do Neon neste arquivo: o compose monta a URL interna usando `POSTGRES_*` e conecta o app ao serviço `db` pela rede privada do Compose. O volume `smart-desk-dock-postgres` mantém os dados quando o container é recriado.
 
-Gere a senha como texto hexadecimal para que ela possa ser usada com segurança na URL interna:
+Gere valores independentes para `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET` e `APP_ENCRYPTION_KEY`:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Use `HOME_ASSISTANT_URL=http://127.0.0.1:8123` quando o Home Assistant rodar na mesma maquina do app.
+Quando o Home Assistant rodar na mesma maquina do app, use `http://host.docker.internal:8123` no painel de Settings. O Compose resolve esse hostname para o host Docker. `HOME_ASSISTANT_ALLOWED_HOSTS` restringe os destinos que o servidor pode acessar; liste hosts adicionais separados por virgula somente quando forem confiaveis.
 
 No painel do Spotify Developer, cadastre exatamente esta Redirect URI para o dominio publico:
 
@@ -151,6 +153,7 @@ Testes:
 
 ```bash
 curl http://localhost:3000
+curl http://localhost:3000/api/health
 curl http://localhost:3000/api/home-assistant/entities
 ```
 

@@ -3,26 +3,36 @@ import { fetchGoogleCalendarEvents } from "@/lib/google-calendar"
 import { getGoogleAccessToken } from "@/lib/google-oauth"
 import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
 import { getUserProfile } from "@/lib/user-profile"
+import { calendarEventsQuerySchema } from "@/lib/operations/contracts"
+import { operationErrorResponse, unexpectedUpstreamOperationError } from "@/lib/http/operation-response"
+import { validationError } from "@/lib/operations/errors"
 
 export async function GET(request: Request) {
   const user = await requireCurrentUser(request)
   if (isAuthResponse(user)) return user
 
   const { searchParams } = new URL(request.url)
-  const timeMin = searchParams.get("timeMin")
-  const timeMax = searchParams.get("timeMax")
-
-  if (!timeMin || !timeMax) {
-    return NextResponse.json({ error: "Missing timeMin or timeMax" }, { status: 400 })
+  const parsedQuery = calendarEventsQuerySchema.safeParse({
+    timeMin: searchParams.get("timeMin"),
+    timeMax: searchParams.get("timeMax"),
+    calendarIds: searchParams.getAll("calendarId").filter(Boolean),
+  })
+  if (!parsedQuery.success) {
+    return operationErrorResponse(validationError("Calendar query is invalid", parsedQuery.error.issues.map((issue) => issue.path.join("."))))
   }
 
   const accessToken = await getGoogleAccessToken(request, user.id)
   if (!accessToken) {
-    return NextResponse.json({ events: [], calendarAuthRequired: true }, { status: 403 })
+    return operationErrorResponse({
+      code: "GOOGLE_CALENDAR_AUTH_REQUIRED",
+      category: "authorization",
+      message: "Google Calendar authorization is required",
+      retryable: false,
+    }, { status: 403, extra: { events: [], calendarAuthRequired: true } })
   }
 
   const profile = await getUserProfile(user.id)
-  const requestedCalendarIds = searchParams.getAll("calendarId").filter(Boolean)
+  const { timeMin, timeMax, calendarIds: requestedCalendarIds } = parsedQuery.data
   const calendarIds = requestedCalendarIds.length > 0 ? requestedCalendarIds : profile.googleCalendarIds
 
   try {
@@ -35,8 +45,8 @@ export async function GET(request: Request) {
     })
     return NextResponse.json({ events })
   } catch (error) {
-    console.error("Google Calendar API error:", error)
-    return NextResponse.json({ events: [], error: "Calendar fetch failed" }, { status: 502 })
+    const operationError = unexpectedUpstreamOperationError(error, "Calendar fetch failed")
+    console.error("Google Calendar API error", { code: operationError.code, retryable: operationError.retryable })
+    return operationErrorResponse(operationError, { extra: { events: [] } })
   }
 }
-

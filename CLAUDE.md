@@ -8,7 +8,7 @@ Minimalist productivity dashboard optimized for a landscape phone screen (667 px
 
 ```bash
 pnpm install
-pnpm dev          # http://localhost:3000
+pnpm dev          # http://localhost:3001
 ```
 
 ### Required environment variables (`/.env.local`)
@@ -45,17 +45,17 @@ FINANCE_API_USER_ID=  # alternative for local trusted use
 #### Getting Spotify credentials
 
 1. Create an app at developer.spotify.com → copy Client ID and Secret
-2. Add redirect URI: `http://127.0.0.1:3000/callback` (note: `localhost` is blocked since Nov 2025)
+2. Add redirect URI: `http://127.0.0.1:3001/callback` (note: `localhost` is blocked since Nov 2025)
 3. Authorize (replace `YOUR_CLIENT_ID`):
    ```
-   https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state%20playlist-read-private
+   https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3001%2Fcallback&scope=user-read-playback-state%20user-modify-playback-state%20playlist-read-private
    ```
 4. Copy `code` from the redirect URL, then exchange for a refresh token:
    ```bash
    curl.exe -X POST https://accounts.spotify.com/api/token \
      -u "CLIENT_ID:CLIENT_SECRET" \
      -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "grant_type=authorization_code&code=CODE&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback"
+     -d "grant_type=authorization_code&code=CODE&redirect_uri=http%3A%2F%2F127.0.0.1%3A3001%2Fcallback"
    ```
 5. Copy `refresh_token` from the response into `.env.local`
 
@@ -91,7 +91,7 @@ Single-page app with a **8-panel horizontal carousel** (snap scroll). Each panel
 ```
 app/
   page.tsx                   Main page — carousel + lifted state
-  layout.tsx                 Root layout (Vercel Analytics, theme)
+  layout.tsx                 Root layout (metadata, fonts, theme)
   globals.css                Tailwind 4 theme tokens (OKLCH)
   api/
     calendar-events/route.ts  GET  → { events }
@@ -113,7 +113,7 @@ components/
   agenda.tsx
   settings-panel.tsx
   spotify-bar.tsx            Bottom playback bar
-  theme-provider.tsx
+  dock-theme-provider.tsx     Applies and synchronizes per-user appearance presets
   ui/                        shadcn components (50+)
 
 hooks/
@@ -182,7 +182,7 @@ Local state flips immediately on button click → command sent → `setTimeout(f
 ## Known Limitations / Future Work
 
 - **Weather location is static.** Could be made configurable via settings panel.
-- **Settings UI is partial.** Calendar selection and night mode are configurable; alert preferences, weather city, and theme/brightness still need UI.
+- **Settings UI is partial.** Calendar, night mode, alerts, weather and appearance presets are configurable; brightness still needs UI.
 - **Spotify requires Premium** for playback control (play/pause/skip).
 - **No PWA offline support.** Service worker not implemented; weather/Spotify fail without network.
 - **iOS Home Screen behavior still needs device validation.** Manifest/icons and safe-area code are in place, but fullscreen behavior should be checked on a real iPhone/iPad.

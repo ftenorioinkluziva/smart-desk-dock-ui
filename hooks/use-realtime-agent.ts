@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
-import type { RealtimeClientSecretResponse } from "@/lib/realtime-agent"
+import { realtimeClientSecretResponseSchema } from "@/lib/realtime-agent"
 import { executeRealtimeTool } from "@/hooks/realtime-tools"
 
 export type RealtimeAgentStatus = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error"
@@ -180,7 +180,9 @@ export function useRealtimeAgent() {
       }
 
       const sessionResponse = await fetch("/api/realtime/session", { method: "POST" })
-      const session = await sessionResponse.json() as RealtimeClientSecretResponse
+      const parsedSession = realtimeClientSecretResponseSchema.safeParse(await sessionResponse.json())
+      if (!parsedSession.success) throw new Error("Resposta de sessão realtime inválida")
+      const session = parsedSession.data
 
       setModel(session.model)
       setIsConfigured(session.configured)

@@ -26,10 +26,21 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-focusdock}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-focusdock}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set in .env}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?APP_ENCRYPTION_KEY must be set in .env}
+      HOME_ASSISTANT_ALLOWED_HOSTS: ${HOME_ASSISTANT_ALLOWED_HOSTS:?HOME_ASSISTANT_ALLOWED_HOSTS must be set in .env}
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   watchtower:
     image: containrrr/watchtower:latest

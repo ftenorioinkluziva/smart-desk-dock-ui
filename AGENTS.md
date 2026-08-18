@@ -9,7 +9,7 @@ Minimalist productivity dashboard optimized for a landscape phone screen (667 px
 ```bash
 pnpm install
 pnpm db:migrate   # after DATABASE_URL is configured
-pnpm dev          # http://localhost:3000
+pnpm dev          # http://localhost:3001
 ```
 
 Drizzle manages both Better Auth tables (`user`, `session`, `account`, `verification`) and app tables (`user_profiles`, `user_integration_secrets`). Use `pnpm db:generate` for schema changes and `pnpm db:migrate` to apply migrations.
@@ -17,17 +17,18 @@ Drizzle manages both Better Auth tables (`user`, `session`, `account`, `verifica
 ### Required environment variables (`/.env.local`)
 
 ```
-BETTER_AUTH_URL=          # e.g. http://localhost:3000
+BETTER_AUTH_URL=          # e.g. http://localhost:3001
 BETTER_AUTH_SECRET=
 DATABASE_URL=
 APP_ENCRYPTION_KEY=
+HOME_ASSISTANT_ALLOWED_HOSTS= # production allowlist, comma-separated hostnames
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
 SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
-SPOTIFY_REDIRECT_ORIGIN=  # production: https://dock.blackboxinovacao.com.br; local fallback: http://127.0.0.1:3000
+SPOTIFY_REDIRECT_ORIGIN=  # production: https://dock.blackboxinovacao.com.br; local fallback: http://127.0.0.1:3001
 ```
 
 ### Optional environment variables
@@ -49,7 +50,7 @@ OPENAI_REALTIME_REASONING_EFFORT=  # default: low, used with gpt-realtime-2
 
 1. Create an app at developer.spotify.com → copy Client ID and Secret
 2. Add every redirect URI used by the app:
-   - Local: `http://127.0.0.1:3000/api/spotify/auth/callback`
+   - Local: `http://127.0.0.1:3001/api/spotify/auth/callback`
    - Production: `https://dock.blackboxinovacao.com.br/api/spotify/auth/callback`
 3. Keep only `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` in `.env.local`
 4. Each signed-in Focus Dock user connects their own Spotify account from Settings
@@ -87,7 +88,7 @@ Single-page app with a **9-panel horizontal carousel** (snap scroll). Each panel
 ```
 app/
   page.tsx                   Main page — carousel + lifted state
-  layout.tsx                 Root layout (Vercel Analytics, theme)
+  layout.tsx                 Root layout (metadata, fonts, theme)
   globals.css                Tailwind 4 theme tokens (OKLCH)
   api/
     calendar-events/route.ts  GET  → { events }
@@ -111,7 +112,7 @@ components/
   settings-panel.tsx
   voice-agent-panel.tsx       OpenAI Realtime voice conversation panel
   spotify-bar.tsx            Bottom playback bar
-  theme-provider.tsx
+  dock-theme-provider.tsx     Applies and synchronizes per-user appearance presets
   ui/                        shadcn components (50+)
 
 hooks/
@@ -120,6 +121,10 @@ hooks/
   use-toast.ts
 
 lib/
+  operations/contracts.ts     canonical runtime schemas shared by HTTP and Realtime
+  operations/errors.ts        stable OperationError and Result contracts
+  operations/weather.ts       weather use case + validated provider boundary
+  http/operation-response.ts  HTTP adapter for parsing and error translation
   auth.ts                    Better Auth + Google + Drizzle adapter
   db.ts                      shared pg Pool
   drizzle.ts                 Drizzle client using the shared pool
@@ -193,8 +198,10 @@ Local state flips immediately on button click → command sent → `setTimeout(f
 ## Known Limitations / Future Work
 
 - **Weather location is profile-based.** Defaults to Brasília until the signed-in user saves profile settings.
-- **Settings UI is partial.** Profile, OpenAI, Spotify, Finance and Home Assistant are configurable; theme/brightness still need UI.
+- **Settings UI is partial.** Profile, OpenAI, Spotify, Finance, Home Assistant and appearance presets are configurable; brightness still needs UI.
 - **Spotify requires Premium** for playback control (play/pause/skip).
 - **No PWA offline support.** Service worker not implemented; weather/Spotify fail without network.
 - **iOS Home Screen behavior still needs device validation.** Manifest/icons and safe-area code are in place, but fullscreen behavior should be checked on a real iPhone/iPad.
 - **Apple platform alert limitations.** iOS/iPadOS support for web vibration is limited or absent, notification permission must be requested from explicit user action, and reliable background/audio alerts should always have a visual fallback.
+
+See `ARCHITECTURE.md` for operation effects, interfaces, validation boundaries, and the shared error contract.

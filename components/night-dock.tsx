@@ -44,7 +44,7 @@ export function NightDock() {
     }
   }, [fetchWeather])
 
-  const displayTime = time ?? new Date(0)
+  const displayTime = useMemo(() => time ?? new Date(0), [time])
   const hours = time ? displayTime.getHours().toString().padStart(2, "0") : "--"
   const minutes = time ? displayTime.getMinutes().toString().padStart(2, "0") : "--"
   const seconds = time ? displayTime.getSeconds().toString().padStart(2, "0") : "--"
@@ -56,7 +56,7 @@ export function NightDock() {
     <button
       type="button"
       onClick={() => setIsDimmed((current) => !current)}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="night-dock-surface relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-background text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       aria-label="Alternar brilho do modo noturno"
     >
       <div

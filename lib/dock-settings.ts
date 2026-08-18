@@ -6,12 +6,14 @@ export type NightModeSettings = {
   enabled: boolean
   start: string
   end: string
+  manualActive: boolean
 }
 
 export const DEFAULT_NIGHT_MODE_SETTINGS: NightModeSettings = {
   enabled: true,
   start: "22:00",
   end: "06:00",
+  manualActive: false,
 }
 
 function isValidTime(value: unknown): value is string {
@@ -31,6 +33,7 @@ export function readNightModeSettings(): NightModeSettings {
       enabled: typeof parsed.enabled === "boolean" ? parsed.enabled : DEFAULT_NIGHT_MODE_SETTINGS.enabled,
       start: isValidTime(parsed.start) ? parsed.start : DEFAULT_NIGHT_MODE_SETTINGS.start,
       end: isValidTime(parsed.end) ? parsed.end : DEFAULT_NIGHT_MODE_SETTINGS.end,
+      manualActive: typeof parsed.manualActive === "boolean" ? parsed.manualActive : DEFAULT_NIGHT_MODE_SETTINGS.manualActive,
     }
   } catch {
     window.localStorage.removeItem(NIGHT_MODE_SETTINGS_STORAGE_KEY)
@@ -60,4 +63,8 @@ export function isWithinNightMode(now: Date, settings: NightModeSettings) {
   if (start === end) return false
   if (start < end) return current >= start && current < end
   return current >= start || current < end
+}
+
+export function isNightDockActive(now: Date, settings: NightModeSettings) {
+  return settings.manualActive || isWithinNightMode(now, settings)
 }

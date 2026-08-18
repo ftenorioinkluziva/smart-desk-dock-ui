@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { fetchFinanceDockSummary, financeConfigured, getMockFinanceDockSummary } from "@/lib/finance"
 import { deleteIntegrationProvider, getIntegrationSecret } from "@/lib/integration-secrets"
 import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
+import { operationErrorResponse, unexpectedUpstreamOperationError } from "@/lib/http/operation-response"
 
 export async function GET(request: NextRequest) {
   const user = await requireCurrentUser(request)
@@ -14,15 +15,24 @@ export async function GET(request: NextRequest) {
   const token = await getIntegrationSecret(user.id, "finance", "access_token")
 
   if (!token) {
-    return NextResponse.json({ financeAuthRequired: true, error: "Autenticação financeira necessária" }, { status: 401 })
+    return operationErrorResponse({
+      code: "FINANCE_AUTH_REQUIRED",
+      category: "authorization",
+      message: "Autenticação financeira necessária",
+      retryable: false,
+    }, { status: 401, extra: { financeAuthRequired: true } })
   }
 
   try {
     const summary = await fetchFinanceDockSummary(token)
     return NextResponse.json(summary)
   } catch (error) {
-    console.error("Finance summary API error:", error)
-    await deleteIntegrationProvider(user.id, "finance")
-    return NextResponse.json({ financeAuthRequired: true, error: "Finance API fetch failed" }, { status: 401 })
+    const operationError = unexpectedUpstreamOperationError(error, "Finance summary failed")
+    console.error("Finance summary API error", { code: operationError.code, retryable: operationError.retryable })
+    if (operationError.category === "authorization") {
+      await deleteIntegrationProvider(user.id, "finance")
+      return operationErrorResponse(operationError, { status: 401, extra: { financeAuthRequired: true } })
+    }
+    return operationErrorResponse(operationError)
   }
 }

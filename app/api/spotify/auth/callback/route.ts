@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     return NextResponse.redirect(new URL("/?spotify=connected", appOrigin))
   } catch (error) {
-    console.error("Spotify OAuth callback error:", error)
+    console.error("Spotify OAuth callback error", { errorType: error instanceof Error ? error.name : "unknown" })
     return NextResponse.redirect(new URL("/?spotify=error", appOrigin))
   }
 }

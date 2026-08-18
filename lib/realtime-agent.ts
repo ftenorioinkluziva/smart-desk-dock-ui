@@ -1,3 +1,7 @@
+import { z } from "zod"
+import { realtimeProductivityControlInputSchema, realtimeSpotifyControlInputSchema } from "@/lib/operations/contracts"
+import { operationErrorSchema } from "@/lib/operations/errors"
+
 export const realtimeAgentConfigured = Boolean(process.env.OPENAI_API_KEY)
 
 export const REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL ?? "gpt-realtime-mini"
@@ -27,7 +31,13 @@ agenda, timers ou dados financeiros sem confirmacao explicita do usuario.
 Nao leia dados financeiros sensiveis em excesso. Resuma com cuidado e pergunte antes de detalhar.
 `.trim()
 
-export const REALTIME_READ_ONLY_TOOLS = [
+function toolParameters(schema: z.ZodType) {
+  const parameters = z.toJSONSchema(schema, { target: "draft-7" })
+  delete parameters.$schema
+  return parameters
+}
+
+export const REALTIME_TOOLS = [
   {
     type: "function",
     name: "get_current_weather",
@@ -82,44 +92,13 @@ export const REALTIME_READ_ONLY_TOOLS = [
     type: "function",
     name: "spotify_control",
     description: "Executa comandos simples de Spotify quando o usuario pediu explicitamente tocar, pausar, proxima faixa ou faixa anterior. Nao use para pedidos ambiguos.",
-    parameters: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["play", "pause", "next", "previous"],
-          description: "Acao Spotify de baixo risco solicitada pelo usuario.",
-        },
-      },
-      required: ["action"],
-      additionalProperties: false,
-    },
+    parameters: toolParameters(realtimeSpotifyControlInputSchema),
   },
   {
     type: "function",
     name: "productivity_control",
     description: "Executa comandos locais de produtividade quando o usuario pedir explicitamente Pomodoro, timer ou cronometro.",
-    parameters: {
-      type: "object",
-      properties: {
-        target: {
-          type: "string",
-          enum: ["pomodoro", "timer", "stopwatch"],
-          description: "Ferramenta de produtividade a controlar.",
-        },
-        action: {
-          type: "string",
-          enum: ["start", "pause", "reset"],
-          description: "Acao local de baixo risco.",
-        },
-        minutes: {
-          type: "number",
-          description: "Duracao em minutos para timer quando o usuario pedir um timer especifico.",
-        },
-      },
-      required: ["target", "action"],
-      additionalProperties: false,
-    },
+    parameters: toolParameters(realtimeProductivityControlInputSchema),
   },
 ] as const
 
@@ -131,7 +110,19 @@ export type RealtimeClientSecretResponse = {
   expiresAt?: number
   mock?: boolean
   error?: string
+  operationError?: z.infer<typeof operationErrorSchema>
 }
+
+export const realtimeClientSecretResponseSchema = z.object({
+  configured: z.boolean(),
+  model: z.string(),
+  voice: z.string(),
+  clientSecret: z.string().optional(),
+  expiresAt: z.number().optional(),
+  mock: z.boolean().optional(),
+  error: z.string().optional(),
+  operationError: operationErrorSchema.optional(),
+}).strict()
 
 export function buildRealtimeSessionPayload() {
   const session: Record<string, unknown> = {
@@ -149,7 +140,7 @@ export function buildRealtimeSessionPayload() {
         voice: REALTIME_VOICE,
       },
     },
-    tools: REALTIME_READ_ONLY_TOOLS,
+    tools: REALTIME_TOOLS,
     tool_choice: "auto",
   }
 
@@ -175,7 +166,7 @@ export function buildLegacyRealtimeSessionPayload() {
           voice: REALTIME_VOICE,
         },
       },
-      tools: REALTIME_READ_ONLY_TOOLS,
+      tools: REALTIME_TOOLS,
       tool_choice: "auto",
     },
   }

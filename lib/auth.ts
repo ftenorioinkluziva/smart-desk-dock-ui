@@ -4,6 +4,9 @@ import { nextCookies } from "better-auth/next-js"
 import * as schema from "@/db/schema"
 import { drizzleDb } from "@/lib/drizzle"
 
+const betterAuthSecret = process.env.BETTER_AUTH_SECRET
+if (!betterAuthSecret) throw new Error("BETTER_AUTH_SECRET is required")
+
 function parseTrustedOrigins() {
   const origins = [
     process.env.BETTER_AUTH_URL,
@@ -17,9 +20,9 @@ function parseTrustedOrigins() {
 }
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3001",
   trustedOrigins: parseTrustedOrigins(),
-  secret: process.env.BETTER_AUTH_SECRET ?? "focus-dock-development-secret-change-me",
+  secret: betterAuthSecret,
   database: drizzleAdapter(drizzleDb, {
     provider: "pg",
     schema,

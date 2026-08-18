@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server"
-import { callHomeAssistantService, type HomeAssistantColorCommand } from "@/lib/home-assistant"
+import { callHomeAssistantService } from "@/lib/home-assistant"
 import { getIntegrationSecret } from "@/lib/integration-secrets"
 import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
 import { getUserProfile } from "@/lib/user-profile"
+import { operationErrorResponse, parseJsonBody, unexpectedUpstreamOperationError } from "@/lib/http/operation-response"
+import { homeAssistantServiceInputSchema } from "@/lib/operations/contracts"
+import { upstreamError } from "@/lib/operations/errors"
 
 export async function POST(request: Request) {
   const user = await requireCurrentUser(request)
@@ -15,20 +18,16 @@ export async function POST(request: Request) {
   ])
 
   if (!url || !token) {
-    return NextResponse.json({ error: "Home Assistant is not configured", configured: false, mock: true }, { status: 503 })
+    return operationErrorResponse(
+      upstreamError("HOME_ASSISTANT_NOT_CONFIGURED", "Home Assistant is not configured", { retryable: false }),
+      { status: 503, extra: { configured: false, mock: true } },
+    )
   }
 
   try {
-    const body = await request.json() as {
-      entityId?: string
-      action?: "toggle" | "turn_on" | "turn_off" | "open_cover" | "close_cover" | "stop_cover"
-      brightness?: number
-      color?: HomeAssistantColorCommand
-    }
-
-    if (!body.entityId || !body.action) {
-      return NextResponse.json({ error: "Missing entityId or action" }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, homeAssistantServiceInputSchema)
+    if (!parsed.ok) return operationErrorResponse(parsed.error)
+    const body = parsed.value
 
     await callHomeAssistantService(
       { url, token, entityIds: profile.homeAssistantEntityIds },
@@ -42,7 +41,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error("Home Assistant service API error:", error)
-    return NextResponse.json({ error: "Home Assistant command failed" }, { status: 502 })
+    const operationError = unexpectedUpstreamOperationError(error, "Home Assistant command failed")
+    console.error("Home Assistant service API error", { code: operationError.code, retryable: operationError.retryable })
+    return operationErrorResponse(operationError)
   }
 }

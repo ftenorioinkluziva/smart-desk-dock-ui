@@ -109,7 +109,7 @@ components:
 
 A phone in landscape, mounted at eye level beside the monitor. The ambient light of the room, not the glow of the screen. You glance right, read the time, the next event, the temperature, and return to work. No tap, no swipe, no cognitive load. The dock is a secondary instrument panel, designed to be read at a distance and ignored the rest of the time.
 
-Focus Dock is dark by necessity, not by fashion. In a dim room or bright office, the deep background (Cockpit Void) recedes while the text (Instrument White) resolves immediately. The green accent (Signal Green) is the single active voice. It marks what is happening now: the track that is playing, the timer that is running, the element that is focused. Everything else is luminance, nothing else is colored.
+Focus Dock defaults to dark by necessity, not by fashion. In a dim room or bright office, the deep background (Cockpit Void) recedes while the text (Instrument White) resolves immediately. One selected action accent is the active voice. It marks what is happening now: the timer that is running, the selected setting, or the element that is focused. Spotify keeps Signal Green as its product identity. Everything else is carried primarily by luminance.
 
 The cockpit metaphor is structural, not decorative. Instruments are fixed in position (one panel per viewport, no scroll). Labels are minimal (every pixel of type earns its place). Controls are large and few (1-2 taps per action). The interface does not surprise, does not animate unprompted, does not demand attention. It waits.
 
@@ -128,7 +128,7 @@ A restrained palette built around one deep luminance ladder and a single saturat
 
 ### Primary
 
-- **Signal Green** (`oklch(0.72 0.19 155)`): The only saturated color. Marks the currently active element. Used for the playing track indicator, the running timer border, the focused input ring, the Spotify identity, the alert button. Never applied to static or decorative elements. If an element has Signal Green, the user should be able to answer "what is happening right now" by locating it.
+- **Signal Green** (`oklch(0.72 0.19 155)`): The default action accent and the permanent Spotify identity. When selected as the action accent, it marks current state, focus, and active controls. It is never applied to static decoration.
 
 ### Neutral
 
@@ -145,9 +145,17 @@ A restrained palette built around one deep luminance ladder and a single saturat
 
 ### Named Rules
 
-**The Single Signal Rule.** Signal Green is the only saturated color in the system. Every element that communicates active state uses it. No secondary accent, no warm tone, no alternative hue. Its rarity is the point: if everything is green, nothing is active.
+**The Single Signal Rule.** A viewport uses one action accent at a time. The user may select Green, Cyan, Blue, Amber, or Magenta, but these accents never appear together as decoration. Spotify green is the sole product-identity exception.
 
-**The No-Tint Rule.** Every non-signal surface is an achromatic gray on the luminance ladder. No tinted grays, no warm or cool bias, no colored surfaces. The void is neutral. The panels are neutral. The text is neutral. The only hue in the system is Signal Green.
+**The Controlled Tint Rule.** Cockpit stays achromatic. Blue Hour and Warm Desk may tint the entire luminance ladder with low chroma, while Paper Light uses warm paper neutrals. Individual cards never introduce an unrelated tint.
+
+### Appearance presets
+
+- **Cockpit:** The original neutral dark system and default preset.
+- **Blue Hour:** A cool, low-chroma dark ladder for dim workspaces.
+- **Warm Desk:** A warm, low-chroma dark ladder for evening or warm ambient light.
+- **Paper Light:** A warm light ladder for bright daytime environments.
+- **NightDock exception:** NightDock always uses its own low-brightness dark ladder, independent of the selected preset.
 
 **The Luminance Ladder Rule.** Hierarchy between surfaces is expressed through lightness alone. Void (0.07), panel (0.13), housing (0.20), frame (0.22). Higher luminance means higher in the stacking context. This rule makes elevation invisible: a panel at 0.13 naturally floats above the void at 0.07 without a visible drop shadow.
 
@@ -192,7 +200,7 @@ Shadows appear only as responses to state:
 
 - **Hover** on primary buttons: `0 1px 4px rgba(0,0,0,0.6)`. A subtle lift, the only shadow in the entire system. Applied on desktop hover and persists through the interaction.
 - **Active** (tap or click): `transform: scale(0.96)` for 150ms. No shadow change. The scale-down provides tactile feedback without adding or removing depth.
-- **Focus-visible**: Signal Green ring at 3px thickness, 2px offset. Applicable to all interactive elements. The ring is the focus indicator, not a shadow or glow.
+- **Focus-visible**: Action Accent ring at 3px thickness, 2px offset. Applicable to all interactive elements. The ring is the focus indicator, not a shadow or glow.
 - **Disabled**: `opacity: 50`, `pointer-events: none`. The element stays flat at its original luminance. No gray overlay, no desaturation.
 - **Pomodoro completion**: pulsing border at `border-2 border-destructive/45 bg-destructive/5`. The pulse animation uses `animate-productivity-complete` (1.8s ease-in-out infinite, scale 1 to 1.05). The completion state is communicated through border and opacity, not an added shadow or overlay.
 
@@ -218,10 +226,10 @@ The primary navigation mode. Nine panels arranged in a horizontal snap-scroll se
 Four tiers mapped to the luminance ladder. All share: `inline-flex items-center justify-center`, `transition-all duration-150`, `select-none`.
 
 - **Shape:** Gently curved edges. Standard buttons use 14px radius (`rounded-md`). Control buttons (ProductivityHub) use 20px (`rounded-xl`).
-- **Primary (Instrument White on Cockpit Void):** The affirmative action. Play button, timer start, confirm. Hover reduces opacity to 90% and adds `0 1px 4px rgba(0,0,0,0.6)`. Active scales to `0.96`. Focus-visible gets a 3px Signal Green ring.
+- **Primary (Instrument White on Cockpit Void):** The affirmative action. Play button, timer start, confirm. Hover reduces opacity to 90% and adds `0 1px 4px rgba(0,0,0,0.6)`. Active scales to `0.96`. Focus-visible gets a 3px Action Accent ring.
 - **Secondary (Gauge Housing background, Frame Line border, Dim Readout text):** Neutral actions. Hover raises text to Instrument White. Active scales to `0.96`.
 - **Ghost (transparent, Dim Readout text):** Lightweight actions. Tab labels, pagination hit areas, text-style controls. Hover transitions text to Instrument White. No border, no background at any state.
-- **Alert (Signal Green background, Cockpit Void text, 20px radius):** Active state only. Running timer button, active playback button. Hover fades opacity to 85%. Active scales to `0.96`. This is the only button that uses Signal Green. If the button is not actively engaged in its function, it should not use this variant.
+- **Alert (Action Accent background, Cockpit Void text, 20px radius):** Active state only. Running timer button, active playback button. Hover fades opacity to 85%. Active scales to `0.96`. This is the only button that uses the selected accent. If the button is not actively engaged in its function, it should not use this variant.
 
 ### Cards
 
@@ -232,7 +240,7 @@ Four tiers mapped to the luminance ladder. All share: `inline-flex items-center 
 - **Internal padding:** Fluid `--dock-pad-y` (top/bottom) and `--dock-pad-x` (left/right).
 - **Variants:**
   - **Default:** Standard card with Frame Line border. Used for calendar events, weather details, most container needs.
-  - **Urgent:** `border-accent/60 bg-accent/10` — a Signal Green tinted border and background for events or alerts requiring immediate attention.
+  - **Urgent:** `border-accent/60 bg-accent/10` — an Action Accent tinted border and background for events or alerts requiring immediate attention.
   - **Ghost:** `border-border/20 bg-transparent` — no background, faint border. Used for empty states or when the card should recede visually (night events).
 
 ### EventCard (agenda)
@@ -242,7 +250,7 @@ A specialized card for calendar events. Luminance-coded by proximity.
 - **Layout:** `flex items-center gap-2` with a colored dot on the left indicating event type (default, all-day, timed).
 - **Time display:** Label hierarchy (uppercase, tracked), mono where applicable.
 - **Title:** Title hierarchy, truncated with `truncate` for long event names.
-- **Context chip:** Optional badge showing time until event. Uses Gauge Housing background with Dim Readout text when distant, Signal Green background with Cockpit Void text when imminent (under 15 minutes).
+- **Context chip:** Optional badge showing time until event. Uses Gauge Housing background with Dim Readout text when distant, Action Accent background with Cockpit Void text when imminent (under 15 minutes).
 - **Countdown:** A dedicated row showing "em 45 min" or "começa agora" in label-type type. Shown only for events within the next 2 hours.
 
 ### Inputs / Fields
@@ -251,14 +259,14 @@ A specialized card for calendar events. Luminance-coded by proximity.
 - **Shape:** 14px radius (`rounded-md`).
 - **Text:** Body hierarchy, Instrument White.
 - **Placeholder:** Dim Readout.
-- **Focus:** Frame Line border transitions to Signal Green. A 3px Signal Green ring at 25% opacity via `focus-visible:ring-[3px] ring-accent/25`.
+- **Focus:** Frame Line border transitions to Action Accent. A 3px Action Accent ring at 25% opacity via `focus-visible:ring-[3px] ring-accent/25`.
 - **Disabled:** Frame Line border at 50% opacity. Text at Dim Readout.
 - **Error:** Alert Red border. No icon, no toast. The border change is sufficient.
 
 ### Slider (Spotify volume, Home Assistant brightness)
 
 - **Track:** Gauge Housing background, 6px height, 14px radius.
-- **Fill:** Signal Green. The active portion of the track from 0% to the current value.
+- **Fill:** Action Accent. The active portion of the track from 0% to the current value.
 - **Thumb:** Instrument White circle, 16px diameter, `rounded-full`, no border, no shadow. The thumb appears only when the user is interacting with the slider. It disappears when idle, leaving only the track and fill visible.
 - **Interaction:** Touch-drag or tap-to-seek. No step increments. Continuous values only.
 
@@ -301,7 +309,7 @@ A dedicated low-brightness clock mode for nighttime or inactive use. Separate pa
 ## 6. Do's and Don'ts
 
 ### Do:
-- **Do** use Signal Green on exactly one element per viewport at rest. Two maximum if there is a clear primary/secondary relationship (e.g., playing track indicator and its focused control). If you count three green elements, remove one.
+- **Do** use the selected action accent on exactly one element per viewport at rest. Two maximum if there is a clear primary/secondary relationship. If you count three accented elements, remove one.
 - **Do** rely on the luminance ladder for hierarchy before reaching for borders, badges, or backgrounds. Void (0.07), panel (0.13), housing (0.20), frame (0.22), text (0.55), text-highlight (0.95). If a relationship is unclear, the luminance delta is too small.
 - **Do** use Display hierarchy exclusively for the clock. Timer counts use Headline weight in JetBrains Mono. Finance figures use Body weight in JetBrains Mono. The clock has a monopoly on 200-weight type at 7.5rem.
 - **Do** keep every panel to exactly one viewport width. No inner scrolling, no overflow, no horizontal scroll within panels. The carousel is the only scroll axis.
@@ -311,13 +319,13 @@ A dedicated low-brightness clock mode for nighttime or inactive use. Separate pa
 - **Do** truncate single-line text with `truncate` class. The viewport width is 667px; text overflow is inevitable.
 
 ### Don't:
-- **Don't** use Signal Green for static elements. A green icon that does not indicate active state is a bug. A green heading is a bug. A green border that always renders is a bug. If it is green, something must be happening.
-- **Don't** introduce a second accent color. Not blue for links. Not red for errors (Alert Red is for destructive actions only, not as an accent). Not purple for premium. Signal Green is the single voice.
+- **Don't** use the action accent for static elements. An accented icon that does not indicate state is a bug. An accented heading is a bug. If it is accented, something must be happening or selected.
+- **Don't** combine action accents. The selected accent is the single state voice; Alert Red remains reserved for destructive actions, and Spotify green remains reserved for Spotify identity.
 - **Don't** use decorative background colors on surfaces. Every colored surface is a functional container on the luminance ladder. No tinted cards, no gradient panels, no glass backgrounds, no translucent overlays.
 - **Don't** use side-stripe borders. `border-left` or `border-right` at more than 1px as an accent is prohibited. Use a full border, a background tint, or nothing.
 - **Don't** use gradient text. Emphasis comes from weight and scale. If a word needs to stand out, make it larger or heavier. Do not apply `background-clip: text` with a gradient.
 - **Don't** use the hero-metric template. No big number + small label + supporting stats + gradient accent. Numbers stand on their own. A single temperature, a single financial figure, a single timer value. Not an array of them.
 - **Don't** use identical card grids. The form factor does not accommodate repeating card grids. Each panel has a unique layout structure designed for its content type. If you find yourself with three identical cards in a row, redesign the layout.
 - **Don't** animate layout properties. No transitions on width, height, top, left, margin, padding. Animate opacity and `transform` only. Layout animations cause jank on mobile GPUs and violate the calm-technology principle.
-- **Don't** show the slider thumb when idle. The thumb appears only during active drag. At rest, the slider displays as a track with a Signal Green fill and no thumb.
+- **Don't** show the slider thumb when idle. The thumb appears only during active drag. At rest, the slider displays as a track with an Action Accent fill and no thumb.
 - **Don't** show scrollbars. The carousel uses `scrollbar-hide`. Individual panels have no scroll. If content overflows a panel, the panel needs redesign, not a scrollbar.

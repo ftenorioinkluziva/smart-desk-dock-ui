@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { operationErrorResponse } from "@/lib/http/operation-response"
 
 export type CurrentUser = {
   id: string
@@ -26,7 +27,12 @@ export async function getCurrentUser(request: Request): Promise<CurrentUser | nu
 export async function requireCurrentUser(request: Request): Promise<CurrentUser | NextResponse> {
   const user = await getCurrentUser(request)
   if (!user) {
-    return NextResponse.json({ authRequired: true, error: "Authentication required" }, { status: 401 })
+    return operationErrorResponse({
+      code: "AUTHENTICATION_REQUIRED",
+      category: "authorization",
+      message: "Authentication required",
+      retryable: false,
+    }, { status: 401, extra: { authRequired: true } })
   }
   return user
 }
@@ -34,4 +40,3 @@ export async function requireCurrentUser(request: Request): Promise<CurrentUser 
 export function isAuthResponse(value: CurrentUser | NextResponse): value is NextResponse {
   return value instanceof NextResponse
 }
-

@@ -13,14 +13,14 @@ import { FinancePanel } from "@/components/finance-panel"
 import { VoiceAgentPanel } from "@/components/voice-agent-panel"
 import { WindyMap } from "@/components/windy-map"
 import { AuthGate } from "@/components/auth-gate"
-import { isWithinNightMode, NIGHT_MODE_SETTINGS_EVENT, readNightModeSettings } from "@/lib/dock-settings"
-const PAGES = 10
-const NIGHT_DOCK_PAGE_INDEX = 2
+import { isNightDockActive, NIGHT_MODE_SETTINGS_EVENT, readNightModeSettings } from "@/lib/dock-settings"
+const PAGES = 9
 
 export default function Page() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activePage, setActivePage] = useState(0)
   const [nightModeSettings, setNightModeSettings] = useState(() => readNightModeSettings())
+  const [nightDockActive, setNightDockActive] = useState(() => isNightDockActive(new Date(), readNightModeSettings()))
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
@@ -55,42 +55,48 @@ export default function Page() {
   }, [activePage, scrollToPage])
 
   useEffect(() => {
-    const handleSettingsChange = () => setNightModeSettings(readNightModeSettings())
+    const handleSettingsChange = () => {
+      const nextSettings = readNightModeSettings()
+      setNightModeSettings(nextSettings)
+      setNightDockActive(isNightDockActive(new Date(), nextSettings))
+    }
     window.addEventListener(NIGHT_MODE_SETTINGS_EVENT, handleSettingsChange)
     return () => window.removeEventListener(NIGHT_MODE_SETTINGS_EVENT, handleSettingsChange)
   }, [])
 
   useEffect(() => {
-    let wasInNightMode = isWithinNightMode(new Date(), nightModeSettings)
-
-    if (wasInNightMode && activePage === 0) {
-      scrollToPage(NIGHT_DOCK_PAGE_INDEX)
-    }
-
     const interval = setInterval(() => {
-      const isNightMode = isWithinNightMode(new Date(), nightModeSettings)
-      if (isNightMode && !wasInNightMode) {
-        scrollToPage(NIGHT_DOCK_PAGE_INDEX)
-      }
-      wasInNightMode = isNightMode
+      setNightDockActive(isNightDockActive(new Date(), nightModeSettings))
     }, 30 * 1000)
 
     return () => clearInterval(interval)
-  }, [activePage, nightModeSettings, scrollToPage])
+  }, [nightModeSettings])
+
+  useEffect(() => {
+    if (nightDockActive) return
+    setActivePage(0)
+    scrollRef.current?.scrollTo({ left: 0, behavior: "auto" })
+  }, [nightDockActive])
 
   return (
     <AuthGate>
-    <div className="h-dvh w-dvw overflow-hidden bg-background relative flex flex-col dock-py">
-      <SettingsPanel showTrigger={activePage === 0} />
+    <div
+      className={`h-dvh w-dvw overflow-hidden relative flex flex-col dock-py ${nightDockActive ? "night-dock-surface bg-background" : "bg-background"}`}
+    >
+      <SettingsPanel showTrigger={nightDockActive || activePage === 0} />
 
-      {/* Carousel content area */}
-      <div
-        ref={scrollRef}
-        data-dock-carousel
-        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
-        onKeyDown={handleKeyDown}
-      >
+      {nightDockActive ? (
+        <main className="flex min-h-0 flex-1 items-center justify-center">
+          <NightDock />
+        </main>
+      ) : (
+        <div
+          ref={scrollRef}
+          data-dock-carousel
+          className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+          onKeyDown={handleKeyDown}
+        >
         {/* Page 1: Today */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <TodayPanel />
@@ -101,12 +107,7 @@ export default function Page() {
           <VoiceAgentPanel />
         </section>
 
-        {/* Page 3: Night Dock */}
-        <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
-          <NightDock />
-        </section>
-
-        {/* Page 4: Weather Forecast */}
+        {/* Page 3: Weather Forecast */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <WeatherForecast />
         </section>
@@ -136,17 +137,18 @@ export default function Page() {
           <SpotifyExpandedPanel />
         </section>
 
-        {/* Page 10: Windy Map */}
+        {/* Page 9: Windy Map */}
         <section className="w-full h-full shrink-0 snap-center flex items-center justify-center">
           <WindyMap />
         </section>
 
-      </div>
+        </div>
+      )}
 
       {/* Pagination Dots */}
       <div
         className={`absolute inset-x-0 bottom-[calc(var(--dock-safe-bottom)+0.25rem)] flex items-center justify-center gap-1 transition-opacity ${
-          activePage === PAGES - 1 ? "opacity-0" : "opacity-100"
+          nightDockActive || activePage === PAGES - 1 ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >
         {Array.from({ length: PAGES }).map((_, i) => (

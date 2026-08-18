@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { financeMe } from "@/lib/finance"
 import { deleteIntegrationProvider, getIntegrationSecret } from "@/lib/integration-secrets"
 import { isAuthResponse, requireCurrentUser } from "@/lib/current-user"
+import { operationErrorResponse, unexpectedUpstreamOperationError } from "@/lib/http/operation-response"
 
 export async function GET(request: Request) {
   const user = await requireCurrentUser(request)
@@ -16,9 +17,13 @@ export async function GET(request: Request) {
     const financeUser = await financeMe(token)
     return NextResponse.json({ user: financeUser })
   } catch (error) {
-    console.error("Finance me error:", error)
-    await deleteIntegrationProvider(user.id, "finance")
-    return NextResponse.json({ financeAuthRequired: true, error: "Token inválido ou expirado" }, { status: 401 })
+    const operationError = unexpectedUpstreamOperationError(error, "Finance authentication check failed")
+    console.error("Finance me error", { code: operationError.code, retryable: operationError.retryable })
+    if (operationError.category === "authorization") {
+      await deleteIntegrationProvider(user.id, "finance")
+      return operationErrorResponse(operationError, { status: 401, extra: { financeAuthRequired: true } })
+    }
+    return operationErrorResponse(operationError)
   }
 }
 
@@ -29,4 +34,3 @@ export async function DELETE(request: Request) {
   await deleteIntegrationProvider(user.id, "finance")
   return NextResponse.json({ financeAuthRequired: true })
 }
-

@@ -77,6 +77,8 @@ export const userProfiles = pgTable("user_profiles", {
   pomodoroFocusSeconds: integer("pomodoro_focus_seconds"),
   pomodoroShortBreakSeconds: integer("pomodoro_short_break_seconds"),
   pomodoroLongBreakSeconds: integer("pomodoro_long_break_seconds"),
+  themePreset: text("theme_preset"),
+  accentPreset: text("accent_preset"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 })

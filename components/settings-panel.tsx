@@ -1,10 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
-import { Bell, Check, Clock3, Eye, KeyRound, LogOut, Settings, Volume2, Vibrate, X } from "lucide-react"
+import { Bell, Check, Clock3, Eye, KeyRound, LogOut, Palette, Settings, Volume2, Vibrate, X } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import { readSelectedCalendarIds, writeSelectedCalendarIds } from "@/lib/calendar-settings"
-import { readNightModeSettings, writeNightModeSettings, type NightModeSettings } from "@/lib/dock-settings"
+import { isWithinNightMode, readNightModeSettings, writeNightModeSettings, type NightModeSettings } from "@/lib/dock-settings"
+import { DOCK_ACCENTS, DOCK_THEMES } from "@/lib/dock-theme"
+import { useDockTheme } from "@/components/dock-theme-provider"
 import {
   getNotificationPermission,
   readProductivityAlertSettings,
@@ -64,6 +66,7 @@ const POMODORO_DURATION_FIELDS: Array<{ mode: PomodoroMode; label: string }> = [
 
 export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean }) {
   const { data: session } = authClient.useSession()
+  const { appearance, setAccent, setTheme } = useDockTheme()
   const [isOpen, setIsOpen] = useState(false)
   const [calendars, setCalendars] = useState<CalendarOption[]>([])
   const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([])
@@ -103,11 +106,12 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
     setWeatherLat(String(profile.weatherLat))
     setWeatherLon(String(profile.weatherLon))
     setWeatherTimezone(profile.weatherTimezone)
-    setNightModeSettings({
+    setNightModeSettings((current) => ({
       enabled: profile.nightModeEnabled,
       start: profile.nightModeStart,
       end: profile.nightModeEnd,
-    })
+      manualActive: current.manualActive,
+    }))
     setAlertSettings({
       preference: profile.productivityAlertPreference,
       notificationEnabled: profile.productivityNotificationEnabled,
@@ -385,6 +389,86 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
               </section>
 
               <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+                  <Palette className="size-3.5 text-muted-foreground" />
+                  Aparência
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Tema do dock">
+                  {DOCK_THEMES.map((theme) => {
+                    const selected = appearance.themePreset === theme.id
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setTheme(theme.id)}
+                        className={`flex min-h-11 items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-ring ${
+                          selected
+                            ? "border-foreground/55 bg-background/80 text-foreground"
+                            : "border-border/35 text-muted-foreground hover:border-border/70 hover:bg-background/45 hover:text-foreground"
+                        }`}
+                      >
+                        <span
+                          className="relative size-8 shrink-0 overflow-hidden rounded-md border border-foreground/15"
+                          style={{ backgroundColor: theme.preview.background }}
+                          aria-hidden="true"
+                        >
+                          <span
+                            className="absolute inset-x-1 bottom-1 h-2 rounded-sm"
+                            style={{ backgroundColor: theme.preview.surface }}
+                          />
+                          <span
+                            className="absolute top-1 left-1 size-1 rounded-full"
+                            style={{ backgroundColor: theme.preview.foreground }}
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium" style={{ fontSize: "clamp(0.62rem,1.55vw,0.74rem)" }}>
+                            {theme.label}
+                          </span>
+                          <span className="block truncate opacity-70" style={{ fontSize: "clamp(0.5rem,1.2vw,0.6rem)" }}>
+                            {theme.description}
+                          </span>
+                        </span>
+                        {selected && <Check className="size-3.5 shrink-0 text-accent" aria-hidden="true" />}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="mt-2 text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
+                  Cor de ação
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-1" role="radiogroup" aria-label="Cor de ação">
+                  {DOCK_ACCENTS.map((accent) => {
+                    const selected = appearance.accentPreset === accent.id
+                    return (
+                      <button
+                        key={accent.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        aria-label={accent.label}
+                        title={accent.label}
+                        onClick={() => setAccent(accent.id)}
+                        className={`flex size-11 items-center justify-center rounded-lg border transition-[background-color,border-color,transform] duration-150 active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-ring ${
+                          selected ? "border-foreground/70 bg-background/80" : "border-border/35 hover:border-border/70"
+                        }`}
+                      >
+                        <span
+                          className="size-6 rounded-md border border-foreground/15"
+                          style={{ backgroundColor: accent.color }}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+
+              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
                 <div className="mb-2 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
                   Clima
                 </div>
@@ -557,6 +641,34 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                     className="size-4 accent-[var(--accent)]"
                   />
                 </label>
+
+                <div className="mt-2 flex items-center justify-between gap-3 border-t border-border/25 pt-2">
+                  <div className="min-w-0">
+                    <div className="text-foreground" style={{ fontSize: "clamp(0.68rem,1.7vw,0.82rem)" }}>
+                      Tela exclusiva
+                    </div>
+                    <div className="text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
+                      {nightModeSettings.manualActive
+                        ? "Ativada manualmente"
+                        : isWithinNightMode(new Date(), nightModeSettings)
+                          ? "Ativada pelo horário"
+                          : "Disponível somente nesta tela"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => updateNightModeSettings({
+                      ...nightModeSettings,
+                      manualActive: !nightModeSettings.manualActive,
+                    })}
+                    className={`shrink-0 rounded-lg border px-2 py-1 text-foreground transition-[background-color,border-color,transform] duration-150 active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-ring ${
+                      nightModeSettings.manualActive ? "border-foreground/50 bg-foreground text-background" : "border-border/50 bg-secondary/60"
+                    }`}
+                    style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}
+                  >
+                    {nightModeSettings.manualActive ? "Desativar" : "Ativar agora"}
+                  </button>
+                </div>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <label className="flex flex-col gap-1 text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>

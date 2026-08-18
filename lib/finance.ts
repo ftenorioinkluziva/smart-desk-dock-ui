@@ -1,3 +1,6 @@
+import { z } from "zod"
+import { OperationFailure, upstreamError } from "@/lib/operations/errors"
+
 const FINANCE_API_URL = process.env.FINANCE_API_URL?.replace(/\/$/, "")
 
 export const financeConfigured = Boolean(FINANCE_API_URL)
@@ -79,39 +82,87 @@ export type AssetPrice = {
   calculationType: string
 }
 
+const financeUserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string().optional(),
+  role: z.string(),
+}).passthrough()
+
+const financeLoginResponseSchema = z.object({
+  token: z.string().min(1),
+  user: financeUserSchema,
+}).passthrough()
+
+const financePositionSchema = z.object({
+  id: z.string(), ticker: z.string(), name: z.string(), shares: z.number(), currentPrice: z.number(),
+  currentValue: z.number(), gain: z.number(), gainPercentage: z.number(), dailyChangePercentage: z.number().nullable().optional(),
+}).passthrough()
+const financeFundSchema = z.object({
+  id: z.string(), name: z.string(), indexTicker: z.string().optional(), currentValue: z.number(), gain: z.number(), gainPercentage: z.number(),
+}).passthrough()
+const financeSummarySchema = z.object({
+  totalValue: z.number(), positionsValue: z.number(), fundsValue: z.number(), cashBalance: z.number(),
+  positionCount: z.number(), basketDriftPercentage: z.number(), unrealizedGain: z.number(),
+  allocation: z.array(z.object({ id: z.string(), ticker: z.string(), label: z.string(), percentage: z.number(), targetPercentage: z.number() }).passthrough()),
+  positions: z.array(financePositionSchema),
+  funds: z.array(financeFundSchema).optional(),
+}).passthrough()
+const assetPriceSchema = z.object({
+  ticker: z.string(), name: z.string(), price: z.number(), priceDate: z.string(), calculationType: z.string(),
+}).passthrough()
+
+function financeOperationFailure(status: number, operation: string) {
+  if (status === 401 || status === 403) {
+    return new OperationFailure({
+      code: "FINANCE_AUTH_REQUIRED",
+      category: "authorization",
+      message: "Autenticação financeira necessária",
+      hint: "Conecte novamente sua conta financeira.",
+      retryable: false,
+    })
+  }
+  return new OperationFailure(upstreamError(
+    status === 429 ? "FINANCE_RATE_LIMITED" : "FINANCE_UPSTREAM_FAILED",
+    `${operation} failed`,
+    { retryable: status === 429 || status >= 500 },
+  ))
+}
+
+async function parseFinanceResponse<T>(response: Response, schema: z.ZodType<T>, operation: string): Promise<T> {
+  if (!response.ok) throw financeOperationFailure(response.status, operation)
+  const parsed = schema.safeParse(await response.json())
+  if (!parsed.success) {
+    throw new OperationFailure(upstreamError("FINANCE_RESPONSE_INVALID", "Finance API returned an invalid response", { retryable: false }))
+  }
+  return parsed.data
+}
+
 export async function financeLogin(email: string, password: string) {
-  if (!FINANCE_API_URL) throw new Error("Finance API URL is not configured")
+  if (!FINANCE_API_URL) throw new OperationFailure(upstreamError("FINANCE_NOT_CONFIGURED", "Finance API URL is not configured", { retryable: false }))
 
   const response = await fetch(`${FINANCE_API_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+    signal: AbortSignal.timeout(10_000),
   })
-
-  if (!response.ok) {
-    throw new Error(`Login failed: ${response.status}`)
-  }
-
-  return await response.json() as { token: string; user: { id: string; email: string; role: string } }
+  return parseFinanceResponse(response, financeLoginResponseSchema, "Finance login")
 }
 
 export async function financeMe(token: string) {
-  if (!FINANCE_API_URL) throw new Error("Finance API URL is not configured")
+  if (!FINANCE_API_URL) throw new OperationFailure(upstreamError("FINANCE_NOT_CONFIGURED", "Finance API URL is not configured", { retryable: false }))
 
   const response = await fetch(`${FINANCE_API_URL}/api/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(10_000),
   })
-
-  if (!response.ok) {
-    throw new Error(`Auth check failed: ${response.status}`)
-  }
-
-  return await response.json() as { id: string; email: string; name?: string; role: string }
+  return parseFinanceResponse(response, financeUserSchema, "Finance authentication check")
 }
 
-async function financeFetch<T>(path: string, token?: string): Promise<T> {
+async function financeFetch<T>(path: string, schema: z.ZodType<T>, token?: string): Promise<T> {
   if (!FINANCE_API_URL) {
-    throw new Error("Finance API URL is not configured")
+    throw new OperationFailure(upstreamError("FINANCE_NOT_CONFIGURED", "Finance API URL is not configured", { retryable: false }))
   }
 
   const headers: Record<string, string> = {
@@ -125,13 +176,9 @@ async function financeFetch<T>(path: string, token?: string): Promise<T> {
   const response = await fetch(`${FINANCE_API_URL}${path}`, {
     headers,
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(10_000),
   })
-
-  if (!response.ok) {
-    throw new Error(`Finance API request failed: ${response.status}`)
-  }
-
-  return await response.json() as T
+  return parseFinanceResponse(response, schema, "Finance API request")
 }
 
 function buildAssets(summary: FinanceSummary): FinanceAssetSummary[] {
@@ -183,14 +230,19 @@ function stripSuffix(ticker: string): string {
 }
 
 export async function fetchAssetPrices(token: string): Promise<AssetPrice[]> {
-  return financeFetch<AssetPrice[]>("/api/assets/prices", token)
+  return financeFetch("/api/assets/prices", z.array(assetPriceSchema), token)
 }
 
 export async function fetchFinanceDockSummary(token?: string): Promise<FinanceDockSummary> {
-  if (!token) throw new Error("Token required")
+  if (!token) throw new OperationFailure({
+    code: "FINANCE_AUTH_REQUIRED",
+    category: "authorization",
+    message: "Autenticação financeira necessária",
+    retryable: false,
+  })
 
   const [summary, prices] = await Promise.all([
-    financeFetch<FinanceSummary>("/api/portfolio/summary", token),
+    financeFetch("/api/portfolio/summary", financeSummarySchema, token),
     fetchAssetPrices(token).catch(() => [] as AssetPrice[]),
   ])
 

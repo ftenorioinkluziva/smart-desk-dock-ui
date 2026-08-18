@@ -2,6 +2,19 @@
 
 import { appendCalendarIds, readSelectedCalendarIds } from "@/lib/calendar-settings"
 import { dispatchProductivityControl, type ProductivityAction, type ProductivityTarget } from "@/lib/productivity-actions"
+import type { z } from "zod"
+import {
+  calendarEventsApiResponseSchema,
+  financeSummaryApiResponseSchema,
+  homeAssistantEntitiesApiResponseSchema,
+  realtimeProductivityControlInputSchema,
+  realtimeSpotifyControlInputSchema,
+  realtimeToolArgumentsSchema,
+  spotifyStatusApiResponseSchema,
+  weatherApiResponseSchema,
+  type RealtimeToolResult,
+} from "@/lib/operations/contracts"
+import { OperationFailure, internalError, operationErrorSchema, upstreamError, validationError } from "@/lib/operations/errors"
 
 export type RealtimeToolName =
   | "get_current_weather"
@@ -12,21 +25,7 @@ export type RealtimeToolName =
   | "spotify_control"
   | "productivity_control"
 
-type CalendarEvent = {
-  id: string
-  title: string
-  date: string
-  time: string
-  startDateTime: string | null
-  endDateTime: string | null
-  isAllDay: boolean
-}
-
-type ToolResult = {
-  ok: boolean
-  data?: unknown
-  error?: string
-}
+type ToolResult = RealtimeToolResult
 
 type SpotifyControlAction = "play" | "pause" | "next" | "previous"
 
@@ -45,12 +44,25 @@ function todayRange() {
   return { start, end }
 }
 
-async function readJson<T>(url: string) {
+async function readJson<T>(url: string, schema: z.ZodType<T>) {
   const response = await fetch(url)
+  const body = await response.json().catch(() => null) as unknown
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`)
+    const parsedError = operationErrorSchema.safeParse(
+      body && typeof body === "object" && "operationError" in body ? body.operationError : null,
+    )
+    if (parsedError.success) throw new OperationFailure(parsedError.data)
+    throw new OperationFailure(upstreamError("DOCK_API_REQUEST_FAILED", `Dock API request failed: ${response.status}`, {
+      retryable: response.status === 429 || response.status >= 500,
+    }))
   }
-  return await response.json() as T
+  const embeddedError = operationErrorSchema.safeParse(
+    body && typeof body === "object" && "operationError" in body ? body.operationError : null,
+  )
+  if (embeddedError.success) throw new OperationFailure(embeddedError.data)
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) throw new OperationFailure(upstreamError("DOCK_API_RESPONSE_INVALID", "Dock API returned an invalid response", { retryable: false }))
+  return parsed.data
 }
 
 function compactNumber(value: unknown) {
@@ -58,15 +70,7 @@ function compactNumber(value: unknown) {
 }
 
 async function getCurrentWeather(): Promise<ToolResult> {
-  const data = await readJson<{
-    location?: string
-    temp?: number
-    high?: number
-    low?: number
-    description?: string
-    condition?: string
-    forecast?: Array<{ day: string; date: string; low: number; high: number; condition: string }>
-  }>("/api/weather")
+  const data = await readJson("/api/weather", weatherApiResponseSchema)
 
   return {
     ok: true,
@@ -78,6 +82,7 @@ async function getCurrentWeather(): Promise<ToolResult> {
       description: data.description,
       condition: data.condition,
       forecast: data.forecast?.slice(0, 3),
+      mock: data.mock ?? false,
     },
   }
 }
@@ -90,7 +95,7 @@ async function getTodayEvents(): Promise<ToolResult> {
   })
   appendCalendarIds(params, readSelectedCalendarIds())
 
-  const data = await readJson<{ events?: CalendarEvent[]; mock?: boolean }>(`/api/calendar-events?${params.toString()}`)
+  const data = await readJson(`/api/calendar-events?${params.toString()}`, calendarEventsApiResponseSchema)
   const now = Date.now()
   const events = (data.events ?? [])
     .map((event) => ({
@@ -118,7 +123,7 @@ async function getTodayEvents(): Promise<ToolResult> {
 }
 
 async function getSpotifyStatus(): Promise<ToolResult> {
-  const data = await readJson<Record<string, unknown>>("/api/spotify-now-playing")
+  const data = await readJson("/api/spotify-now-playing", spotifyStatusApiResponseSchema)
 
   return {
     ok: true,
@@ -138,17 +143,7 @@ async function getSpotifyStatus(): Promise<ToolResult> {
 }
 
 async function getHomeStatus(): Promise<ToolResult> {
-  const data = await readJson<{
-    entities?: Array<{
-      entityId: string
-      domain: string
-      name: string
-      state: string
-      brightness: number | null
-      controllable: boolean
-    }>
-    mock?: boolean
-  }>("/api/home-assistant/entities")
+  const data = await readJson("/api/home-assistant/entities", homeAssistantEntitiesApiResponseSchema)
 
   return {
     ok: true,
@@ -166,21 +161,7 @@ async function getHomeStatus(): Promise<ToolResult> {
 }
 
 async function getFinanceSummary(): Promise<ToolResult> {
-  const data = await readJson<{
-    totalValue?: number
-    cashBalance?: number
-    driftPercentage?: number
-    unrealizedGain?: number
-    assets?: Array<{
-      ticker: string
-      label: string
-      percentage: number
-      targetPercentage: number
-      gainPercentage: number
-      dailyChangePercentage: number | null
-    }>
-    mock?: boolean
-  }>("/api/finance/summary")
+  const data = await readJson("/api/finance/summary", financeSummaryApiResponseSchema)
 
   return {
     ok: true,
@@ -206,19 +187,19 @@ function parseToolArguments(rawArguments: string | undefined): Record<string, un
   if (!rawArguments) return {}
   try {
     const parsed = JSON.parse(rawArguments) as unknown
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed as Record<string, unknown>
-      : {}
+    return realtimeToolArgumentsSchema.safeParse(parsed).data ?? {}
   } catch {
     return {}
   }
 }
 
 async function spotifyControl(args: Record<string, unknown>): Promise<ToolResult> {
-  const action = args.action
-  if (action !== "play" && action !== "pause" && action !== "next" && action !== "previous") {
-    return { ok: false, error: "Acao Spotify invalida" }
+  const parsed = realtimeSpotifyControlInputSchema.safeParse(args)
+  if (!parsed.success) {
+    const operationError = validationError("Acao Spotify invalida", ["action"])
+    return { ok: false, error: operationError.message, operationError }
   }
+  const { action } = parsed.data
 
   const response = await fetch("/api/spotify-control", {
     method: "POST",
@@ -227,7 +208,12 @@ async function spotifyControl(args: Record<string, unknown>): Promise<ToolResult
   })
 
   if (!response.ok) {
-    throw new Error(`Spotify control failed: ${response.status}`)
+    const body = await response.json().catch(() => null) as { operationError?: unknown } | null
+    const parsedError = operationErrorSchema.safeParse(body?.operationError)
+    if (parsedError.success) throw new OperationFailure(parsedError.data)
+    throw new OperationFailure(upstreamError("SPOTIFY_CONTROL_FAILED", "Spotify control failed", {
+      retryable: response.status === 429 || response.status >= 500,
+    }))
   }
 
   return {
@@ -241,20 +227,12 @@ async function spotifyControl(args: Record<string, unknown>): Promise<ToolResult
 }
 
 function productivityControl(args: Record<string, unknown>): ToolResult {
-  const target = args.target
-  const action = args.action
-
-  if (target !== "pomodoro" && target !== "timer" && target !== "stopwatch") {
-    return { ok: false, error: "Alvo de produtividade invalido" }
+  const parsed = realtimeProductivityControlInputSchema.safeParse(args)
+  if (!parsed.success) {
+    const operationError = validationError("Comando de produtividade invalido", parsed.error.issues.map((issue) => issue.path.join(".")))
+    return { ok: false, error: operationError.message, operationError }
   }
-
-  if (action !== "start" && action !== "pause" && action !== "reset") {
-    return { ok: false, error: "Acao de produtividade invalida" }
-  }
-
-  const minutes = typeof args.minutes === "number" && Number.isFinite(args.minutes)
-    ? Math.max(1, Math.min(180, Math.round(args.minutes)))
-    : undefined
+  const { target, action, minutes } = parsed.data
 
   dispatchProductivityControl({
     target: target as ProductivityTarget,
@@ -293,12 +271,12 @@ export async function executeRealtimeTool(name: string, rawArguments?: string): 
       case "productivity_control":
         return productivityControl(args)
       default:
-        return { ok: false, error: `Ferramenta desconhecida: ${name}` }
+        return { ok: false, error: `Ferramenta desconhecida: ${name}`, operationError: validationError("Ferramenta desconhecida", ["name"]) }
     }
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Falha ao executar ferramenta",
-    }
+    const operationError = error instanceof OperationFailure
+      ? error.operationError
+      : internalError("Falha ao executar ferramenta")
+    return { ok: false, error: operationError.message, operationError }
   }
 }

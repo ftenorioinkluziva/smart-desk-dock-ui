@@ -6,15 +6,15 @@ type HomeAssistantState = {
   entity_id: string
   state: string
   attributes?: {
-    friendly_name?: string
-    brightness?: number
-    color_temp_kelvin?: number
-    hs_color?: [number, number]
-    rgb_color?: [number, number, number]
-    device_class?: string
-    unit_of_measurement?: string
-    supported_color_modes?: string[]
-    supported_features?: number
+    friendly_name?: string | null
+    brightness?: number | null
+    color_temp_kelvin?: number | null
+    hs_color?: [number, number] | null
+    rgb_color?: [number, number, number] | null
+    device_class?: string | null
+    unit_of_measurement?: string | null
+    supported_color_modes?: string[] | null
+    supported_features?: number | null
     [key: string]: unknown
   }
 }
@@ -23,15 +23,15 @@ const homeAssistantStateSchema: z.ZodType<HomeAssistantState> = z.object({
   entity_id: z.string(),
   state: z.string(),
   attributes: z.object({
-    friendly_name: z.string().optional(),
-    brightness: z.number().optional(),
-    color_temp_kelvin: z.number().optional(),
-    hs_color: z.tuple([z.number(), z.number()]).optional(),
-    rgb_color: z.tuple([z.number(), z.number(), z.number()]).optional(),
-    device_class: z.string().optional(),
-    unit_of_measurement: z.string().optional(),
-    supported_color_modes: z.array(z.string()).optional(),
-    supported_features: z.number().optional(),
+    friendly_name: z.string().nullable().optional(),
+    brightness: z.number().nullable().optional(),
+    color_temp_kelvin: z.number().nullable().optional(),
+    hs_color: z.tuple([z.number(), z.number()]).nullable().optional(),
+    rgb_color: z.tuple([z.number(), z.number(), z.number()]).nullable().optional(),
+    device_class: z.string().nullable().optional(),
+    unit_of_measurement: z.string().nullable().optional(),
+    supported_color_modes: z.array(z.string()).nullable().optional(),
+    supported_features: z.number().nullable().optional(),
   }).passthrough().optional(),
 }).passthrough()
 
@@ -57,6 +57,10 @@ export type HomeAssistantConfig = {
   url: string
   token: string
   entityIds: string[]
+}
+
+type FetchHomeAssistantEntitiesOptions = {
+  includeAll?: boolean
 }
 
 function normalizeEntity(entity: HomeAssistantState): HomeAssistantEntity {
@@ -89,17 +93,37 @@ async function homeAssistantFetch(config: HomeAssistantConfig, path: string, ini
   )
   if (!validatedUrl.ok) throw new OperationFailure(validatedUrl.error)
 
-  const response = await fetch(`${validatedUrl.value}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${config.token}`,
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-    next: { revalidate: 0 },
-    redirect: "error",
-    signal: AbortSignal.timeout(10_000),
-  })
+  const method = (init?.method ?? "GET").toUpperCase()
+  const canRetry = method === "GET"
+  const maxAttempts = canRetry ? 2 : 1
+  let response: Response | undefined
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      response = await fetch(`${validatedUrl.value}${path}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${config.token}`,
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
+        next: { revalidate: 0 },
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+      })
+
+      const retryableStatus = response.status === 429 || response.status >= 500
+      if (response.ok || !canRetry || !retryableStatus || attempt === maxAttempts - 1) break
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    } catch (error) {
+      lastError = error
+      if (!canRetry || attempt === maxAttempts - 1) throw error
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+  }
+
+  if (!response) throw lastError ?? new Error("Home Assistant request did not return a response")
 
   if (!response.ok) {
     throw new OperationFailure(upstreamError(
@@ -112,7 +136,10 @@ async function homeAssistantFetch(config: HomeAssistantConfig, path: string, ini
   return response
 }
 
-export async function fetchHomeAssistantEntities(config: HomeAssistantConfig): Promise<HomeAssistantEntity[]> {
+export async function fetchHomeAssistantEntities(
+  config: HomeAssistantConfig,
+  options: FetchHomeAssistantEntitiesOptions = {},
+): Promise<HomeAssistantEntity[]> {
   const response = await homeAssistantFetch(config, "/api/states")
   const parsed = z.array(homeAssistantStateSchema).safeParse(await response.json())
   if (!parsed.success) {
@@ -122,8 +149,12 @@ export async function fetchHomeAssistantEntities(config: HomeAssistantConfig): P
   const favoriteEntityIds = config.entityIds
   const allowedDomains = new Set(["light", "switch", "scene", "script", "cover"])
 
-  return states
+  const entities = states
     .filter((entity) => {
+      if (options.includeAll) {
+        const [domain] = entity.entity_id.split(".")
+        return allowedDomains.has(domain ?? "")
+      }
       if (favoriteEntityIds.length > 0) return favoriteEntityIds.includes(entity.entity_id)
       const [domain] = entity.entity_id.split(".")
       return allowedDomains.has(domain ?? "")
@@ -135,7 +166,8 @@ export async function fetchHomeAssistantEntities(config: HomeAssistantConfig): P
       if (favoriteA !== -1 || favoriteB !== -1) return (favoriteA === -1 ? 999 : favoriteA) - (favoriteB === -1 ? 999 : favoriteB)
       return a.name.localeCompare(b.name, "pt-BR")
     })
-    .slice(0, 12)
+
+  return options.includeAll ? entities : entities.slice(0, 12)
 }
 
 export async function callHomeAssistantService(

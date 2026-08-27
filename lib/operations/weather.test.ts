@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { getWeatherForecast } from "@/lib/operations/weather"
+import { DOCK_PANEL_IDS } from "@/lib/dock-panels"
 
 const profile = {
   weatherLat: -15.8,
@@ -19,6 +20,17 @@ const profile = {
   pomodoroLongBreakSeconds: 900,
   themePreset: "cockpit" as const,
   accentPreset: "green" as const,
+  layoutPreset: "balanced" as const,
+  dockPanelOrder: [...DOCK_PANEL_IDS],
+  dockHiddenPanelIds: [],
+  dockInitialPanelId: "today" as const,
+  dockAutoRotate: false,
+  primaryClockLabel: "Brasília",
+  primaryClockTimezone: "America/Sao_Paulo",
+  secondaryClocks: [
+    { label: "Lisboa", timezone: "Europe/Lisbon" },
+    { label: "Nova York", timezone: "America/New_York" },
+  ],
 }
 
 const validWeatherResponse = {

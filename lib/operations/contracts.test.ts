@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   financeLoginInputSchema,
+  homeAssistantEntityCatalogApiResponseSchema,
   homeAssistantServiceInputSchema,
   spotifyControlInputSchema,
   userProfilePatchSchema,
@@ -25,5 +26,26 @@ describe("operation input contracts", () => {
     expect(homeAssistantServiceInputSchema.safeParse({ entityId: "light.desk", action: "turn_on", brightness: 50 }).success).toBe(true)
     expect(homeAssistantServiceInputSchema.safeParse({ entityId: "invalid", action: "turn_on" }).success).toBe(false)
     expect(financeLoginInputSchema.safeParse({ email: "invalid", password: "secret" }).success).toBe(false)
+  })
+
+  it("validates the Home Assistant entity catalog response", () => {
+    expect(homeAssistantEntityCatalogApiResponseSchema.safeParse({
+      configured: true,
+      entities: [{
+        entityId: "light.desk",
+        domain: "light",
+        name: "Desk light",
+        state: "off",
+        deviceClass: null,
+        unit: null,
+        brightness: null,
+        supportsBrightness: true,
+        supportsColor: false,
+        controllable: true,
+      }],
+    }).success).toBe(true)
+    expect(homeAssistantEntityCatalogApiResponseSchema.safeParse({
+      entities: [{ entityId: "light.desk", domain: "light" }],
+    }).success).toBe(false)
   })
 })

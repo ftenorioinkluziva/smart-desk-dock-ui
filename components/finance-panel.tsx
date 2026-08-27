@@ -1,14 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { ArrowDownRight, ArrowUpRight, Banknote, BriefcaseBusiness, LogOut, Target } from "lucide-react"
-
-type FinanceAuthUser = {
-  id: string
-  email: string
-  name?: string
-  role: string
-}
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Banknote, BriefcaseBusiness, Target } from "lucide-react"
+import { DockDataSourceError, useDockDataSource, useDockRuntime } from "@/components/dock-runtime-provider"
+import { financeAuthUserResponseSchema, financeDockSummaryApiResponseSchema, type FinanceAuthUser } from "@/lib/operations/contracts"
+import { FINANCE_AUTH_CHANGED_EVENT } from "@/lib/finance-auth"
 
 type FinanceAsset = {
   id: string
@@ -25,13 +21,23 @@ type FinanceAsset = {
 }
 
 type FinanceDockSummary = {
+  source: "MANUAL" | "PLUGGY" | null
+  observedAt: string | null
+  fetchedAt: string
+  targetBasketName: string | null
   totalValue: number
   positionsValue: number
   fundsValue: number
   cashBalance: number
+  positionCount: number
   driftPercentage: number
   unrealizedGain: number
+  outsideStrategyValue: number
+  unresolvedValue: number
+  unresolvedCount: number
+  warnings: string[]
   assets: FinanceAsset[]
+  funds: { id: string; name: string; indexTicker?: string; currentValue: number; gain: number; gainPercentage: number }[]
   prices: { ticker: string; name: string; price: number; priceDate: string; calculationType: string }[]
   updatedAt: string
   mock?: boolean
@@ -39,13 +45,23 @@ type FinanceDockSummary = {
 }
 
 const FALLBACK: FinanceDockSummary = {
+  source: null,
+  observedAt: null,
+  fetchedAt: new Date().toISOString(),
+  targetBasketName: "Carteira neutra (exemplo)",
   totalValue: 0,
   positionsValue: 0,
   fundsValue: 0,
   cashBalance: 0,
+  positionCount: 0,
   driftPercentage: 0,
   unrealizedGain: 0,
+  outsideStrategyValue: 0,
+  unresolvedValue: 0,
+  unresolvedCount: 0,
+  warnings: [],
   assets: [],
+  funds: [],
   prices: [],
   updatedAt: new Date().toISOString(),
   mock: true,
@@ -91,7 +107,9 @@ function formatPercentage(value: number) {
 }
 
 function formatUpdateTime(value: string) {
-  return new Date(value).toLocaleTimeString("pt-BR", {
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return "sem horário"
+  return date.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
   })
@@ -104,202 +122,150 @@ function formatQuantity(value: number | null) {
   })
 }
 
-function FinanceLoginForm({ onLogin }: { onLogin: (user: FinanceAuthUser) => void }) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-
-    try {
-      const response = await fetch("/api/finance/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json() as { error?: string }
-        throw new Error(data.error ?? "Falha na autenticação")
-      }
-
-      const data = await response.json() as { user: FinanceAuthUser }
-      onLogin(data.user)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao conectar")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <section aria-labelledby="finance-heading" className="dock-px flex h-full w-full items-center justify-center py-[clamp(0.45rem,1.4vh,0.95rem)] pb-[clamp(1rem,3vh,1.8rem)]">
-      <div className="w-full max-w-[clamp(16rem,40vw,22rem)]">
-        <div className="mb-[clamp(0.75rem,2vh,1.25rem)] text-center">
-          <BriefcaseBusiness className="mx-auto mb-2 size-[clamp(1.2rem,3vw,1.6rem)] text-muted-foreground" />
-          <h2 id="finance-heading" className="text-[clamp(0.85rem,2vw,1.1rem)] font-semibold">Carteira</h2>
-          <p className="mt-1 text-[clamp(0.6rem,1.4vw,0.72rem)] text-muted-foreground">Conecte-se ao Paridade Risco</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-[clamp(0.5rem,1.2vh,0.75rem)]">
-          <div>
-            <label htmlFor="finance-email" className="sr-only">Email</label>
-            <input
-              id="finance-email"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border/35 bg-secondary/25 px-[clamp(0.6rem,1.5vw,0.85rem)] py-[clamp(0.45rem,1.1vh,0.65rem)] text-[clamp(0.72rem,1.6vw,0.85rem)] text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30"
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div>
-            <label htmlFor="finance-password" className="sr-only">Senha</label>
-            <input
-              id="finance-password"
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-border/35 bg-secondary/25 px-[clamp(0.6rem,1.5vw,0.85rem)] py-[clamp(0.45rem,1.1vh,0.65rem)] text-[clamp(0.72rem,1.6vw,0.85rem)] text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <p className="text-center text-[clamp(0.6rem,1.4vw,0.72rem)] text-destructive">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-accent px-[clamp(0.6rem,1.5vw,0.85rem)] py-[clamp(0.45rem,1.1vh,0.65rem)] text-[clamp(0.72rem,1.6vw,0.85rem)] font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
-
-        <p className="mt-[clamp(0.6rem,1.5vh,1rem)] text-center text-[clamp(0.5rem,1.1vw,0.6rem)] text-muted-foreground/60">
-          Use as credenciais fornecidas pelo Paridade Risco
-        </p>
-      </div>
-    </section>
-  )
-}
-
 export function FinancePanel() {
+  const { activePanelId } = useDockRuntime()
   const [financeUser, setFinanceUser] = useState<FinanceAuthUser | null>(null)
   const [authReady, setAuthReady] = useState(false)
-  const [summary, setSummary] = useState<FinanceDockSummary>(FALLBACK)
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
+  const [financeAuthError, setFinanceAuthError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (activePanelId !== "finance") return
+
+    let cancelled = false
+    setAuthReady(false)
+
     async function loadFinanceUser() {
       try {
         const response = await fetch("/api/finance/auth/me")
+        if (cancelled) return
+
         if (response.ok) {
-          const data = await response.json() as { user: FinanceAuthUser }
-          setFinanceUser(data.user)
+          const parsed = financeAuthUserResponseSchema.safeParse(await response.json())
+          if (parsed.success) {
+            setFinanceUser(parsed.data.user)
+            setFinanceAuthError(null)
+          } else {
+            setFinanceUser(null)
+            setFinanceAuthError("Resposta inválida do serviço financeiro")
+          }
+        } else if (response.status === 401) {
+          setFinanceUser(null)
+          setFinanceAuthError(null)
+        } else {
+          setFinanceUser(null)
+          setFinanceAuthError("Serviço financeiro indisponível no momento")
+        }
+      } catch {
+        if (!cancelled) {
+          setFinanceUser(null)
+          setFinanceAuthError("Não foi possível consultar a carteira")
         }
       } finally {
-        setAuthReady(true)
+        if (!cancelled) setAuthReady(true)
       }
     }
 
-    loadFinanceUser()
-  }, [])
+    void loadFinanceUser()
+    const handleFinanceAuthChanged = () => { void loadFinanceUser() }
+    window.addEventListener(FINANCE_AUTH_CHANGED_EVENT, handleFinanceAuthChanged)
+    return () => {
+      cancelled = true
+      window.removeEventListener(FINANCE_AUTH_CHANGED_EVENT, handleFinanceAuthChanged)
+    }
+  }, [activePanelId])
 
   const fetchSummary = useCallback(async () => {
-    try {
-      setHasError(false)
-      setIsLoading(true)
-      const response = await fetch("/api/finance/summary")
-
-      if (response.status === 401) {
-        setFinanceUser(null)
-        return
-      }
-
-      if (!response.ok) {
-        setHasError(true)
-        return
-      }
-
-      setSummary(await response.json() as FinanceDockSummary)
-    } catch {
-      setHasError(true)
-    } finally {
-      setIsLoading(false)
+    if (!financeUser) return FALLBACK
+    const response = await fetch("/api/finance/summary")
+    if (response.status === 401) {
+      throw new DockDataSourceError("UNAUTHORIZED")
     }
-  }, [])
+    if (!response.ok) throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
+    const parsed = financeDockSummaryApiResponseSchema.safeParse(await response.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    return parsed.data
+  }, [financeUser])
 
-  useEffect(() => {
-    if (financeUser) {
-      fetchSummary()
-    }
-  }, [financeUser, fetchSummary])
+  const financeSource = useDockDataSource("finance", fetchSummary, {
+    panelId: "finance",
+    schema: financeDockSummaryApiResponseSchema,
+  })
 
-  useEffect(() => {
-    if (!financeUser) return
-    const refresh = setInterval(() => fetchSummary(), 5 * 60 * 1000)
-    return () => clearInterval(refresh)
-  }, [financeUser, fetchSummary])
-
-  const handleLogin = (user: FinanceAuthUser) => {
-    setFinanceUser(user)
-  }
-
-  const handleLogout = async () => {
-    await fetch("/api/finance/auth/me", { method: "DELETE" }).catch(() => {})
-    setFinanceUser(null)
-    setSummary(FALLBACK)
-  }
+  const isLoading = financeSource.isLoading && Boolean(financeUser)
+  const hasError = financeSource.state.status === "error"
+  const summary = financeSource.data ?? FALLBACK
 
   if (!authReady) {
     return null
   }
 
   if (!financeUser) {
-    return <FinanceLoginForm onLogin={handleLogin} />
+    return (
+      <section aria-labelledby="finance-heading" className="dock-px flex h-full w-full items-center justify-center overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)] pb-[clamp(1rem,3vh,1.8rem)]">
+        <div className="max-w-[clamp(18rem,44vw,28rem)] text-center">
+          <BriefcaseBusiness className="mx-auto mb-2 size-[clamp(1.2rem,3vw,1.6rem)] text-muted-foreground" />
+          <h2 id="finance-heading" className="text-[clamp(0.85rem,2vw,1.1rem)] font-semibold">Carteira</h2>
+          <p className="mt-1 text-[clamp(0.6rem,1.4vw,0.72rem)] text-muted-foreground">
+            Configure o acesso ao Paridade Risco em Configurações para carregar sua carteira.
+          </p>
+          {financeAuthError && (
+            <p role="alert" className="mt-2 text-[clamp(0.58rem,1.35vw,0.68rem)] text-destructive">{financeAuthError}</p>
+          )}
+        </div>
+      </section>
+    )
   }
 
   const investedValue = summary.positionsValue + summary.fundsValue
   const gainPositive = summary.unrealizedGain >= 0
+  const visibleAssets = summary.assets.slice(0, 4)
+  const remainingAssetCount = Math.max(0, summary.assets.length - visibleAssets.length)
+  const reviewNotes = [
+    summary.unresolvedCount > 0 ? `${summary.unresolvedCount} aguardando classificação` : null,
+    summary.outsideStrategyValue > 0 ? `${formatCompactCurrency(summary.outsideStrategyValue)} fora da estratégia` : null,
+    summary.unresolvedValue > 0 ? `${formatCompactCurrency(summary.unresolvedValue)} sem mapeamento` : null,
+  ].filter((note): note is string => Boolean(note))
+  const dataCaveat = reviewNotes[0] ?? (summary.warnings.length > 0 ? "Há observações sobre a atualização" : null)
   const statusLabel = hasError
     ? "Falha ao atualizar"
     : summary.mock
       ? "Modo exemplo"
-      : `Atualizado ${formatUpdateTime(summary.updatedAt)}`
+      : summary.observedAt
+        ? `Observado ${formatUpdateTime(summary.observedAt)}`
+        : "Sem data observada"
+  const sourceLabel = summary.source === "PLUGGY" ? "Pluggy" : summary.source === "MANUAL" ? "Manual" : "sem fonte"
+  const positionLabel = `${summary.positionCount} ${summary.positionCount === 1 ? "posição" : "posições"}`
+  const fundLabel = `${summary.funds.length} ${summary.funds.length === 1 ? "fundo" : "fundos"}`
+  const fundsPreview = summary.funds.slice(0, 2).map((fund) => `${fund.name} ${formatCompactCurrency(fund.currentValue)}`).join(" · ")
+  const remainingFundCount = Math.max(0, summary.funds.length - 2)
 
   return (
     <section aria-labelledby="finance-heading" className="dock-px flex h-full w-full items-center overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)] pb-[clamp(1rem,3vh,1.8rem)]">
-      <section className="relative grid h-full min-h-0 w-full grid-rows-[minmax(0,1fr)_auto] gap-[clamp(0.45rem,1.4vh,0.8rem)]">
+      <section className="relative grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)_auto] gap-[clamp(0.4rem,1.2vh,0.75rem)]">
         <h2 id="finance-heading" className="sr-only">Finanças</h2>
 
-        <button
-          onClick={handleLogout}
-          className="absolute right-0 top-0 z-10 flex items-center gap-1 rounded-md px-2 py-1 text-[clamp(0.5rem,1.1vw,0.6rem)] text-muted-foreground/50 transition-colors hover:text-muted-foreground"
-          title="Desconectar"
-        >
-          <LogOut className="size-[clamp(0.6rem,1.3vw,0.75rem)]" />
-          <span className="hidden sm:inline">{financeUser.name ?? financeUser.email}</span>
-        </button>
+        <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border/25 pb-[clamp(0.35rem,1vh,0.6rem)]">
+          <div className="flex min-w-0 items-center gap-2">
+            <BriefcaseBusiness className="size-[clamp(0.8rem,1.8vw,1rem)] shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <div className="text-[clamp(0.55rem,1.2vw,0.68rem)] font-medium uppercase tracking-[0.12em] text-muted-foreground">Carteira</div>
+              <div className="truncate text-[clamp(0.72rem,1.8vw,0.9rem)] font-semibold text-foreground">{summary.targetBasketName ?? "Sem cesta ativa"}</div>
+            </div>
+          </div>
+          <div className={`shrink-0 text-right text-[clamp(0.52rem,1.2vw,0.64rem)] uppercase tracking-[0.08em] ${hasError ? "text-destructive" : "text-muted-foreground"}`}>
+            <div>{sourceLabel}</div>
+            <div>{statusLabel}</div>
+          </div>
+        </header>
 
         <div className="grid min-h-0 w-full grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-[clamp(0.65rem,2vw,1.2rem)]">
         <div className="flex min-w-0 flex-col justify-center gap-[clamp(0.55rem,1.6vh,0.9rem)]">
-          <div className="flex items-center gap-2 text-[clamp(0.62rem,1.55vw,0.78rem)] font-medium uppercase tracking-normal text-muted-foreground">
-            <BriefcaseBusiness className="size-[clamp(0.8rem,1.8vw,1rem)]" />
-            <span>Carteira</span>
-            <span className="truncate text-muted-foreground/70">{statusLabel}</span>
-          </div>
+          {dataCaveat && (
+            <div className="flex items-center gap-1.5 text-[clamp(0.56rem,1.3vw,0.66rem)] text-destructive/80">
+              <AlertTriangle className="size-3 shrink-0" />
+              <span className="truncate">{dataCaveat}</span>
+            </div>
+          )}
 
           <div className="min-w-0">
             <div className="text-[clamp(0.62rem,1.45vw,0.72rem)] font-medium uppercase tracking-normal text-muted-foreground">
@@ -315,7 +281,7 @@ export function FinancePanel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-[clamp(0.45rem,1.4vw,0.7rem)]">
+          <div className="grid grid-cols-4 gap-[clamp(0.35rem,1vw,0.6rem)]">
             <div className="rounded-lg border border-border/35 bg-secondary/25 px-[clamp(0.55rem,1.4vw,0.8rem)] py-[clamp(0.45rem,1.1vh,0.65rem)]">
               <div className="flex items-center gap-1.5 text-[clamp(0.58rem,1.35vw,0.68rem)] text-muted-foreground">
                 <Target className="size-3.5" />
@@ -340,18 +306,34 @@ export function FinancePanel() {
                 {formatCompactCurrency(investedValue)}
               </div>
             </div>
+            <div className="rounded-lg border border-border/35 bg-secondary/25 px-[clamp(0.55rem,1.4vw,0.8rem)] py-[clamp(0.45rem,1.1vh,0.65rem)]">
+              <div className="text-[clamp(0.58rem,1.35vw,0.68rem)] text-muted-foreground">Ativos</div>
+              <div className="mt-1 truncate font-mono text-[clamp(0.8rem,1.9vw,1rem)] font-semibold">
+                {positionLabel}
+              </div>
+              <div className="truncate text-[clamp(0.48rem,1.05vw,0.56rem)] text-muted-foreground">{fundLabel}</div>
+            </div>
+          </div>
+
+          <div className="min-w-0 text-[clamp(0.52rem,1.2vw,0.62rem)] text-muted-foreground">
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <span className="shrink-0 uppercase tracking-[0.1em]">Leitura</span>
+              <span className="truncate text-right">{summary.observedAt ? `observado às ${formatUpdateTime(summary.observedAt)}` : "horário não informado"}</span>
+            </div>
+            {reviewNotes.length > 1 && <div className="mt-0.5 truncate text-destructive/80">+{reviewNotes.length - 1} ponto(s) para revisar</div>}
+            {fundsPreview && <div className="mt-0.5 truncate">Fundos: {fundsPreview}{remainingFundCount > 0 ? ` +${remainingFundCount}` : ""}</div>}
           </div>
         </div>
 
         <div className="min-h-0 min-w-0 rounded-lg border border-border/35 bg-secondary/20 p-[clamp(0.5rem,1.25vw,0.75rem)]">
             <div className="mb-[clamp(0.45rem,1.3vh,0.7rem)]">
-              <h3 className="text-[clamp(0.72rem,1.75vw,0.9rem)] font-semibold">Alocação por Ativo</h3>
+              <h3 className="text-[clamp(0.72rem,1.75vw,0.9rem)] font-semibold">Alocação por ativo</h3>
               <div className="text-[clamp(0.58rem,1.35vw,0.68rem)] text-muted-foreground">
-                {hasError ? "Falha ao carregar dados financeiros" : "Distribuição percentual do portfolio"}
+                {hasError ? "Falha ao carregar dados financeiros" : "Atual · alvo · resultado"}
               </div>
             </div>
-            <div className="max-h-[calc(100%-2.4rem)] min-w-0 space-y-[clamp(0.35rem,1vh,0.5rem)] overflow-y-auto pr-1 scrollbar-hide">
-              {summary.assets.map((asset) => (
+            <div className="min-w-0 space-y-[clamp(0.35rem,1vh,0.5rem)] overflow-hidden pr-1">
+              {visibleAssets.map((asset) => (
                 <div
                   key={asset.id}
                   className="min-w-0 rounded-md border border-border/15 bg-background/45 px-[clamp(0.45rem,1.2vw,0.65rem)] py-[clamp(0.35rem,0.95vh,0.5rem)]"
@@ -380,6 +362,16 @@ export function FinancePanel() {
                   </div>
                 </div>
               ))}
+              {remainingAssetCount > 0 && (
+                <div className="pt-0.5 text-[clamp(0.5rem,1.1vw,0.58rem)] text-muted-foreground">
+                  +{remainingAssetCount} ativo(s) disponíveis no Paridade Risco
+                </div>
+              )}
+              {summary.assets.length === 0 && (
+                <div className="text-[clamp(0.56rem,1.3vw,0.66rem)] text-muted-foreground">
+                  Nenhum ativo disponível para exibição.
+                </div>
+              )}
             </div>
           </div>
         </div>

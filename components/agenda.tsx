@@ -2,7 +2,11 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react"
 import { Plus, Check, Trash2, Edit3, ChevronLeft, ChevronRight, Calendar, Clock } from "lucide-react"
+import { z } from "zod"
+import { authClient } from "@/lib/auth-client"
+import { DockDataSourceError, useDockDataSource } from "@/components/dock-runtime-provider"
 import { appendCalendarIds, CALENDAR_SETTINGS_EVENT, readSelectedCalendarIds } from "@/lib/calendar-settings"
+import { readUserCache, writeUserCache } from "@/lib/user-cache"
 
 interface CalendarEvent {
   id: string
@@ -56,6 +60,21 @@ function generateId() {
 
 function formatDateKey(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
+const calendarEventsSchema = z.object({
+  events: z.array(z.object({
+    id: z.string(), title: z.string(), date: z.string(), time: z.string(), startDateTime: z.string().nullable(),
+    endDateTime: z.string().nullable(), isAllDay: z.boolean(), color: z.string().optional(), completed: z.boolean().optional(),
+  }).passthrough()),
+}).passthrough()
+
+function normalizeCalendarEvents(events: z.infer<typeof calendarEventsSchema>["events"]): CalendarEvent[] {
+  return events.map((event, index) => ({
+    ...event,
+    color: event.color ?? EVENT_COLORS[index % EVENT_COLORS.length],
+    completed: event.completed ?? false,
+  }))
 }
 
 function sortByStartTime(a: CalendarEvent, b: CalendarEvent) {
@@ -216,6 +235,7 @@ function EventRow({
 }
 
 export function CalendarPage() {
+  const { data: session } = authClient.useSession()
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
@@ -236,6 +256,7 @@ export function CalendarPage() {
   const [newTitle, setNewTitle] = useState("")
   const [newTime, setNewTime] = useState("")
   const [newColorIdx, setNewColorIdx] = useState(0)
+  const [cachedAt, setCachedAt] = useState<string | null>(null)
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth)
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
@@ -285,50 +306,58 @@ export function CalendarPage() {
     return () => window.removeEventListener(CALENDAR_SETTINGS_EVENT, handleCalendarSettings)
   }, [])
 
+  const timeMin = new Date(currentYear, currentMonth, 1).toISOString()
+  const timeMax = new Date(currentYear, currentMonth + 1, 1).toISOString()
+  const cacheNamespace = `calendar-${currentYear}-${currentMonth}`
+
+  const fetchCalendarEvents = useCallback(async () => {
+    const params = new URLSearchParams({ timeMin, timeMax })
+    appendCalendarIds(params, calendarIds)
+    const response = await fetch(`/api/calendar-events?${params.toString()}`)
+    if (!response.ok) throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
+    const parsed = calendarEventsSchema.safeParse(await response.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    const data: CalendarEventsResponse = {
+      events: normalizeCalendarEvents(parsed.data.events),
+      mock: typeof parsed.data.mock === "boolean" ? parsed.data.mock : undefined,
+    }
+    if (!data.mock) writeUserCache(session?.user?.id, cacheNamespace, { events: data.events })
+    return data
+  }, [calendarIds, cacheNamespace, session?.user?.id, timeMax, timeMin])
+
+  const calendarSource = useDockDataSource("calendar", fetchCalendarEvents, {
+    panelId: "agenda",
+  })
+
   useEffect(() => {
-    let cancelled = false
-    const timeMin = new Date(currentYear, currentMonth, 1).toISOString()
-    const timeMax = new Date(currentYear, currentMonth + 1, 1).toISOString()
-
-    async function fetchCalendarEvents() {
-      try {
-        const params = new URLSearchParams({ timeMin, timeMax })
-        appendCalendarIds(params, calendarIds)
-        const response = await fetch(`/api/calendar-events?${params.toString()}`)
-
-        if (!response.ok) {
-          if (!cancelled) setHasCalendarError(true)
-          return
-        }
-
-        const data = await response.json() as CalendarEventsResponse
-        if (cancelled) return
-
-        if (data.mock) {
-          setIsGoogleCalendarConnected(false)
-          setHasCalendarError(false)
-          return
-        }
-
-        setEvents(data.events)
-        setIsGoogleCalendarConnected(true)
-        setHasCalendarError(false)
-      } catch {
-        if (!cancelled) {
-          setIsGoogleCalendarConnected(false)
-          setHasCalendarError(true)
-        }
-      }
+    const cached = readUserCache(session?.user?.id, cacheNamespace, calendarEventsSchema)
+    if (cached) {
+      setEvents(normalizeCalendarEvents(cached.data.events))
+      setCachedAt(cached.savedAt)
+      setHasCalendarError(true)
     }
+  }, [cacheNamespace, session?.user?.id])
 
-    fetchCalendarEvents()
-    const interval = setInterval(fetchCalendarEvents, 5 * 60 * 1000)
-
-    return () => {
-      cancelled = true
-      clearInterval(interval)
+  useEffect(() => {
+    const data = calendarSource.data
+    if (!data) return
+    if (data.mock) {
+      setIsGoogleCalendarConnected(false)
+      setHasCalendarError(false)
+      return
     }
-  }, [calendarIds, currentMonth, currentYear])
+    setEvents(data.events)
+    setIsGoogleCalendarConnected(true)
+    setHasCalendarError(false)
+    setCachedAt(calendarSource.state.updatedAt)
+  }, [calendarSource.data, calendarSource.state.updatedAt])
+
+  useEffect(() => {
+    if (calendarSource.state.status === "error" || calendarSource.state.status === "unauthorized") {
+      setIsGoogleCalendarConnected(false)
+      setHasCalendarError(true)
+    }
+  }, [calendarSource.state.status])
 
   const isToday = (day: number) =>
     day === today.getDate() &&
@@ -429,10 +458,10 @@ export function CalendarPage() {
 
         {/* Events list — fills remaining space */}
         <div className="flex flex-col flex-1 min-h-0 pt-[clamp(0.25rem,0.7vh,0.4rem)]">
-          <div className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.45rem)] overflow-y-auto scrollbar-hide flex-1 min-h-0">
+          <div className="flex min-h-0 flex-1 flex-col gap-[clamp(0.25rem,0.7vh,0.45rem)] overflow-hidden">
             {hasCalendarError && (
               <div className="rounded-lg border border-destructive/25 bg-destructive/10 px-2 py-1 text-destructive/90" style={{ fontSize: "clamp(0.58rem,1.5vw,0.7rem)" }}>
-                Agenda indisponível
+                {cachedAt ? `Agenda indisponível · snapshot ${new Date(cachedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Agenda indisponível"}
               </div>
             )}
 
@@ -468,7 +497,7 @@ export function CalendarPage() {
                 <span className="text-muted-foreground/50 uppercase tracking-[0.12em] font-medium" style={{ fontSize: "clamp(0.52rem,1.4vw,0.65rem)" }}>
                   Dia todo
                 </span>
-                {allDayEvents.map((event) => (
+                {allDayEvents.slice(0, 1).map((event) => (
                   <EventRow
                     key={event.id}
                     event={event}
@@ -493,7 +522,7 @@ export function CalendarPage() {
                 <span className="text-muted-foreground/50 uppercase tracking-[0.12em] font-medium" style={{ fontSize: "clamp(0.52rem,1.4vw,0.65rem)" }}>
                   Horários
                 </span>
-                {timedEvents.map((event) => (
+                {timedEvents.slice(0, 3).map((event) => (
                   <EventRow
                     key={event.id}
                     event={event}
@@ -510,6 +539,9 @@ export function CalendarPage() {
                     onDeleteEvent={deleteEvent}
                   />
                 ))}
+                {timedEvents.length > 3 && (
+                  <span className="text-muted-foreground/50" style={{ fontSize: "clamp(0.5rem,1.2vw,0.6rem)" }}>+{timedEvents.length - 3} eventos</span>
+                )}
               </div>
             )}
           </div>

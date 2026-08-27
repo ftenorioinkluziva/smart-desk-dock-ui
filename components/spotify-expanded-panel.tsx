@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { z } from "zod"
 import {
   Check,
   ListMusic,
@@ -20,6 +21,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
+import { authClient } from "@/lib/auth-client"
+import { DockDataSourceError, useDockDataSource } from "@/components/dock-runtime-provider"
+import { readUserCache, writeUserCache } from "@/lib/user-cache"
 
 type RepeatState = "off" | "track" | "context"
 
@@ -75,6 +79,25 @@ const FALLBACK: NowPlaying = {
   mock: true,
 }
 
+const nowPlayingSchema = z.object({
+  isPlaying: z.boolean(), track: z.string().nullable(), artist: z.string().nullable(), albumArt: z.string().nullable(),
+  album: z.string().nullable(), deviceName: z.string().nullable(), deviceType: z.string().nullable(), volumePercent: z.number().nullable(),
+  shuffle: z.boolean(), repeat: z.enum(["off", "track", "context"]), progressMs: z.number(), durationMs: z.number(),
+}).passthrough()
+
+const spotifyDevicesSchema = z.object({
+  devices: z.array(z.object({
+    id: z.string().nullable(),
+    isActive: z.boolean(),
+    isPrivateSession: z.boolean(),
+    isRestricted: z.boolean(),
+    name: z.string(),
+    type: z.string(),
+    volumePercent: z.number().nullable(),
+    supportsVolume: z.boolean(),
+  }).passthrough()),
+}).passthrough()
+
 async function sendControl(body: {
   action: "play" | "pause" | "next" | "previous" | "shuffle" | "repeat" | "volume" | "transfer"
     | "play-context"
@@ -118,27 +141,29 @@ function DeviceIcon({ type }: { type: string | null }) {
 }
 
 export function SpotifyExpandedPanel() {
+  const { data: session } = authClient.useSession()
   const [nowPlaying, setNowPlaying] = useState<NowPlaying>(FALLBACK)
+  const [cachedAt, setCachedAt] = useState<string | null>(null)
   const [devices, setDevices] = useState<SpotifyDevice[]>([])
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
   const [playlistError, setPlaylistError] = useState<string | null>(null)
   const [pendingVolume, setPendingVolume] = useState<number | null>(null)
 
   const fetchNowPlaying = useCallback(async () => {
-    try {
-      const res = await fetch("/api/spotify-now-playing")
-      if (res.ok) setNowPlaying((await res.json()) as NowPlaying)
-    } catch {}
-  }, [])
+    const res = await fetch("/api/spotify-now-playing")
+    if (!res.ok) throw new DockDataSourceError(res.status === 401 ? "UNAUTHORIZED" : "UPSTREAM_UNAVAILABLE")
+    const parsed = nowPlayingSchema.safeParse(await res.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    writeUserCache(session?.user?.id, "spotify-now-playing", parsed.data)
+    return parsed.data
+  }, [session?.user?.id])
 
   const fetchDevices = useCallback(async () => {
-    try {
-      const res = await fetch("/api/spotify-devices")
-      if (res.ok) {
-        const data = await res.json() as { devices?: SpotifyDevice[] }
-        setDevices(data.devices ?? [])
-      }
-    } catch {}
+    const res = await fetch("/api/spotify-devices")
+    if (!res.ok) throw new DockDataSourceError(res.status === 401 ? "UNAUTHORIZED" : "UPSTREAM_UNAVAILABLE")
+    const parsed = spotifyDevicesSchema.safeParse(await res.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    return parsed.data
   }, [])
 
   const fetchPlaylists = useCallback(async () => {
@@ -157,17 +182,39 @@ export function SpotifyExpandedPanel() {
     } catch {}
   }, [])
 
+  const nowPlayingSource = useDockDataSource("spotify-now-playing", fetchNowPlaying, {
+    panelId: "spotify",
+    schema: nowPlayingSchema,
+  })
+  const devicesSource = useDockDataSource("spotify-devices", fetchDevices, {
+    panelId: "spotify",
+    schema: spotifyDevicesSchema,
+  })
+
   useEffect(() => {
-    fetchNowPlaying()
-    fetchDevices()
-    fetchPlaylists()
-    const id = setInterval(fetchNowPlaying, 7000)
-    const devicesId = setInterval(fetchDevices, 30000)
-    return () => {
-      clearInterval(id)
-      clearInterval(devicesId)
+    const cached = readUserCache(session?.user?.id, "spotify-now-playing", nowPlayingSchema)
+    if (cached) {
+      setNowPlaying(cached.data)
+      setCachedAt(cached.savedAt)
     }
-  }, [fetchDevices, fetchNowPlaying, fetchPlaylists])
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    if (nowPlayingSource.data) {
+      setNowPlaying(nowPlayingSource.data)
+      setCachedAt(nowPlayingSource.state.updatedAt)
+    }
+  }, [nowPlayingSource.data, nowPlayingSource.state.updatedAt])
+
+  useEffect(() => {
+    if (devicesSource.data) setDevices(devicesSource.data.devices)
+  }, [devicesSource.data])
+
+  useEffect(() => {
+    void fetchPlaylists()
+  }, [fetchPlaylists])
+
+  const isStale = nowPlayingSource.isStale || (nowPlayingSource.data === null && cachedAt !== null)
 
   const progressPercent = useMemo(() => {
     if (!nowPlaying.durationMs) return 0
@@ -182,31 +229,31 @@ export function SpotifyExpandedPanel() {
     const action = nowPlaying.isPlaying ? "pause" : "play"
     setNowPlaying((current) => ({ ...current, isPlaying: !current.isPlaying }))
     await sendControl({ action })
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handlePrevious() {
     await sendControl({ action: "previous" })
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handleNext() {
     await sendControl({ action: "next" })
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handleShuffle() {
     const state = !nowPlaying.shuffle
     setNowPlaying((current) => ({ ...current, shuffle: state }))
     await sendControl({ action: "shuffle", state })
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handleRepeat() {
     const repeatState = nextRepeatState(nowPlaying.repeat)
     setNowPlaying((current) => ({ ...current, repeat: repeatState }))
     await sendControl({ action: "repeat", repeatState })
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handleVolumeCommit(value: number[]) {
@@ -215,15 +262,16 @@ export function SpotifyExpandedPanel() {
     setNowPlaying((current) => ({ ...current, volumePercent }))
     await sendControl({ action: "volume", volumePercent })
     setPendingVolume(null)
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handleTransfer(deviceId: string) {
     await sendControl({ action: "transfer", deviceId, play: nowPlaying.isPlaying })
-    await Promise.all([fetchDevices(), fetchNowPlaying()])
+    devicesSource.refresh()
+    nowPlayingSource.refresh()
     setTimeout(() => {
-      fetchDevices()
-      fetchNowPlaying()
+      devicesSource.refresh()
+      nowPlayingSource.refresh()
     }, 1500)
   }
 
@@ -233,7 +281,7 @@ export function SpotifyExpandedPanel() {
       contextUri: playlist.uri,
       deviceId: devices.find((device) => device.isActive)?.id ?? undefined,
     })
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   return (
@@ -261,6 +309,11 @@ export function SpotifyExpandedPanel() {
           <div className="min-w-0">
             <h2 id="spotify-heading" className="text-[clamp(0.65rem,1.7vw,0.8rem)] font-medium uppercase tracking-normal text-spotify">
               {isMock ? "Spotify nao conectado" : nowPlaying.isPlaying ? "Tocando agora" : "Spotify pausado"}
+              {cachedAt && isStale ? (
+                <span className="ml-2 normal-case tracking-normal text-muted-foreground" title="Estado local associado ao usuário">
+                  snapshot {new Date(cachedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              ) : null}
             </h2>
             <h1 className="mt-1 truncate pb-1 text-[clamp(1.55rem,4.6vw,3rem)] font-semibold leading-tight tracking-normal">
               {nowPlaying.track ?? (isMock ? "Conecte sua conta Spotify" : "Nada tocando")}

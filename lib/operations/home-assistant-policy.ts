@@ -10,7 +10,19 @@ export function parseAllowedHomeAssistantHosts(value: string | undefined): Set<s
   return new Set(
     (value ?? "")
       .split(",")
-      .map((host) => host.trim().toLowerCase())
+      .map((host) => {
+        const candidate = host.trim().toLowerCase()
+        if (!candidate) return ""
+
+        try {
+          const parsed = new URL(candidate.includes("://") ? candidate : `http://${candidate}`)
+          if (parsed.username || parsed.password || !["http:", "https:"].includes(parsed.protocol)) return candidate
+          return parsed.hostname.toLowerCase()
+        } catch {
+          // Keep malformed entries non-empty so an invalid allowlist fails closed.
+          return candidate
+        }
+      })
       .filter(Boolean),
   )
 }

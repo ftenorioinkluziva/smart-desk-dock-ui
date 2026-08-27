@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(getMockFinanceDockSummary())
   }
 
-  const token = await getIntegrationSecret(user.id, "finance", "access_token")
+  const sessionCookie = await getIntegrationSecret(user.id, "finance", "session_cookie")
 
-  if (!token) {
+  if (!sessionCookie) {
     return operationErrorResponse({
       code: "FINANCE_AUTH_REQUIRED",
       category: "authorization",
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const summary = await fetchFinanceDockSummary(token)
+    const summary = await fetchFinanceDockSummary(sessionCookie)
     return NextResponse.json(summary)
   } catch (error) {
     const operationError = unexpectedUpstreamOperationError(error, "Finance summary failed")

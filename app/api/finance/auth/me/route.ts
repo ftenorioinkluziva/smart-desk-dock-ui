@@ -8,13 +8,13 @@ export async function GET(request: Request) {
   const user = await requireCurrentUser(request)
   if (isAuthResponse(user)) return user
 
-  const token = await getIntegrationSecret(user.id, "finance", "access_token")
-  if (!token) {
+  const sessionCookie = await getIntegrationSecret(user.id, "finance", "session_cookie")
+  if (!sessionCookie) {
     return NextResponse.json({ financeAuthRequired: true }, { status: 401 })
   }
 
   try {
-    const financeUser = await financeMe(token)
+    const financeUser = await financeMe(sessionCookie)
     return NextResponse.json({ user: financeUser })
   } catch (error) {
     const operationError = unexpectedUpstreamOperationError(error, "Finance authentication check failed")

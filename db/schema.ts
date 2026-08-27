@@ -79,9 +79,35 @@ export const userProfiles = pgTable("user_profiles", {
   pomodoroLongBreakSeconds: integer("pomodoro_long_break_seconds"),
   themePreset: text("theme_preset"),
   accentPreset: text("accent_preset"),
+  layoutPreset: text("layout_preset"),
+  dockPanelOrder: jsonb("dock_panel_order").$type<string[]>(),
+  dockHiddenPanelIds: jsonb("dock_hidden_panel_ids").$type<string[]>(),
+  dockInitialPanelId: text("dock_initial_panel_id"),
+  dockAutoRotate: boolean("dock_auto_rotate"),
+  primaryClockLabel: text("primary_clock_label"),
+  primaryClockTimezone: text("primary_clock_timezone"),
+  secondaryClocks: jsonb("secondary_clocks").$type<Array<{ label: string; timezone: string }>>(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 })
+
+export const productivitySessions = pgTable(
+  "productivity_sessions",
+  {
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    target: text("target").notNull(),
+    mode: text("mode"),
+    totalSeconds: integer("total_seconds").notNull(),
+    isRunning: boolean("is_running").notNull(),
+    isAlertVisible: boolean("is_alert_visible").notNull(),
+    sessions: integer("sessions").notNull(),
+    endAt: timestamp("end_at", { withTimezone: true, mode: "date" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.target] }),
+  ],
+)
 
 export const userIntegrationSecrets = pgTable(
   "user_integration_secrets",
@@ -103,6 +129,7 @@ export const userIntegrationSecrets = pgTable(
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  productivitySessions: many(productivitySessions),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -115,6 +142,13 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
+    references: [user.id],
+  }),
+}))
+
+export const productivitySessionRelations = relations(productivitySessions, ({ one }) => ({
+  user: one(user, {
+    fields: [productivitySessions.userId],
     references: [user.id],
   }),
 }))

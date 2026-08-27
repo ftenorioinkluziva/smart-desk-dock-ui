@@ -2,10 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import Script from 'next/script'
 import { DockThemeProvider } from '@/components/dock-theme-provider'
+import { DockPanelProvider } from '@/components/dock-panel-provider'
+import { DockRuntimeProvider } from '@/components/dock-runtime-provider'
 import {
   DEFAULT_DOCK_APPEARANCE,
   DOCK_ACCENT_IDS,
   DOCK_APPEARANCE_STORAGE_KEY,
+  DOCK_LAYOUT_IDS,
   DOCK_THEME_IDS,
 } from '@/lib/dock-theme'
 import './globals.css'
@@ -20,14 +23,18 @@ const dockThemeInitScript = `
       const saved = JSON.parse(localStorage.getItem(${JSON.stringify(DOCK_APPEARANCE_STORAGE_KEY)}) || "{}");
       const themes = ${JSON.stringify(DOCK_THEME_IDS)};
       const accents = ${JSON.stringify(DOCK_ACCENT_IDS)};
+      const layouts = ${JSON.stringify(DOCK_LAYOUT_IDS)};
       const theme = themes.includes(saved.themePreset) ? saved.themePreset : fallback.themePreset;
       const accent = accents.includes(saved.accentPreset) ? saved.accentPreset : fallback.accentPreset;
+      const layout = layouts.includes(saved.layoutPreset) ? saved.layoutPreset : fallback.layoutPreset;
       document.documentElement.dataset.dockTheme = theme;
       document.documentElement.dataset.dockAccent = accent;
+      document.documentElement.dataset.dockLayout = layout;
       document.documentElement.style.colorScheme = theme === "paper-light" ? "light" : "dark";
     } catch {
       document.documentElement.dataset.dockTheme = fallback.themePreset;
       document.documentElement.dataset.dockAccent = fallback.accentPreset;
+      document.documentElement.dataset.dockLayout = fallback.layoutPreset;
       document.documentElement.style.colorScheme = "dark";
     }
   })();
@@ -75,7 +82,11 @@ export default function RootLayout({
         <Script id="dock-theme-init" strategy="beforeInteractive">
           {dockThemeInitScript}
         </Script>
-        <DockThemeProvider>{children}</DockThemeProvider>
+        <DockThemeProvider>
+          <DockPanelProvider>
+            <DockRuntimeProvider>{children}</DockRuntimeProvider>
+          </DockPanelProvider>
+        </DockThemeProvider>
       </body>
     </html>
   )

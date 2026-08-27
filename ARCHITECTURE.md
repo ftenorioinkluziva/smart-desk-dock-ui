@@ -18,8 +18,18 @@ React UI / Realtime adapter
             |
  Spotify / Google / OpenAI / Open-Meteo / Finance / Home Assistant gateways
             |
- encrypted per-user secrets + PostgreSQL
+encrypted per-user secrets + PostgreSQL
 ```
+
+## Dock runtime
+
+The browser dock has a small client-side runtime for panel lifecycle and data freshness:
+
+- `lib/dock-runtime.ts` is the canonical registry for panel data sources, refresh intervals, stale thresholds, and low-power policies.
+- `components/dock-runtime-provider.tsx` owns one scheduler per source, deduplicates subscribers, pauses active-only sources when their panel is not visible, and exposes structured `idle`, `loading`, `ready`, `stale`, `error`, `paused`, and `unauthorized` states.
+- Panel fetchers validate their response before returning it to the runtime. Expected failures are reduced to stable error codes and never expose upstream response bodies.
+- The runtime keeps a bounded, session-only event log for meaningful source failures. It has no unread counter and is rendered only in Settings.
+- Automatic NightDock mode can enable the low-power policy. In that mode normal panel refreshes and decorative animations pause; NightDock weather uses its longer refresh interval. The preference is local and defaults to enabled.
 
 Routes authenticate, parse untrusted input with canonical Zod schemas, obtain private context, invoke one operation, and translate its result to HTTP. Credentials are never accepted as tool arguments and never returned to the browser, except for short-lived OpenAI Realtime client secrets created for the authenticated user.
 

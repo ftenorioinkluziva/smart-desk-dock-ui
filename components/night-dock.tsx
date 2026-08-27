@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { z } from "zod"
+import { DockDataSourceError, useDockDataSource } from "@/components/dock-runtime-provider"
 
 type WeatherData = {
   temp: number
@@ -9,6 +11,13 @@ type WeatherData = {
   condition: string
 }
 
+const nightWeatherSchema = z.object({
+  temp: z.number(),
+  high: z.number(),
+  low: z.number(),
+  condition: z.string(),
+}).passthrough()
+
 function getBurnInOffset(date: Date) {
   const slot = Math.floor(date.getMinutes() / 5)
   const x = ((slot % 5) - 2) * 3
@@ -16,33 +25,34 @@ function getBurnInOffset(date: Date) {
   return { x, y }
 }
 
-export function NightDock() {
+export function NightDock({ lowPowerMode = false }: { lowPowerMode?: boolean }) {
   const [time, setTime] = useState<Date | null>(null)
-  const [weather, setWeather] = useState<WeatherData | null>(null)
   const [isDimmed, setIsDimmed] = useState(true)
 
   const fetchWeather = useCallback(async () => {
     try {
       const response = await fetch("/api/weather")
-      if (!response.ok) return
-      setWeather(await response.json() as WeatherData)
+      if (!response.ok) throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
+      return await response.json() as WeatherData
     } catch {
-      // Keep previous weather visible on transient failures.
+      throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
     }
   }, [])
 
+  const { data: weather } = useDockDataSource("night-weather", fetchWeather, {
+    activeOnly: false,
+    schema: nightWeatherSchema,
+  })
+
   useEffect(() => {
     setTime(new Date())
-    fetchWeather()
 
-    const clock = setInterval(() => setTime(new Date()), 1000)
-    const weatherRefresh = setInterval(fetchWeather, 15 * 60 * 1000)
+    const clock = setInterval(() => setTime(new Date()), lowPowerMode ? 5000 : 1000)
 
     return () => {
       clearInterval(clock)
-      clearInterval(weatherRefresh)
     }
-  }, [fetchWeather])
+  }, [lowPowerMode])
 
   const displayTime = useMemo(() => time ?? new Date(0), [time])
   const hours = time ? displayTime.getHours().toString().padStart(2, "0") : "--"

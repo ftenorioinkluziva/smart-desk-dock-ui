@@ -1,11 +1,13 @@
 export const PRODUCTIVITY_ALERT_SETTINGS_STORAGE_KEY = "focus-dock-productivity-alert-settings-v1"
 export const PRODUCTIVITY_ALERT_SETTINGS_EVENT = "focus-dock-productivity-alert-settings"
+export const PRODUCTIVITY_AUDIO_STATUS_EVENT = "focus-dock-productivity-audio-status"
 export const LEGACY_POMODORO_DURATIONS_STORAGE_KEY = "focus-dock-pomodoro-durations"
 export const POMODORO_DURATIONS_STORAGE_KEY = "focus-dock-pomodoro-durations-v1"
 export const POMODORO_DURATIONS_EVENT = "focus-dock-pomodoro-durations"
 
 export type ProductivityAlertPreference = "visual" | "visual-vibration" | "visual-sound"
 export type ProductivityAlertKind = "pomodoro" | "timer"
+export type ProductivityAudioStatus = "unsupported" | "needs-activation" | "ready"
 export type PomodoroMode = "focus" | "short-break" | "long-break"
 
 export type ProductivityAlertSettings = {
@@ -31,6 +33,8 @@ const VALID_ALERT_PREFERENCES = new Set<ProductivityAlertPreference>([
   "visual-vibration",
   "visual-sound",
 ])
+
+let sharedAudioContext: AudioContext | null = null
 
 function normalizeStoredDuration(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback
@@ -93,6 +97,87 @@ export function writePomodoroDurations(durations: PomodoroDurations) {
   window.dispatchEvent(new CustomEvent(POMODORO_DURATIONS_EVENT, { detail: durations }))
 }
 
+function getAudioContextConstructor() {
+  if (typeof window === "undefined") return null
+
+  return window.AudioContext
+    ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    ?? null
+}
+
+function getSharedAudioContext() {
+  const AudioContextConstructor = getAudioContextConstructor()
+  if (!AudioContextConstructor) return null
+
+  if (sharedAudioContext?.state === "closed") {
+    sharedAudioContext = null
+  }
+
+  if (!sharedAudioContext) {
+    sharedAudioContext = new AudioContextConstructor()
+  }
+
+  return sharedAudioContext
+}
+
+function publishProductivityAudioStatus(status: ProductivityAudioStatus) {
+  if (typeof window === "undefined" || typeof window.CustomEvent !== "function") return
+  window.dispatchEvent(new window.CustomEvent(PRODUCTIVITY_AUDIO_STATUS_EVENT, { detail: status }))
+}
+
+export function getProductivityAudioStatus(): ProductivityAudioStatus {
+  if (!getAudioContextConstructor()) return "unsupported"
+  return sharedAudioContext?.state === "running" ? "ready" : "needs-activation"
+}
+
+/**
+ * Unlocks the shared Web Audio context from a direct user interaction.
+ * Safari/iOS requires this before a later timer completion can emit sound.
+ */
+export async function primeProductivityAudio(): Promise<ProductivityAudioStatus> {
+  if (typeof window === "undefined") return "unsupported"
+
+  const audioContext = getSharedAudioContext()
+  if (!audioContext) {
+    publishProductivityAudioStatus("unsupported")
+    return "unsupported"
+  }
+
+  try {
+    if (audioContext.state !== "running") {
+      await audioContext.resume()
+    }
+
+    if (audioContext.state !== "running") {
+      publishProductivityAudioStatus("needs-activation")
+      return "needs-activation"
+    }
+
+    // A near-silent oscillator makes the activation explicit without creating
+    // an audible surprise when the user only opens the setting.
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+    gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+    oscillator.start()
+    oscillator.stop(audioContext.currentTime + 0.01)
+
+    publishProductivityAudioStatus("ready")
+    return "ready"
+  } catch {
+    publishProductivityAudioStatus("needs-activation")
+    return "needs-activation"
+  }
+}
+
+export async function testProductivityAudio(): Promise<ProductivityAudioStatus> {
+  const status = await primeProductivityAudio()
+  if (status !== "ready") return status
+
+  return playCompletionTone("timer")
+}
+
 export function triggerProductivityAlert(kind: ProductivityAlertKind, settings: ProductivityAlertSettings) {
   if (typeof window === "undefined") return
 
@@ -112,6 +197,14 @@ export function triggerProductivityAlert(kind: ProductivityAlertKind, settings: 
 export function getNotificationPermission(): NotificationPermission | "unsupported" {
   if (typeof window === "undefined" || !("Notification" in window)) return "unsupported"
   return window.Notification.permission
+}
+
+export function isStandaloneProductivityApp() {
+  if (typeof window === "undefined") return false
+
+  const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean }
+  return navigatorWithStandalone.standalone === true
+    || window.matchMedia?.("(display-mode: standalone)").matches === true
 }
 
 export async function requestProductivityNotificationPermission() {
@@ -140,12 +233,18 @@ function showProductivityNotification(kind: ProductivityAlertKind, settings: Pro
 }
 
 function playCompletionTone(kind: ProductivityAlertKind) {
-  const AudioContextConstructor =
-    window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-  if (!AudioContextConstructor) return
+  const audioContext = getSharedAudioContext()
+  if (!audioContext) {
+    publishProductivityAudioStatus("unsupported")
+    return "unsupported" as const
+  }
+
+  if (audioContext.state !== "running") {
+    publishProductivityAudioStatus("needs-activation")
+    return "needs-activation" as const
+  }
 
   try {
-    const audioContext = new AudioContextConstructor()
     const oscillator = audioContext.createOscillator()
     const gain = audioContext.createGain()
 
@@ -160,10 +259,10 @@ function playCompletionTone(kind: ProductivityAlertKind) {
     oscillator.start()
     oscillator.stop(audioContext.currentTime + 0.38)
 
-    oscillator.onended = () => {
-      void audioContext.close()
-    }
+    publishProductivityAudioStatus("ready")
+    return "ready" as const
   } catch {
-    // Audio can be blocked by the browser if the page has not received a user gesture.
+    publishProductivityAudioStatus("needs-activation")
+    return "needs-activation" as const
   }
 }

@@ -1,5 +1,3 @@
-export const FINANCE_AUTH_STORAGE_KEY = "focus-dock-finance-auth"
-
 export type FinanceAuthUser = {
   id: string
   email: string
@@ -12,30 +10,18 @@ export type FinanceAuth = {
   user: FinanceAuthUser
 }
 
-export function readFinanceAuth(): FinanceAuth | null {
-  if (typeof window === "undefined") return null
+export const FINANCE_AUTH_CHANGED_EVENT = "focus-dock-finance-auth-changed"
 
-  try {
-    const raw = window.localStorage.getItem(FINANCE_AUTH_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as FinanceAuth
-    if (!parsed.token || !parsed.user?.email) {
-      window.localStorage.removeItem(FINANCE_AUTH_STORAGE_KEY)
-      return null
-    }
-    return parsed
-  } catch {
-    window.localStorage.removeItem(FINANCE_AUTH_STORAGE_KEY)
-    return null
-  }
+let currentFinanceAuth: FinanceAuth | null = null
+
+export function readFinanceAuth(): FinanceAuth | null {
+  return currentFinanceAuth
 }
 
 export function saveFinanceAuth(auth: FinanceAuth) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(FINANCE_AUTH_STORAGE_KEY, JSON.stringify(auth))
+  currentFinanceAuth = auth
 }
 
 export function clearFinanceAuth() {
-  if (typeof window === "undefined") return
-  window.localStorage.removeItem(FINANCE_AUTH_STORAGE_KEY)
+  currentFinanceAuth = null
 }

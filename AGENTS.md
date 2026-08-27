@@ -1,207 +1,326 @@
-# Focus Dock — Developer Reference
+# AGENTS.md — Focus Dock Central AI Constitution
 
-Minimalist productivity dashboard optimized for a landscape phone screen (667 px) mounted as a desk dock. Built with Next.js 16 + React 19 + Tailwind CSS 4 + shadcn/ui.
-
----
-
-## Quick Start
-
-```bash
-pnpm install
-pnpm db:migrate   # after DATABASE_URL is configured
-pnpm dev          # http://localhost:3001
-```
-
-Drizzle manages both Better Auth tables (`user`, `session`, `account`, `verification`) and app tables (`user_profiles`, `user_integration_secrets`). Use `pnpm db:generate` for schema changes and `pnpm db:migrate` to apply migrations.
-
-### Required environment variables (`/.env.local`)
-
-```
-BETTER_AUTH_URL=          # e.g. http://localhost:3001
-BETTER_AUTH_SECRET=
-DATABASE_URL=
-APP_ENCRYPTION_KEY=
-HOME_ASSISTANT_ALLOWED_HOSTS= # production allowlist, comma-separated hostnames
-
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-
-SPOTIFY_CLIENT_ID=
-SPOTIFY_CLIENT_SECRET=
-SPOTIFY_REDIRECT_ORIGIN=  # production: https://dock.blackboxinovacao.com.br; local fallback: http://127.0.0.1:3001
-```
-
-### Optional environment variables
-
-```
-WEATHER_LAT=       # default: -15.886953  (Brasília)
-WEATHER_LON=       # default: -47.813873
-WEATHER_TIMEZONE=  # default: America/Sao_Paulo
-WEATHER_LOCATION=  # default: Brasília
-
-FINANCE_API_URL=      # e.g. http://127.0.0.1:3001 or https://paridade-risco-mobile-api.vercel.app
-
-OPENAI_REALTIME_MODEL=             # default: gpt-realtime-mini
-OPENAI_REALTIME_VOICE=             # default: marin
-OPENAI_REALTIME_REASONING_EFFORT=  # default: low, used with gpt-realtime-2
-```
-
-#### Getting Spotify credentials
-
-1. Create an app at developer.spotify.com → copy Client ID and Secret
-2. Add every redirect URI used by the app:
-   - Local: `http://127.0.0.1:3001/api/spotify/auth/callback`
-   - Production: `https://dock.blackboxinovacao.com.br/api/spotify/auth/callback`
-3. Keep only `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` in `.env.local`
-4. Each signed-in Focus Dock user connects their own Spotify account from Settings
+> **STATUS**: MANDATÓRIO & NORMATIVO  
+> **TARGET AUDIENCE**: Antigravity / AI Coding Assistants & Core Engineers  
+> **SCOPE**: Arquitetura, Modelos de Banco de Dados, Stack Tecnológica, Decisões de Negócio, Parâmetros e Proibições Categóricas.
 
 ---
 
-## Architecture
+## 1. Papel do Agente e Diretrizes de Comportamento
 
-### App layout — `app/page.tsx`
+Este documento constitui a **Constituição Central** e a principal fonte de verdade arquitetural do **Focus Dock**. Qualquer inteligência artificial que opere nesta base de código deve seguir estritamente as regras, restrições e padrões estabelecidos aqui.
 
-Single-page app with a **9-panel horizontal carousel** (snap scroll). Each panel occupies the viewport width and available dock height.
-
-### Panels (left → right)
-
-| # | Component | Description |
-|---|-----------|-------------|
-| 1 | `TodayPanel` | Clock, context phrase, next event, compact weather |
-| 2 | `VoiceAgentPanel` | OpenAI Realtime voice conversation panel |
-| 3 | `NightDock` | Low-brightness clock mode for night/inactive use |
-| 4 | `WeatherForecast` | Current weather and forecast |
-| 5 | `ProductivityHub` | Tabbed: Pomodoro · Timer · Stopwatch |
-| 6 | `CalendarPage` | Monthly calendar and daily events from Google Calendar when configured |
-| 7 | `HomeAssistantPanel` | Home Assistant favorites: lights, switches, covers, scenes, scripts |
-| 8 | `FinancePanel` | Compact investment portfolio from paridade-risco-mobile |
-| 9 | `SpotifyExpandedPanel` | Expanded Spotify playback, devices, volume, and playlists |
-
-### Persistent bottom bar
-
-`SpotifyBar` — always visible at the bottom. Polls `/api/spotify-now-playing` every 7 s. Shows album art, track name, artist, and playback controls.
+### 1.1 Princípios de Engenharia do Agente
+1. **Nunca faça suposições perigosas:** Consulte o código e este documento antes de alterar contratos, bancos de dados ou interfaces de segurança.
+2. **Ports and Adapters (Arquitetura Limpa):** A lógica de domínio e use-cases reside em `lib/operations/`, desacoplada de frameworks HTTP ou WebRTC. As rotas HTTP (`app/api/`) e o Voice Agent Realtime são meros adaptadores que consomem os mesmos contratos.
+3. **Validação Estrita em Tempo de Execução:** Toda entrada e saída de dados na fronteira do sistema deve ser validada com esquemas **Zod** canônicos.
+4. **Isolamento Criptográfico de Segredos:** Credenciais externas (OpenAI, Spotify, Home Assistant, Finance) **nunca** transitam em texto plano no banco e **jamais** são expostas ao frontend.
+5. **Portão de Qualidade Obrigatório:** Toda alteração deve passar pelo comando de verificação unificado:
+   ```bash
+   pnpm check  # executa eslint, tsc --noEmit e vitest
+   ```
 
 ---
 
-## File Map
+## 2. Visão Geral do Produto e Decisões Chave de Negócio
 
+### 2.1 Propósito do Produto
+O **Focus Dock** é um dashboard de produtividade minimalista projetado para funcionar em um smartphone acoplado em modo **paisagem (landscape, 667 × 375 px baseline)** ao lado do monitor de trabalho (Desk Dock Companion).
+
+### 2.2 North Star Criativo: *"The Cockpit"*
+- **Glanceable (< 1 segundo):** Leitura instantânea a uma distância de um braço. Números grandes, alto contraste por luminância, zero ruído visual.
+- **Ações Sem Fricção (1 a 2 toques):** Ações rápidas (play/pause, pular faixa, disparar timer, alternar luz do escritório) sem quebrar o fluxo de concentração do usuário.
+- **Tecnologia Calma (Ambient Awareness):** Sem animações espalhafatosas, sem pop-ups invasivos, sem auto-reprodução estridente. A interface recua; a informação essencial persiste.
+- **Zero Scroll Interno nos Painéis:** Cada painel do carrossel ocupa exatamente a área útil do viewport (`100vw` × `100vh` dock). Não há rolagem vertical dentro de painéis.
+
+---
+
+## 3. Pilha Tecnológica (Tech Stack)
+
+| Camada | Tecnologia / Biblioteca | Versão | Propósito / Papel |
+|---|---|---|---|
+| **Framework Web** | [Next.js](https://nextjs.org/) (App Router) | `16.1.6` | Monólito modular, SSR/RSC, API Routes |
+| **Biblioteca UI** | [React](https://react.dev/) | `19.2.4` | Renderização reativa, hooks modernos |
+| **Estilização** | [Tailwind CSS](https://tailwindcss.com/) v4 | `4.2.0` | Design tokens inline (`@theme`), cores OKLCH |
+| **Tipagem** | [TypeScript](https://www.typescript.org/) | `5.7.3` | Tipagem estática estrita (`strict: true`) |
+| **Autenticação** | [Better Auth](https://better-auth.com/) | `1.6.13` | Sessões PostgreSQL, OAuth Google |
+| **Banco de Dados & ORM** | [PostgreSQL](https://www.postgresql.org/) + [Drizzle ORM](https://orm.drizzle.team/) | `0.45.2` | Esquema tipado, migrações e persistência relacional |
+| **Driver de Conexão** | `pg` (node-postgres) | `8.21.0` | Pool compartilhado de conexões PostgreSQL |
+| **Agente de Voz** | OpenAI Realtime API (WebRTC) | - | Agente de voz bidirecional ultra-rápido com tool calling |
+| **Validação de Esquemas** | [Zod](https://zod.dev/) | `4.4.3` | Contratos de operação e validação de payloads |
+| **Componentes Base** | Radix UI + shadcn/ui | - | Primitivas acessíveis (Drawer Vaul, Dialog, Popover) |
+| **Testes** | [Vitest](https://vitest.dev/) | `3.2.4` | Testes unitários e de integração determinísticos |
+| **Gerenciador de Pacotes** | [pnpm](https://pnpm.io/) | `10.13.1` | Gestão determinística de dependências |
+
+---
+
+## 4. Arquitetura do Sistema e Fluxo de Dados
+
+```text
+               +-------------------------------------------+
+               |         Frontend Interfaces               |
+               |  - Landscape React Carousel (9 painéis)   |
+               |  - Persistent SpotifyBar                  |
+               |  - Settings Drawer (Vaul)                 |
+               +--------------------+----------------------+
+                                    |
+            +-----------------------+-----------------------+
+            | HTTP Fetch / Actions                          | WebRTC Audio / Tool Calling
+            v                                               v
+   +--------------------+                          +--------------------+
+   | Next.js API Routes |                          | Realtime WebRTC    |
+   |   (app/api/*)      |                          | (OpenAI Session)   |
+   +---------+----------+                          +---------+----------+
+             |                                               |
+             +----------------------+------------------------+
+                                    |
+                                    v
+            +-----------------------------------------------+
+            |           Operations Core (Shared)            |
+            | - Canonical Zod Schemas                       |
+            | - Unified OperationError Contract             |
+            | - Business Use Cases & Policies               |
+            +-----------------------+-----------------------+
+                                    |
+          +-------------------------+-------------------------+
+          |                         |                         |
+          v                         v                         v
++-------------------+     +--------------------+    +--------------------+
+| Database Gateway  |     | Encryption Gateway |    | External Gateways  |
+| - Drizzle ORM     |     | - AES-256-GCM      |    | - Google Calendar  |
+| - PostgreSQL Pool |     | - lib/crypto.ts    |    | - Home Assistant   |
++-------------------+     +--------------------+    | - Open-Meteo       |
+                                                    | - Finance API      |
+                                                    | - Spotify Web API  |
+                                                    +--------------------+
 ```
-app/
-  page.tsx                   Main page — carousel + lifted state
-  layout.tsx                 Root layout (metadata, fonts, theme)
-  globals.css                Tailwind 4 theme tokens (OKLCH)
-  api/
-    calendar-events/route.ts  GET  → { events }
-    calendar-list/route.ts    GET  → { calendars }
-    finance/summary/route.ts  GET  → compact portfolio summary
-    home-assistant/entities/   GET  → { entities }
-    home-assistant/service/    POST { entityId, action, brightness? }
-    realtime/session/route.ts  POST → OpenAI Realtime ephemeral client secret
-    weather/route.ts          GET  → { temp, high, low, description, condition, forecast, hourly? }
-    spotify-now-playing/      GET  → { isPlaying, track, artist, albumArt }
-    spotify-control/route.ts  POST { action } → forwards to Spotify Web API
 
-components/
-  today-panel.tsx
-  night-dock.tsx
-  weather-forecast.tsx
-  finance-panel.tsx
-  home-assistant-panel.tsx
-  productivity-hub.tsx
-  agenda.tsx
-  settings-panel.tsx
-  voice-agent-panel.tsx       OpenAI Realtime voice conversation panel
-  spotify-bar.tsx            Bottom playback bar
-  dock-theme-provider.tsx     Applies and synchronizes per-user appearance presets
-  ui/                        shadcn components (50+)
+### 4.1 Organização do Carrossel de Painéis (`app/page.tsx`)
+O carrossel principal é horizontal com snap-scroll (`snap-x snap-mandatory`), contendo **9 painéis**:
 
-hooks/
-  use-mobile.ts
-  use-realtime-agent.ts       WebRTC lifecycle for OpenAI Realtime
-  use-toast.ts
+1. **`TodayPanel`**: Relógio display, frase de contexto do dia, próximo compromisso da agenda, resumo meteorológico e botão de configurações.
+2. **`VoiceAgentPanel`**: Interface interativa de voz com OpenAI Realtime via WebRTC (ondas dinâmicas, logs de ferramentas executadas).
+3. **`NightDock`**: Modo noturno de brilho ultra-baixo com proteção contra burn-in em telas OLED (deslocamento sutil de pixels a cada 5 min).
+4. **`WeatherForecast`**: Clima detalhado atual, sensação térmica, umidade, vento e previsão horária/semanal via Open-Meteo.
+5. **`ProductivityHub`**: Hub de produtividade com abas para Pomodoro, Timer regressivo e Cronômetro (com avisos sonoros e pulsos visuais).
+6. **`CalendarPage` (`Agenda`)**: Visualização mensal integrada ao Google Calendar do usuário autenticado.
+7. **`HomeAssistantPanel`**: Painel de controle de dispositivos inteligentes favoritos (luzes, interruptores, cortinas, cenas, scripts).
+8. **`FinancePanel`**: Resumo da carteira de investimentos sincronizado via API `paridade-risco-mobile`.
+9. **`SpotifyExpandedPanel`**: Reprodutor musical expandido com seletor de dispositivos ativos, controle contínuo de volume e playlists.
 
-lib/
-  operations/contracts.ts     canonical runtime schemas shared by HTTP and Realtime
-  operations/errors.ts        stable OperationError and Result contracts
-  operations/weather.ts       weather use case + validated provider boundary
-  http/operation-response.ts  HTTP adapter for parsing and error translation
-  auth.ts                    Better Auth + Google + Drizzle adapter
-  db.ts                      shared pg Pool
-  drizzle.ts                 Drizzle client using the shared pool
-  integration-secrets.ts     encrypted per-user integration secrets
-  user-profile.ts            per-user profile defaults and persistence
-  spotify.ts                 getAccessToken(), spotifyControl(), spotifyConfigured flag
-  google-calendar.ts         OAuth, calendar list fetch, event fetch + normalization
-  finance.ts                 server-side paridade-risco-mobile API proxy helpers
-  home-assistant.ts          server-side Home Assistant API wrapper
-  realtime-agent.ts          OpenAI Realtime session defaults and agent instructions
-  calendar-settings.ts       selected Google Calendar ids in localStorage
-  dock-settings.ts           night mode settings in localStorage
-  utils.ts                   cn() (clsx + tailwind-merge)
+**Barra Fixa Inferior:** `SpotifyBar` permanece fixada na base da tela fora do contexto de rolagem, sincronizada a cada 7 segundos com feedback otimista instantâneo.
 
-public/
-  sounds/pomodoro/           3 pomodoro completion chimes
+---
+
+## 5. Modelo de Dados (PostgreSQL / Drizzle Schema)
+
+O esquema está centralizado em `db/schema.ts` e gerencia as tabelas de autenticação (Better Auth) e as tabelas de domínio do aplicativo:
+
+```text
++-------------------+       1:N       +-------------------+
+|       user        | <-------------> |      session      |
++-------------------+                 +-------------------+
+| id (PK)           |
+| name              |       1:N       +-------------------+
+| email (Unique)    | <-------------> |      account      |
+| emailVerified     |                 +-------------------+
+| image             |
+| createdAt         |       1:1       +-------------------+
+| updatedAt         | <-------------> |   user_profiles   |
++-------------------+                 +-------------------+
+          |
+          |                 1:N       +----------------------------+
+          +-------------------------> |  user_integration_secrets  |
+                                      +----------------------------+
 ```
 
+### 5.1 Definição Detalhada das Tabelas
+
+#### 1. `user` (Better Auth Core)
+Armazena a identidade do usuário autenticado.
+- `id` (`text`, PK): Identificador único do usuário.
+- `name` (`text`, NOT NULL): Nome completo ou apelido.
+- `email` (`text`, NOT NULL, UNIQUE): E-mail do usuário.
+- `emailVerified` (`boolean`, NOT NULL): Status de verificação de e-mail.
+- `image` (`text`, NULL): URL do avatar do usuário.
+- `createdAt` (`timestamp with time zone`, NOT NULL)
+- `updatedAt` (`timestamp with time zone`, NOT NULL)
+
+#### 2. `session` (Better Auth Sessions)
+- `id` (`text`, PK): ID da sessão ativa.
+- `expiresAt` (`timestamp with time zone`, NOT NULL): Expiração da sessão.
+- `token` (`text`, NOT NULL, UNIQUE): Token de autenticação da sessão.
+- `ipAddress` (`text`, NULL): IP de origem.
+- `userAgent` (`text`, NULL): Dados do navegador/dispositivo.
+- `userId` (`text`, NOT NULL, FK -> `user.id` ON DELETE CASCADE)
+- `createdAt` / `updatedAt` (`timestamp with time zone`, NOT NULL)
+
+#### 3. `account` (Better Auth OAuth Accounts)
+Armazena contas vinculadas de provedores OAuth (ex: Google).
+- `id` (`text`, PK)
+- `accountId` (`text`, NOT NULL): ID do usuário no provedor externo.
+- `providerId` (`text`, NOT NULL): Ex: `"google"`.
+- `userId` (`text`, NOT NULL, FK -> `user.id` ON DELETE CASCADE)
+- `accessToken` (`text`, NULL)
+- `refreshToken` (`text`, NULL)
+- `idToken` (`text`, NULL)
+- `accessTokenExpiresAt` / `refreshTokenExpiresAt` (`timestamp with time zone`, NULL)
+- `scope` (`text`, NULL)
+- `password` (`text`, NULL)
+- `createdAt` / `updatedAt` (`timestamp with time zone`, NOT NULL)
+
+#### 4. `verification` (Better Auth Tokens)
+- `id` (`text`, PK)
+- `identifier` (`text`, NOT NULL)
+- `value` (`text`, NOT NULL)
+- `expiresAt` (`timestamp with time zone`, NOT NULL)
+- `createdAt` / `updatedAt` (`timestamp with time zone`, NULL)
+
+#### 5. `user_profiles` (App Domain Preferences)
+Configurações e preferências persistidas por usuário do Focus Dock.
+- `userId` (`text`, PK, references `user.id`)
+- `weatherLat` (`double precision`, NULL): Latitude para previsão meteorológica.
+- `weatherLon` (`double precision`, NULL): Longitude para previsão meteorológica.
+- `weatherTimezone` (`text`, NULL): Fuso horário IANA (ex: `"America/Sao_Paulo"`).
+- `weatherLocation` (`text`, NULL): Nome amigável da cidade (ex: `"Brasília"`).
+- `googleCalendarIds` (`jsonb` - `$type<string[]>`, NULL): IDs das agendas selecionadas.
+- `googleCalendarTimezone` (`text`, NULL): Fuso horário da agenda.
+- `homeAssistantEntityIds` (`jsonb` - `$type<string[]>`, NULL): Lista de entidades favoritas no Home Assistant.
+- `nightModeEnabled` (`boolean`, NULL): Agendamento automático do modo noturno ativo.
+- `nightModeStart` (`text`, NULL): Horário de início do modo noturno (formato `"HH:mm"`).
+- `nightModeEnd` (`text`, NULL): Horário de término do modo noturno (formato `"HH:mm"`).
+- `productivityAlertPreference` (`text`, NULL): Tipo de alerta (`"sound"`, `"visual"`, `"both"`, `"none"`).
+- `productivityNotificationEnabled` (`boolean`, NULL): Notificações do navegador para o Pomodoro.
+- `pomodoroFocusSeconds` (`integer`, NULL): Tempo de foco (padrão: 1500s = 25m).
+- `pomodoroShortBreakSeconds` (`integer`, NULL): Pausa curta (padrão: 300s = 5m).
+- `pomodoroLongBreakSeconds` (`integer`, NULL): Pausa longa (padrão: 900s = 15m).
+- `themePreset` (`text`, NULL): Preset de tema (`"cockpit"`, `"blue-hour"`, `"warm-desk"`, `"paper-light"`).
+- `accentPreset` (`text`, NULL): Acento cromático (`"green"`, `"cyan"`, `"blue"`, `"amber"`, `"magenta"`).
+- `createdAt` / `updatedAt` (`timestamp with time zone`, NOT NULL, default `NOW()`)
+
+#### 6. `user_integration_secrets` (Encrypted Secrets Vault)
+Cofre seguro para armazenamento de tokens e URLs privadas de integrações de terceiros.
+- `userId` (`text`, NOT NULL)
+- `provider` (`text`, NOT NULL): Ex: `"home_assistant"`, `"openai"`, `"finance"`, `"spotify"`.
+- `key` (`text`, NOT NULL): Ex: `"token"`, `"url"`, `"refresh_token"`, `"api_key"`.
+- `encryptedValue` (`text`, NOT NULL): Valor criptografado no formato `v1:iv:authTag:cipherText`.
+- `createdAt` / `updatedAt` (`timestamp with time zone`, NOT NULL, default `NOW()`)
+- **Primary Key Composta:** `(userId, provider, key)`
+
 ---
 
-## Key Patterns
+## 6. Variáveis de Ambiente e Parâmetros de Configuração
 
-### Adding a new carousel panel
+As variáveis devem ser configuradas no arquivo `/.env.local` na raiz do projeto.
 
-1. Create component in `components/`
-2. Append a `<div className="w-screen shrink-0 ...">` inside the scroll container in `app/page.tsx`
-3. Add a pagination dot
+### 6.1 Variáveis Obrigatórias (Core & Segurança)
 
-### Adding a new API route
+| Variável | Exemplo / Formato | Descrição |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://user:pass@host:5432/dock` | String de conexão para o banco de dados PostgreSQL. |
+| `BETTER_AUTH_SECRET` | String aleatória segura de 32+ bytes | Chave mestre de assinatura de sessões do Better Auth. |
+| `BETTER_AUTH_URL` | `http://localhost:3001` (dev) ou URL de prod | URL base da aplicação para validação de callbacks. |
+| `APP_ENCRYPTION_KEY` | String aleatória de 32+ bytes | Chave mestre para criptografia AES-256-GCM de credenciais no banco. |
 
-Create `app/api/<name>/route.ts` and export named functions (`GET`, `POST`, etc.). Keep Spotify helpers in `lib/spotify.ts` and Google Calendar helpers in `lib/google-calendar.ts`, not inline.
+### 6.2 Variáveis de Autenticação OAuth (Google & Spotify)
 
-### Google Calendar mock/real split
+| Variável | Obrigatoriedade | Descrição |
+|---|---|---|
+| `GOOGLE_CLIENT_ID` | Recomendado | ID do cliente OAuth Google (Google Calendar e Login). |
+| `GOOGLE_CLIENT_SECRET` | Recomendado | Segredo do cliente OAuth Google. |
+| `SPOTIFY_CLIENT_ID` | Recomendado | ID do aplicativo registrado no Spotify Developer Dashboard. |
+| `SPOTIFY_CLIENT_SECRET` | Recomendado | Segredo do aplicativo Spotify. |
+| `SPOTIFY_REDIRECT_ORIGIN` | Opcional | Origem para redirecionamento OAuth do Spotify (padrão: `http://127.0.0.1:3001`). |
 
-Google sign-in is handled by Better Auth. Calendar API routes require a signed-in user and use that user's Google OAuth account. The settings panel can list connected calendars and persists selected ids in the user profile, with `localStorage` only as a temporary migration fallback.
+### 6.3 Variáveis de Rede, Integrações & Serviços
 
-### Home Assistant mock/real split
-
-Home Assistant URL/token are per-user encrypted secrets. Home Assistant API routes return `{ configured: false, mock: true }` when not configured. The browser never receives the HA token; service calls go through `app/api/home-assistant/service/route.ts`.
-
-### Finance mock/real split
-
-`lib/finance.ts` exports `financeConfigured` (true when `FINANCE_API_URL` is present). The browser never stores the Finance token. Finance login uses `/api/finance/auth/login`, stores the upstream token encrypted per Focus Dock user, and `/api/finance/summary` forwards to `paridade-risco-mobile` with the server-side token.
-
-**Auth flow:** The finance panel shows a login form when no Finance token exists for the signed-in Focus Dock user. The user authenticates via `POST /api/finance/auth/login` (proxied to upstream). On upstream 401, the encrypted token is cleared and the login form reappears.
-
-### Spotify mock/real split
-
-Spotify uses global app credentials (`SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`) plus per-user OAuth. API routes return `{ spotifyAuthRequired: true, mock: true }` when the signed-in user has not connected Spotify; the `SpotifyBar` shows a connect-account state and disables controls.
-
-### OpenAI Realtime mock/real split
-
-OpenAI Realtime uses a per-user encrypted OpenAI API key. The browser requests an ephemeral client secret from `app/api/realtime/session/route.ts`; the OpenAI API key is never sent to the browser. When the user has not configured a key, the voice panel shows a setup state.
-
-### Optimistic UI (SpotifyBar)
-
-Local state flips immediately on button click → command sent → `setTimeout(fetchNowPlaying, 1500)` confirms with server.
-
----
-
-## Styling
-
-- Tailwind CSS 4 with `@theme` inline in `globals.css`
-- OKLCH color tokens for light and dark mode
-- Target viewport: **667 × 375 px landscape** (iPhone SE / 8)
-- `viewport` in `layout.tsx` locks `maximum-scale=1` (no zoom)
-- Utility: `cn(...classes)` from `lib/utils.ts`
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `HOME_ASSISTANT_ALLOWED_HOSTS` | Vazio (permite qualquer) | Lista de domínios/IPs autorizados para conexões com o Home Assistant (separados por vírgula). |
+| `FINANCE_API_URL` | `https://paridade-risco-mobile-api.vercel.app` | URL base do backend de portfólio de investimentos. |
+| `WEATHER_LAT` | `-15.886953` (Brasília) | Latitude padrão de fallback quando o perfil não define. |
+| `WEATHER_LON` | `-47.813873` (Brasília) | Longitude padrão de fallback quando o perfil não define. |
+| `WEATHER_LOCATION` | `"Brasília"` | Nome da cidade padrão de fallback. |
+| `WEATHER_TIMEZONE` | `"America/Sao_Paulo"` | Fuso horário padrão de fallback. |
+| `OPENAI_REALTIME_MODEL` | `gpt-realtime-mini` | Modelo padrão para conversação de voz OpenAI Realtime. |
+| `OPENAI_REALTIME_VOICE` | `marin` | Voz síntese padrão para o agente Realtime. |
+| `OPENAI_REALTIME_REASONING_EFFORT` | `low` | Esforço de raciocínio quando utilizado com `gpt-realtime-2`. |
 
 ---
 
-## Known Limitations / Future Work
+## 7. Contrato Canônico de Erros e Efeitos Operacionais
 
-- **Weather location is profile-based.** Defaults to Brasília until the signed-in user saves profile settings.
-- **Settings UI is partial.** Profile, OpenAI, Spotify, Finance, Home Assistant and appearance presets are configurable; brightness still needs UI.
-- **Spotify requires Premium** for playback control (play/pause/skip).
-- **No PWA offline support.** Service worker not implemented; weather/Spotify fail without network.
-- **iOS Home Screen behavior still needs device validation.** Manifest/icons and safe-area code are in place, but fullscreen behavior should be checked on a real iPhone/iPad.
-- **Apple platform alert limitations.** iOS/iPadOS support for web vibration is limited or absent, notification permission must be requested from explicit user action, and reliable background/audio alerts should always have a visual fallback.
+Todas as operações de negócio retornam um contrato tipado `OperationResult<T>` e falhas estruturadas via `OperationError`:
 
-See `ARCHITECTURE.md` for operation effects, interfaces, validation boundaries, and the shared error contract.
+```typescript
+export interface OperationError {
+  code: string
+  category: "validation" | "authorization" | "conflict" | "rate_limit" | "upstream" | "internal"
+  message: string
+  hint?: string
+  retryable: boolean
+  invalidFields?: string[]
+}
+```
+
+### 7.1 Matriz de Operações e Efeitos
+
+| Operação | Tipo de Efeito | Confirmação | Idempotência / Retry | Interfaces |
+|---|---|---|---|---|
+| **Leitura (Clima, Agenda, Spotify, Casa, Finanças)** | Leitura pura (`read`) | Nenhuma | Retry transitório permitido | UI, Realtime Agent |
+| **Atualizar Perfil / Configurações** | Escrita reversível (`write`) | Ação explícita em Settings | Upsert no banco de dados | UI |
+| **Controle de Playback Spotify (Play/Pause/Skip)** | Escrita externa de baixo risco | Comando explícito do usuário | Sem retry automático; deduplicado por call ID | UI, Realtime Agent |
+| **Ajuste de Volume / Dispositivo Spotify** | Escrita externa de baixo risco | Ação explícita na UI | Sem retry automático | UI |
+| **Ações Pomodoro / Timer / Stopwatch** | Escrita local reversível | Comando explícito | Deduplicado por call ID | UI, Realtime Agent |
+| **Serviço Home Assistant (Luzes, Cenas)** | Escrita externa em hardware | Toque explícito no card | Sem retry automático; restrito a entidades autorizadas | UI |
+| **Login no Módulo Financeiro** | Escrita de autenticação | Envio de formulário | Sem retry automático | UI |
+| **Desconectar Integração / Limpar Credencial** | Escrita destrutiva reversível | Ação explícita em Settings | Operação delete idempotente | UI |
+
+---
+
+## 8. Regras de Design e Ergonomia de Interface (Design System)
+
+### 8.1 Escala de Luminância (The Luminance Ladder)
+A profundidade visual é gerada **exclusivamente por degraus de luminância**, sem sombras:
+- `Cockpit Void` (`oklch(0.07 0 0)`): Fundo base absoluto da aplicação.
+- `Panel Surface` (`oklch(0.13 0 0)`): Superfície de cards, popovers e gaveta de configurações.
+- `Gauge Housing` (`oklch(0.20 0 0)`): Botões secundários, inputs, trilhas de slider e abas inativas.
+- `Frame Line` (`oklch(0.22 0 0)`): Bordas sutis (1px) e divisores entre elementos.
+- `Dim Readout` (`oklch(0.55 0 0)`): Textos secundários, metadados e ícones em repouso.
+- `Instrument White` (`oklch(0.95 0 0)`): Textos primários de alta ênfase e valores numéricos ativos.
+
+### 8.2 Regra do Sinal Único (Single Signal Rule)
+- Em qualquer viewport em repouso, **apenas 1 elemento** possui a cor de destaque (Action Accent).
+- O accent indica **estado ativo ou em andamento** (ex: timer rodando, aba selecionada).
+- Exceções permanentes: `Alert Red` para ações destrutivas / erros críticos; `Signal Green` exclusivo da marca Spotify.
+
+### 8.3 Monopólio do Display (Display Monopoly Rule)
+- A tipografia **Display** (`JetBrains Mono`, peso 200, `clamp(3.2rem, 12vw, 7.5rem)`) pertence **exclusivamente ao Relógio Principal (`TodayPanel`) e ao `NightDock`**.
+- Todos os demais números grandes (Timer, Finanças, Clima) utilizam peso Headline (`Inter` 600 ou `JetBrains Mono` 500), nunca o tamanho Display.
+
+---
+
+## 9. PROIBIÇÕES CATEGÓRICAS (Regras Rígidas para a IA)
+
+Estas regras são invioláveis. Qualquer sugestão ou alteração de código que viole estes pontos deve ser rejeitada:
+
+1. 🚫 **PROIBIDO Expor Segredos ao Cliente:** Nunca envie chaves de API, segredos de criptografia, tokens do Home Assistant ou credenciais bancárias para o navegador. O cliente recebe apenas dados processados ou tokens efémeros de sessão Realtime emitidos pelo backend.
+2. 🚫 **PROIBIDO Adicionar Rolagem Vertical nos Painéis do Dock:** A interface foi construída para caber estritamente no viewport paisagem de 667 × 375 px. O único eixo de rolagem permitido é o carrossel horizontal principal. Se o conteúdo não cabe, a hierarquia visual deve ser condensada com `clamp()`.
+3. 🚫 **PROIBIDO Usar Sombras Decorativas em Repouso:** A elevação é definida estritamente pela Escala de Luminância (`void -> panel -> housing -> frame -> white`). Sombras (`drop-shadow`) são proibidas em cards ou painéis estáticos.
+4. 🚫 **PROIBIDO Misturar Múltiplos Acentos de Destaque:** Não utilize botões coloridos de cores distintas na mesma tela para fins decorativos. Siga a *Single Signal Rule*.
+5. 🚫 **PROIBIDO Hardcodar IDs de Usuário ou Dados de Teste em Produção:** Toda operação deve resolver o usuário autenticado através do contexto da sessão do Better Auth (`getCurrentUser()`).
+6. 🚫 **PROIBIDO Fazer Requisições para Hosts Não Autorizados:** Chamadas de saída para o Home Assistant devem validar o protocolo (`http`/`https`), rejeitar metadados locais de nuvem (169.254.169.254) e respeitar `HOME_ASSISTANT_ALLOWED_HOSTS`.
+7. 🚫 **PROIBIDO Modificar o Banco sem Migrações Drizzle:** Toda e qualquer alteração no esquema `db/schema.ts` exige a geração de arquivos de migração via `pnpm db:generate`.
+8. 🚫 **PROIBIDO Supor Recursos de Hardware Móvel sem Fallback:** Navegadores móveis (especialmente Safari/iOS) bloqueiam vibração (`navigator.vibrate`) e áudio sem toque prévio. Todo alerta sonoro/háptico deve possuir feedback visual equivalente.
+9. 🚫 **PROIBIDO Quebrar a Tipagem ou Ignorar Erros do Lint:** Nenhum código deve ser entregue com `any` indiscriminado ou ignorando os checks de `pnpm check`.
+
+---
+
+## 10. Fluxo de Trabalho e Padrões de Implementação
+
+Ao implementar ou estender funcionalidades no Focus Dock, o assistente deve:
+1. **Adicionar/Modificar Contratos de Domínio:** Atualizar ou criar o esquema Zod em `lib/operations/contracts.ts` e implementar a lógica pura em `lib/operations/`.
+2. **Implementar o Adaptador HTTP:** Criar ou atualizar a rota em `app/api/<rota>/route.ts` utilizando o helper `handleOperationResponse` de `lib/http/operation-response.ts`.
+3. **Persistência de Dados & Segredos:** Usar `db/schema.ts`, `lib/drizzle.ts` e `lib/integration-secrets.ts` para leitura e escrita criptografada (`encryptSecret` / `decryptSecret`).
+4. **Interface Visual:** Construir componentes modulares em `components/`, aplicando tokens do Tailwind 4, classes utilitárias fluidas com `clamp()`, `font-mono tabular-nums` para dados numéricos e `active:scale-[0.96]` para feedback tátil.
+5. **Validação Automática:** Executar a suíte de testes e tipagem via `pnpm check`.

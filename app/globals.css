@@ -11,8 +11,8 @@
   --dock-pad-x: clamp(0.75rem, 2.4vw, 2.5rem);
   --dock-pad-y: clamp(0.4rem, 1.2vh, 0.875rem);
   --dock-gap: clamp(0.75rem, 2vw, 2rem);
-  --dock-clock-size: clamp(3.2rem, 12vw, 7.5rem);
-  --dock-seconds-size: clamp(0.9rem, 2.2vw, 1.25rem);
+  --dock-clock-size: clamp(4.3rem, 15vw, 8rem);
+  --dock-seconds-size: clamp(1.1rem, 3.4vw, 2rem);
   --dock-big-number-size: clamp(2.15rem, 7.8vw, 3.75rem);
   --dock-control-size: clamp(2.75rem, 4.2vw, 2.75rem);
   --dock-control-icon-size: clamp(1rem, 1.85vw, 1.15rem);
@@ -162,6 +162,28 @@
   --sidebar-primary-foreground: oklch(0.97 0.008 330);
 }
 
+:root[data-dock-layout='compact'] {
+  --dock-pad-x: clamp(0.5rem, 1.8vw, 1.4rem);
+  --dock-pad-y: clamp(0.25rem, 0.8vh, 0.5rem);
+  --dock-gap: clamp(0.5rem, 1.2vw, 1rem);
+  --dock-clock-size: clamp(3.1rem, 12vw, 6.5rem);
+  --dock-seconds-size: clamp(0.85rem, 2.6vw, 1.45rem);
+  --dock-control-size: clamp(2.5rem, 3.8vw, 2.5rem);
+}
+
+:root[data-dock-layout='focus'] {
+  --dock-pad-x: clamp(0.8rem, 2.6vw, 2.7rem);
+  --dock-pad-y: clamp(0.45rem, 1.4vh, 1rem);
+  --dock-gap: clamp(0.85rem, 2.5vw, 2.25rem);
+  --dock-clock-size: clamp(4.6rem, 16vw, 8.5rem);
+  --dock-seconds-size: clamp(1.1rem, 3.6vw, 2.1rem);
+  --dock-control-size: clamp(2.8rem, 4.6vw, 3rem);
+}
+
+:root[data-dock-layout='focus'] .layout-secondary {
+  opacity: 0.72;
+}
+
 .night-dock-surface {
   --background: oklch(0.07 0 0);
   --foreground: oklch(0.72 0 0);
@@ -277,6 +299,25 @@
   scrollbar-width: none;
 }
 
+/* Delimited lists inside a dock panel keep the carousel itself fixed. */
+.dock-list-scroll {
+  scrollbar-color: oklch(0.35 0 0) transparent;
+  scrollbar-width: thin;
+}
+
+.dock-list-scroll::-webkit-scrollbar {
+  width: 0.3rem;
+}
+
+.dock-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dock-list-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0 0);
+  border-radius: 9999px;
+}
+
 .dock-px {
   padding-left: calc(var(--dock-pad-x) + var(--dock-safe-left));
   padding-right: calc(var(--dock-pad-x) + var(--dock-safe-right));
@@ -315,4 +356,16 @@
 .finance-ticker-track {
   animation: finance-ticker-scroll 18s linear infinite;
   will-change: transform;
+}
+
+/* NightDock's low-power policy also removes background animation work. */
+:root[data-dock-power='low'] .finance-ticker-track,
+:root[data-dock-power='low'] .animate-productivity-complete,
+:root[data-dock-power='low'] .animate-alert-icon {
+  animation: none;
+  will-change: auto;
+}
+
+:root[data-dock-power='low'] * {
+  scroll-behavior: auto !important;
 }

@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Sun, Cloud, CloudRain, CloudSun, CloudLightning, Snowflake } from "lucide-react"
+import { z } from "zod"
+import { authClient } from "@/lib/auth-client"
+import { DockDataSourceError, useDockDataSource } from "@/components/dock-runtime-provider"
+import { readUserCache, writeUserCache } from "@/lib/user-cache"
 
 interface ForecastDay {
   day: string
@@ -18,7 +22,17 @@ interface WeatherResponse {
   low: number
   condition: string
   forecast: ForecastDay[]
+  mock?: boolean
 }
+
+const weatherResponseSchema = z.object({
+  location: z.string(),
+  temp: z.number(),
+  high: z.number(),
+  low: z.number(),
+  condition: z.string(),
+  forecast: z.array(z.object({ day: z.string(), date: z.string(), condition: z.string(), low: z.number(), high: z.number() })),
+}).passthrough()
 
 function WeatherIcon({ condition, className }: { condition: string; className?: string }) {
   switch (condition) {
@@ -47,24 +61,35 @@ const PLACEHOLDER_FORECAST: ForecastDay[] = Array.from({ length: 5 }, (_, i) => 
 }))
 
 export function WeatherForecast() {
-  const [weather, setWeather] = useState<WeatherResponse | null>(null)
+  const { data: session } = authClient.useSession()
+  const [cachedWeather, setCachedWeather] = useState<WeatherResponse | null>(null)
+  const [cachedAt, setCachedAt] = useState<string | null>(null)
 
   const fetchWeather = useCallback(async () => {
-    try {
-      const response = await fetch("/api/weather")
-      if (!response.ok) return
-      const data = await response.json() as WeatherResponse
-      setWeather(data)
-    } catch {
-      // Preserve previous state on transient errors
-    }
-  }, [])
+    const response = await fetch("/api/weather")
+    if (!response.ok) throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
+    const parsed = weatherResponseSchema.safeParse(await response.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    writeUserCache(session?.user?.id, "weather", parsed.data)
+    return parsed.data
+  }, [session?.user?.id])
+
+  const weatherSource = useDockDataSource("weather", fetchWeather, {
+    panelId: "weather",
+    schema: weatherResponseSchema,
+  })
 
   useEffect(() => {
-    fetchWeather()
-    const interval = setInterval(fetchWeather, 15 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [fetchWeather])
+    const cached = readUserCache(session?.user?.id, "weather", weatherResponseSchema)
+    if (cached) {
+      setCachedWeather(cached.data)
+      setCachedAt(cached.savedAt)
+    }
+  }, [session?.user?.id])
+
+  const weather = weatherSource.data ?? cachedWeather
+  const weatherUpdatedAt = weatherSource.state.updatedAt ?? cachedAt
+  const isStale = weatherSource.isStale || (weatherSource.data === null && cachedWeather !== null)
 
   const forecast = weather?.forecast?.length ? weather.forecast : PLACEHOLDER_FORECAST
   const isLoaded = !!weather
@@ -72,6 +97,10 @@ export function WeatherForecast() {
   return (
     <section aria-labelledby="weather-heading" className="flex items-center h-full w-full dock-px gap-[clamp(0.75rem,2.5vw,1.5rem)]">
       <h2 id="weather-heading" className="sr-only">Clima</h2>
+
+      <div className="absolute top-[calc(var(--dock-pad-y)+0.15rem)] right-[calc(var(--dock-pad-x)+var(--dock-safe-right))] text-muted-foreground/55" style={{ fontSize: "clamp(0.48rem,1.2vw,0.58rem)" }}>
+        {weatherUpdatedAt ? `${isStale ? "Último valor · " : "Atualizado · "}${new Date(weatherUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Aguardando clima"}
+      </div>
 
       {/* ── Left: current conditions ── */}
       <div className="flex flex-col justify-center gap-[clamp(0.25rem,0.8vh,0.5rem)] shrink-0">

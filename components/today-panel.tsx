@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { CalendarClock, Footprints, Moon, Sparkles, Sun, Umbrella } from "lucide-react"
+import { z } from "zod"
+import { authClient } from "@/lib/auth-client"
+import { DockDataSourceError, useDockDataSource } from "@/components/dock-runtime-provider"
 import { appendCalendarIds, CALENDAR_SETTINGS_EVENT, readSelectedCalendarIds } from "@/lib/calendar-settings"
+import { TodayTasks } from "@/components/today-tasks"
+import { readUserCache, writeUserCache } from "@/lib/user-cache"
 
 type WeatherData = {
   location: string
@@ -33,6 +38,58 @@ type CalendarEvent = {
 type CalendarEventsResponse = {
   events: CalendarEvent[]
   mock?: boolean
+}
+
+const weatherDataSchema = z.object({
+  location: z.string(), temp: z.number(), high: z.number(), low: z.number(), condition: z.string(),
+  hourly: z.array(z.object({ time: z.string(), temp: z.number(), precipitationProbability: z.number().nullable(), condition: z.string() })).optional(),
+}).passthrough()
+
+const calendarEventsSchema = z.object({
+  events: z.array(z.object({
+    id: z.string(), title: z.string(), date: z.string(), time: z.string(), startDateTime: z.string().nullable(),
+    endDateTime: z.string().nullable(), isAllDay: z.boolean(),
+  }).passthrough()),
+}).passthrough()
+
+type ClockSettings = {
+  primaryClockLabel: string
+  primaryClockTimezone: string
+  secondaryClocks: Array<{ label: string; timezone: string }>
+}
+
+const DEFAULT_CLOCK_SETTINGS: ClockSettings = {
+  primaryClockLabel: "Brasília",
+  primaryClockTimezone: "America/Sao_Paulo",
+  secondaryClocks: [
+    { label: "Lisboa", timezone: "Europe/Lisbon" },
+    { label: "Nova York", timezone: "America/New_York" },
+  ],
+}
+
+function formatTimeInZone(date: Date, timezone: string, withSeconds = false) {
+  try {
+    return new Intl.DateTimeFormat("pt-BR", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      ...(withSeconds ? { second: "2-digit" as const } : {}),
+      hour12: false,
+    }).format(date)
+  } catch {
+    return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
+  }
+}
+
+function formatDateInZone(date: Date, timezone: string) {
+  try {
+    return {
+      weekday: new Intl.DateTimeFormat("pt-BR", { timeZone: timezone, weekday: "long" }).format(date),
+      date: new Intl.DateTimeFormat("pt-BR", { timeZone: timezone, day: "numeric", month: "long" }).format(date),
+    }
+  } catch {
+    return { weekday: date.toLocaleDateString("pt-BR", { weekday: "long" }), date: date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" }) }
+  }
 }
 
 function formatDateKey(date: Date) {
@@ -106,20 +163,23 @@ function describeCurrentWeather(weather: WeatherData | null, isDark: boolean) {
 }
 
 export function TodayPanel() {
+  const { data: session } = authClient.useSession()
   const [now, setNow] = useState<Date | null>(null)
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [calendarIds, setCalendarIds] = useState<string[]>([])
+  const [weatherUpdatedAt, setWeatherUpdatedAt] = useState<string | null>(null)
+  const [calendarUpdatedAt, setCalendarUpdatedAt] = useState<string | null>(null)
+  const [clockSettings, setClockSettings] = useState<ClockSettings>(DEFAULT_CLOCK_SETTINGS)
 
   const fetchWeather = useCallback(async () => {
-    try {
-      const response = await fetch("/api/weather?hourly=true")
-      if (!response.ok) return
-      setWeather(await response.json() as WeatherData)
-    } catch {
-      // Preserve previous data on transient failures.
-    }
-  }, [])
+    const response = await fetch("/api/weather?hourly=true")
+    if (!response.ok) throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
+    const parsed = weatherDataSchema.safeParse(await response.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    writeUserCache(session?.user?.id, "weather", parsed.data)
+    return parsed.data
+  }, [session?.user?.id])
 
   const fetchEvents = useCallback(async () => {
     const start = new Date()
@@ -127,24 +187,60 @@ export function TodayPanel() {
     const end = new Date(start)
     end.setDate(end.getDate() + 1)
 
-    try {
-      const params = new URLSearchParams({
-        timeMin: start.toISOString(),
-        timeMax: end.toISOString(),
-      })
-      appendCalendarIds(params, calendarIds)
-      const response = await fetch(`/api/calendar-events?${params.toString()}`)
-      if (!response.ok) return
-      const data = await response.json() as CalendarEventsResponse
-      if (!data.mock) setEvents(data.events)
-    } catch {
-      // Keep the last known agenda visible.
-    }
-  }, [calendarIds])
+    const params = new URLSearchParams({
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+    })
+    appendCalendarIds(params, calendarIds)
+    const response = await fetch(`/api/calendar-events?${params.toString()}`)
+    if (!response.ok) throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
+    const parsed = calendarEventsSchema.safeParse(await response.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    const data = parsed.data as CalendarEventsResponse
+    if (!data.mock) writeUserCache(session?.user?.id, "calendar-today", { events: data.events })
+    return data
+  }, [calendarIds, session?.user?.id])
+
+  const weatherSource = useDockDataSource("today-weather", fetchWeather, {
+    panelId: "today",
+    schema: weatherDataSchema,
+  })
+  const calendarSource = useDockDataSource("today-calendar", fetchEvents, {
+    panelId: "today",
+    schema: calendarEventsSchema,
+  })
 
   useEffect(() => {
     setNow(new Date())
     setCalendarIds(readSelectedCalendarIds())
+
+    const userId = session?.user?.id
+    const cachedWeather = readUserCache(userId, "weather", weatherDataSchema)
+    if (cachedWeather) {
+      setWeather(cachedWeather.data)
+      setWeatherUpdatedAt(cachedWeather.savedAt)
+    }
+    const cachedCalendar = readUserCache(userId, "calendar-today", calendarEventsSchema)
+    if (cachedCalendar) {
+      setEvents(cachedCalendar.data.events)
+      setCalendarUpdatedAt(cachedCalendar.savedAt)
+    }
+
+    if (userId) {
+      void fetch(`/api/profile`).then(async (response) => {
+        if (!response.ok) return
+        const data = await response.json() as { profile?: Partial<ClockSettings> }
+        const profile = data.profile
+        if (!profile) return
+        setClockSettings({
+          primaryClockLabel: profile.primaryClockLabel ?? DEFAULT_CLOCK_SETTINGS.primaryClockLabel,
+          primaryClockTimezone: profile.primaryClockTimezone ?? DEFAULT_CLOCK_SETTINGS.primaryClockTimezone,
+          secondaryClocks: Array.isArray(profile.secondaryClocks) && profile.secondaryClocks.length > 0
+            ? profile.secondaryClocks.slice(0, 2)
+            : DEFAULT_CLOCK_SETTINGS.secondaryClocks,
+        })
+      }).catch(() => {})
+    }
 
     const clock = setInterval(() => setNow(new Date()), 1000)
     const handleCalendarSettings = () => setCalendarIds(readSelectedCalendarIds())
@@ -154,19 +250,20 @@ export function TodayPanel() {
       clearInterval(clock)
       window.removeEventListener(CALENDAR_SETTINGS_EVENT, handleCalendarSettings)
     }
-  }, [])
+  }, [session?.user?.id])
 
   useEffect(() => {
-    fetchWeather()
-    const weatherRefresh = setInterval(fetchWeather, 15 * 60 * 1000)
-    return () => clearInterval(weatherRefresh)
-  }, [fetchWeather])
+    if (weatherSource.data) {
+      setWeather(weatherSource.data)
+      setWeatherUpdatedAt(weatherSource.state.updatedAt)
+    }
+  }, [weatherSource.data, weatherSource.state.updatedAt])
 
   useEffect(() => {
-    fetchEvents()
-    const calendarRefresh = setInterval(fetchEvents, 5 * 60 * 1000)
-    return () => clearInterval(calendarRefresh)
-  }, [fetchEvents])
+    if (!calendarSource.data || calendarSource.data.mock) return
+    setEvents(calendarSource.data.events)
+    setCalendarUpdatedAt(calendarSource.state.updatedAt)
+  }, [calendarSource.data, calendarSource.state.updatedAt])
 
   const todayKey = now ? formatDateKey(now) : ""
   const todayEvents = useMemo(
@@ -201,11 +298,9 @@ export function TodayPanel() {
   }, [contextNow, timedEvents])
   const displayEvent = nextTimedEvent ?? allDayEvents[0] ?? null
 
-  const hours = now ? now.getHours().toString().padStart(2, "0") : "--"
-  const minutes = now ? now.getMinutes().toString().padStart(2, "0") : "--"
-  const seconds = now ? now.getSeconds().toString().padStart(2, "0") : "--"
-  const weekday = now ? now.toLocaleDateString("pt-BR", { weekday: "long" }) : ""
-  const dateLabel = now ? now.toLocaleDateString("pt-BR", { day: "numeric", month: "long" }) : ""
+  const primaryTime = now ? formatTimeInZone(now, clockSettings.primaryClockTimezone, true) : "--:--:--"
+  const [primaryHours = "--", primaryMinutes = "--", primarySeconds = "--"] = primaryTime.split(":")
+  const primaryDate = now ? formatDateInZone(now, clockSettings.primaryClockTimezone) : { weekday: "", date: "" }
   const nextEventStart = nextTimedEvent?.startDateTime ? new Date(nextTimedEvent.startDateTime).getTime() : null
   const nextEventEnd = nextTimedEvent?.endDateTime ? new Date(nextTimedEvent.endDateTime).getTime() : null
   const minutesUntilNextEvent = contextNow && nextEventStart ? Math.round((nextEventStart - contextNow.getTime()) / 60000) : null
@@ -379,15 +474,25 @@ export function TodayPanel() {
         <h2 id="today-heading" className="sr-only">Hoje</h2>
         <div className="flex min-w-0 flex-col justify-center">
         <div className="flex min-w-0 items-baseline leading-none">
-          <span className="min-w-0 font-extralight text-foreground tabular-nums font-mono tracking-tight" style={{ fontSize: "clamp(4.3rem,15vw,8rem)" }}>
-            {hours}:{minutes}
+          <span className="min-w-0 font-extralight text-foreground tabular-nums font-mono tracking-tight" style={{ fontSize: "var(--dock-clock-size)" }}>
+            {primaryHours}:{primaryMinutes}
           </span>
-          <span className="ml-[0.28em] font-extralight text-muted-foreground/50 tabular-nums font-mono leading-none" style={{ fontSize: "clamp(1.1rem,3.4vw,2rem)" }}>
-            {seconds}
+          <span className="ml-[0.28em] font-extralight text-muted-foreground/50 tabular-nums font-mono leading-none" style={{ fontSize: "var(--dock-seconds-size)" }}>
+            {primarySeconds}
           </span>
         </div>
         <div className="mt-[clamp(0.15rem,0.35vh,0.25rem)] uppercase tracking-[0.28em] text-muted-foreground/65" style={{ fontSize: "clamp(0.78rem,2vw,1rem)" }}>
-          {weekday} <span className="tracking-[0.18em] text-muted-foreground/45">{dateLabel}</span>
+          {clockSettings.primaryClockLabel} · {primaryDate.weekday} <span className="tracking-[0.18em] text-muted-foreground/45">{primaryDate.date}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {clockSettings.secondaryClocks.map((clock) => (
+            <div key={`${clock.label}:${clock.timezone}`} className="rounded-lg border border-border/25 bg-secondary/20 px-2 py-1">
+              <div className="truncate text-muted-foreground/65" style={{ fontSize: "clamp(0.48rem,1.15vw,0.58rem)" }}>{clock.label}</div>
+              <div className="font-mono tabular-nums text-foreground/80" style={{ fontSize: "clamp(0.62rem,1.5vw,0.72rem)" }}>
+                {now ? formatTimeInZone(now, clock.timezone) : "--:--"}
+              </div>
+            </div>
+          ))}
         </div>
         <span
           className="mt-[clamp(0.45rem,1.1vh,0.75rem)] max-w-[min(100%,34rem)] leading-snug text-muted-foreground/75"
@@ -397,7 +502,7 @@ export function TodayPanel() {
         </span>
       </div>
 
-      <div className="flex min-w-0 justify-end">
+      <div className="layout-secondary flex min-w-0 flex-col justify-center gap-[clamp(0.35rem,0.9vh,0.55rem)]">
         <section className={`w-full max-w-[16rem] min-w-0 rounded-xl border px-[clamp(0.65rem,1.55vw,0.95rem)] py-[clamp(0.55rem,1.25vh,0.8rem)] ${hasUrgentEvent ? "border-accent/60 bg-accent/10" : isNight ? "border-border/20 bg-transparent" : "border-border/35 bg-secondary/20"}`}>
           <div className="flex items-center gap-1.5 text-muted-foreground" style={{ fontSize: "clamp(0.62rem,1.6vw,0.76rem)" }}>
             <CalendarClock className="size-3.5 shrink-0" />
@@ -409,7 +514,14 @@ export function TodayPanel() {
           <div className="mt-1.5 text-muted-foreground/65 font-mono tabular-nums truncate" style={{ fontSize: "clamp(0.76rem,1.9vw,0.95rem)" }}>
             {displayEvent?.time ?? (hasTimedEvents ? "Agenda encerrada" : "Dia livre")}
           </div>
+          {(calendarUpdatedAt || weatherUpdatedAt) && (
+            <div className="mt-1 truncate text-muted-foreground/45" style={{ fontSize: "clamp(0.48rem,1.15vw,0.58rem)" }}>
+              {calendarUpdatedAt ? `Agenda ${new Date(calendarUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Agenda sem snapshot"}
+              {weatherUpdatedAt ? ` · Clima ${new Date(weatherUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+            </div>
+          )}
         </section>
+        <TodayTasks />
       </div>
     </section>
   )

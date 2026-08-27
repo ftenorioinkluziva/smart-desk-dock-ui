@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies } from "better-auth/next-js"
 import * as schema from "@/db/schema"
 import { drizzleDb } from "@/lib/drizzle"
+import { GOOGLE_TASKS_SCOPE } from "@/lib/google-scopes"
 
 const betterAuthSecret = process.env.BETTER_AUTH_SECRET
 if (!betterAuthSecret) throw new Error("BETTER_AUTH_SECRET is required")
@@ -41,6 +42,7 @@ export const auth = betterAuth({
         "email",
         "profile",
         "https://www.googleapis.com/auth/calendar.readonly",
+        GOOGLE_TASKS_SCOPE,
       ],
     },
   },

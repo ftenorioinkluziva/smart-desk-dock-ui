@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { z } from "zod"
+import { DockDataSourceError, useDockDataSource } from "@/components/dock-runtime-provider"
 import { AlertCircle, ArrowDown, ArrowUp, Blinds, Lamp, Lightbulb, RefreshCw, Square, ToggleLeft } from "lucide-react"
 
 type HomeAssistantEntity = {
@@ -14,12 +16,6 @@ type HomeAssistantEntity = {
   supportsBrightness: boolean
   supportsColor: boolean
   controllable: boolean
-}
-
-type EntitiesResponse = {
-  entities: HomeAssistantEntity[]
-  mock?: boolean
-  error?: string
 }
 
 type ColorPreset = {
@@ -48,6 +44,28 @@ const LIGHT_COLOR_PRESETS: ColorPreset[] = [
   { label: "Rosa", swatch: "#f084d8", hsColor: [315, 60] },
   { label: "Coral", swatch: "#ff715e", hsColor: [8, 80] },
 ]
+
+const entitiesResponseSchema = z.object({
+  entities: z.array(z.object({
+    entityId: z.string(),
+    domain: z.string(),
+    name: z.string(),
+    state: z.string(),
+    deviceClass: z.string().nullable(),
+    unit: z.string().nullable(),
+    brightness: z.number().nullable(),
+    supportsBrightness: z.boolean(),
+    supportsColor: z.boolean(),
+    controllable: z.boolean(),
+  }).passthrough()),
+  mock: z.boolean().optional(),
+  error: z.string().optional(),
+}).passthrough()
+
+function formatSyncTime(timestamp: number | null) {
+  if (!timestamp) return "aguardando atualização"
+  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(timestamp)
+}
 
 function getEntityDisplayName(entity: HomeAssistantEntity) {
   if (entity.entityId === "light.abajur") return "Abajur"
@@ -96,36 +114,40 @@ async function sendCommand(
 export function HomeAssistantPanel() {
   const [entities, setEntities] = useState<HomeAssistantEntity[]>([])
   const [isMock, setIsMock] = useState(false)
-  const [hasError, setHasError] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [actionError, setActionError] = useState(false)
   const [pendingEntityId, setPendingEntityId] = useState<string | null>(null)
 
   const fetchEntities = useCallback(async () => {
-    try {
-      setHasError(false)
-      const response = await fetch("/api/home-assistant/entities")
-      if (!response.ok) {
-        setHasError(true)
-        return
-      }
-
-      const data = await response.json() as EntitiesResponse
-      setEntities(data.entities)
-      setIsMock(Boolean(data.mock))
-    } catch {
-      setHasError(true)
-    } finally {
-      setIsLoading(false)
-    }
+    const response = await fetch("/api/home-assistant/entities")
+    if (!response.ok) throw new DockDataSourceError("UPSTREAM_UNAVAILABLE")
+    const parsed = entitiesResponseSchema.safeParse(await response.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    return parsed.data
   }, [])
 
+  const entitiesSource = useDockDataSource("home-assistant", fetchEntities, {
+    panelId: "home-assistant",
+    schema: entitiesResponseSchema,
+  })
+
   useEffect(() => {
-    fetchEntities()
-    const refresh = setInterval(fetchEntities, 10 * 1000)
-    return () => clearInterval(refresh)
-  }, [fetchEntities])
+    if (!entitiesSource.data) return
+    setEntities(entitiesSource.data.entities ?? [])
+    setIsMock(Boolean(entitiesSource.data.mock))
+    setActionError(false)
+  }, [entitiesSource.data])
+
+  const isLoading = entitiesSource.isLoading
+  const isRefreshing = entitiesSource.state.status === "loading"
+  const hasError = actionError || entitiesSource.state.status === "error"
+  const lastSyncAt = entitiesSource.state.updatedAt ? Date.parse(entitiesSource.state.updatedAt) : null
 
   const visibleEntities = useMemo(() => entities.slice(0, 8), [entities])
+
+  function handleRefresh() {
+    setActionError(false)
+    entitiesSource.refresh()
+  }
 
   async function handleEntityPress(entity: HomeAssistantEntity) {
     if (isMock || pendingEntityId || !entity.controllable) return
@@ -133,9 +155,9 @@ export function HomeAssistantPanel() {
     try {
       const action = entity.domain === "scene" || entity.domain === "script" ? "turn_on" : "toggle"
       await sendCommand(entity.entityId, action)
-      setTimeout(fetchEntities, 600)
+      window.setTimeout(() => entitiesSource.refresh(), 600)
     } catch {
-      setHasError(true)
+      setActionError(true)
     } finally {
       setPendingEntityId(null)
     }
@@ -146,9 +168,9 @@ export function HomeAssistantPanel() {
     setPendingEntityId(`${entity.entityId}:${action}`)
     try {
       await sendCommand(entity.entityId, action)
-      setTimeout(fetchEntities, 600)
+      window.setTimeout(() => entitiesSource.refresh(), 600)
     } catch {
-      setHasError(true)
+      setActionError(true)
     } finally {
       setPendingEntityId(null)
     }
@@ -159,9 +181,9 @@ export function HomeAssistantPanel() {
     setPendingEntityId(entity.entityId)
     try {
       await sendCommand(entity.entityId, brightness <= 0 ? "turn_off" : "turn_on", { brightness })
-      setTimeout(fetchEntities, 600)
+      window.setTimeout(() => entitiesSource.refresh(), 600)
     } catch {
-      setHasError(true)
+      setActionError(true)
     } finally {
       setPendingEntityId(null)
     }
@@ -178,9 +200,9 @@ export function HomeAssistantPanel() {
           hsColor: preset.hsColor,
         },
       })
-      setTimeout(fetchEntities, 600)
+      window.setTimeout(() => entitiesSource.refresh(), 600)
     } catch {
-      setHasError(true)
+      setActionError(true)
     } finally {
       setPendingEntityId(null)
     }
@@ -190,6 +212,28 @@ export function HomeAssistantPanel() {
     <section aria-labelledby="ha-heading" className="flex h-full w-full dock-px items-center overflow-hidden">
       <h2 id="ha-heading" className="sr-only">Casa Inteligente</h2>
       <section className="grid w-full min-w-0 grid-cols-3 gap-[clamp(0.45rem,1.3vw,0.85rem)]">
+        {visibleEntities.length > 0 && (
+          <div className="col-span-3 flex min-h-5 items-center justify-between gap-2 px-1 text-muted-foreground" aria-live="polite">
+            <span className={hasError ? "text-destructive" : ""} style={{ fontSize: "clamp(0.55rem,1.35vw,0.68rem)" }}>
+              {hasError
+                ? "Comunicação indisponível · mostrando último estado"
+                : isRefreshing
+                  ? "Atualizando Home Assistant..."
+                  : `Atualizado às ${formatSyncTime(lastSyncAt)}`}
+            </span>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+              aria-label="Atualizar Home Assistant"
+              title="Atualizar"
+            >
+              <RefreshCw className={isRefreshing ? "size-3.5 animate-spin" : "size-3.5"} />
+            </button>
+          </div>
+        )}
+
         {isLoading && visibleEntities.length === 0 && (
           Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="h-[clamp(7rem,42vh,10rem)] rounded-lg border border-border/30 bg-secondary/20" />
@@ -201,6 +245,16 @@ export function HomeAssistantPanel() {
             <div className="flex items-center gap-2" style={{ fontSize: "clamp(0.72rem,1.8vw,0.9rem)" }}>
               {hasError ? <AlertCircle className="size-4 text-destructive" /> : <RefreshCw className="size-4" />}
               {hasError ? "Falha ao carregar Home Assistant" : "Nenhuma entidade favorita encontrada"}
+              {hasError && (
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="rounded-md border border-border/45 px-2 py-1 text-foreground transition-colors hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+                >
+                  Tentar novamente
+                </button>
+              )}
             </div>
           </div>
         )}

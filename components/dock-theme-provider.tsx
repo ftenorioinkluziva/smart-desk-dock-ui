@@ -9,6 +9,7 @@ import {
   normalizeDockAppearance,
   type DockAccentId,
   type DockAppearance,
+  type DockLayoutId,
   type DockThemeId,
 } from "@/lib/dock-theme"
 
@@ -16,6 +17,7 @@ type DockThemeContextValue = {
   appearance: DockAppearance
   setTheme: (themePreset: DockThemeId) => void
   setAccent: (accentPreset: DockAccentId) => void
+  setLayout: (layoutPreset: DockLayoutId) => void
 }
 
 const DockThemeContext = createContext<DockThemeContextValue | null>(null)
@@ -24,6 +26,7 @@ function applyAppearance(appearance: DockAppearance) {
   const root = document.documentElement
   root.dataset.dockTheme = appearance.themePreset
   root.dataset.dockAccent = appearance.accentPreset
+  root.dataset.dockLayout = appearance.layoutPreset
   root.style.colorScheme = appearance.themePreset === "paper-light" ? "light" : "dark"
 
   const theme = DOCK_THEMES.find((item) => item.id === appearance.themePreset)
@@ -76,6 +79,17 @@ export function DockThemeProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const setLayout = useCallback((layoutPreset: DockLayoutId) => {
+    interactionVersionRef.current += 1
+    setAppearance((current) => {
+      const next = { ...current, layoutPreset }
+      applyAppearance(next)
+      cacheAppearance(next)
+      void persistAppearance({ layoutPreset })
+      return next
+    })
+  }, [])
+
   useEffect(() => {
     try {
       const cached = normalizeDockAppearance(JSON.parse(localStorage.getItem(DOCK_APPEARANCE_STORAGE_KEY) ?? "{}"))
@@ -109,7 +123,7 @@ export function DockThemeProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [session?.user?.id])
 
-  const value = useMemo(() => ({ appearance, setTheme, setAccent }), [appearance, setAccent, setTheme])
+  const value = useMemo(() => ({ appearance, setTheme, setAccent, setLayout }), [appearance, setAccent, setLayout, setTheme])
 
   return <DockThemeContext.Provider value={value}>{children}</DockThemeContext.Provider>
 }

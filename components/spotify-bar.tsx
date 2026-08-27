@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { z } from "zod"
 import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat } from "lucide-react"
+import { DockDataSourceError, useDockDataSource } from "@/components/dock-runtime-provider"
 
 type NowPlaying = {
   isPlaying: boolean
@@ -19,6 +21,13 @@ const FALLBACK: NowPlaying = {
   mock: true,
 }
 
+const spotifyBarSchema = z.object({
+  isPlaying: z.boolean(),
+  track: z.string().nullable(),
+  artist: z.string().nullable(),
+  albumArt: z.string().nullable(),
+}).passthrough()
+
 async function sendControl(action: "play" | "pause" | "next" | "previous") {
   await fetch("/api/spotify-control", {
     method: "POST",
@@ -31,34 +40,37 @@ export function SpotifyBar() {
   const [nowPlaying, setNowPlaying] = useState<NowPlaying>(FALLBACK)
 
   const fetchNowPlaying = useCallback(async () => {
-    try {
-      const res = await fetch("/api/spotify-now-playing")
-      if (res.ok) setNowPlaying(await res.json() as NowPlaying)
-    } catch {}
+    const res = await fetch("/api/spotify-now-playing")
+    if (!res.ok) throw new DockDataSourceError(res.status === 401 ? "UNAUTHORIZED" : "UPSTREAM_UNAVAILABLE")
+    const parsed = spotifyBarSchema.safeParse(await res.json())
+    if (!parsed.success) throw new DockDataSourceError("INVALID_RESPONSE")
+    return parsed.data
   }, [])
 
-  // Poll every 7 s
+  const nowPlayingSource = useDockDataSource("spotify-now-playing", fetchNowPlaying, {
+    activeOnly: false,
+    schema: spotifyBarSchema,
+  })
+
   useEffect(() => {
-    fetchNowPlaying()
-    const id = setInterval(fetchNowPlaying, 7000)
-    return () => clearInterval(id)
-  }, [fetchNowPlaying])
+    if (nowPlayingSource.data) setNowPlaying(nowPlayingSource.data)
+  }, [nowPlayingSource.data])
 
   async function handlePlayPause() {
     const action = nowPlaying.isPlaying ? "pause" : "play"
     setNowPlaying((p) => ({ ...p, isPlaying: !p.isPlaying }))
     await sendControl(action)
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handleNext() {
     await sendControl("next")
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   async function handlePrevious() {
     await sendControl("previous")
-    setTimeout(fetchNowPlaying, 1500)
+    setTimeout(() => nowPlayingSource.refresh(), 1500)
   }
 
   const isMock = nowPlaying.mock

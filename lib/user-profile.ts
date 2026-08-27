@@ -1,7 +1,8 @@
 import { eq, sql } from "drizzle-orm"
 import { userProfiles } from "@/db/schema"
 import { drizzleDb } from "@/lib/drizzle"
-import { DEFAULT_DOCK_APPEARANCE, isDockAccentId, isDockThemeId } from "@/lib/dock-theme"
+import { DEFAULT_DOCK_APPEARANCE, isDockAccentId, isDockLayoutId, isDockThemeId } from "@/lib/dock-theme"
+import { DEFAULT_DOCK_PANEL_CONFIG, normalizeDockPanelConfig } from "@/lib/dock-panels"
 import { userProfileSchema, type UserProfile, type UserProfilePatch } from "@/lib/operations/contracts"
 
 export type { UserProfile } from "@/lib/operations/contracts"
@@ -24,6 +25,17 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   pomodoroLongBreakSeconds: 15 * 60,
   themePreset: DEFAULT_DOCK_APPEARANCE.themePreset,
   accentPreset: DEFAULT_DOCK_APPEARANCE.accentPreset,
+  layoutPreset: DEFAULT_DOCK_APPEARANCE.layoutPreset,
+  dockPanelOrder: DEFAULT_DOCK_PANEL_CONFIG.panelOrder,
+  dockHiddenPanelIds: DEFAULT_DOCK_PANEL_CONFIG.hiddenPanelIds,
+  dockInitialPanelId: DEFAULT_DOCK_PANEL_CONFIG.initialPanelId,
+  dockAutoRotate: DEFAULT_DOCK_PANEL_CONFIG.autoRotate,
+  primaryClockLabel: "Brasília",
+  primaryClockTimezone: "America/Sao_Paulo",
+  secondaryClocks: [
+    { label: "Lisboa", timezone: "Europe/Lisbon" },
+    { label: "Nova York", timezone: "America/New_York" },
+  ],
 }
 
 type UserProfileRow = {
@@ -44,6 +56,14 @@ type UserProfileRow = {
   pomodoroLongBreakSeconds: number | null
   themePreset: string | null
   accentPreset: string | null
+  layoutPreset: string | null
+  dockPanelOrder: unknown
+  dockHiddenPanelIds: unknown
+  dockInitialPanelId: string | null
+  dockAutoRotate: boolean | null
+  primaryClockLabel: string | null
+  primaryClockTimezone: string | null
+  secondaryClocks: unknown
 }
 
 function normalizeStringArray(value: unknown, fallback: string[]) {
@@ -65,6 +85,20 @@ function normalizeAlertPreference(value: string | null): UserProfile["productivi
 function mapProfile(row?: UserProfileRow): UserProfile {
   if (!row) return DEFAULT_USER_PROFILE
 
+  const panelConfig = normalizeDockPanelConfig({
+    panelOrder: row.dockPanelOrder,
+    hiddenPanelIds: row.dockHiddenPanelIds,
+    initialPanelId: row.dockInitialPanelId,
+    autoRotate: row.dockAutoRotate,
+  })
+  const secondaryClocks = Array.isArray(row.secondaryClocks)
+    ? row.secondaryClocks.filter((item): item is { label: string; timezone: string } => Boolean(
+      item && typeof item === "object" &&
+      typeof (item as { label?: unknown }).label === "string" &&
+      typeof (item as { timezone?: unknown }).timezone === "string",
+    )).slice(0, 2)
+    : DEFAULT_USER_PROFILE.secondaryClocks
+
   return userProfileSchema.parse({
     weatherLat: typeof row.weatherLat === "number" ? row.weatherLat : DEFAULT_USER_PROFILE.weatherLat,
     weatherLon: typeof row.weatherLon === "number" ? row.weatherLon : DEFAULT_USER_PROFILE.weatherLon,
@@ -85,6 +119,14 @@ function mapProfile(row?: UserProfileRow): UserProfile {
     pomodoroLongBreakSeconds: row.pomodoroLongBreakSeconds ?? DEFAULT_USER_PROFILE.pomodoroLongBreakSeconds,
     themePreset: isDockThemeId(row.themePreset) ? row.themePreset : DEFAULT_USER_PROFILE.themePreset,
     accentPreset: isDockAccentId(row.accentPreset) ? row.accentPreset : DEFAULT_USER_PROFILE.accentPreset,
+    layoutPreset: isDockLayoutId(row.layoutPreset) ? row.layoutPreset : DEFAULT_USER_PROFILE.layoutPreset,
+    dockPanelOrder: panelConfig.panelOrder,
+    dockHiddenPanelIds: panelConfig.hiddenPanelIds,
+    dockInitialPanelId: panelConfig.initialPanelId,
+    dockAutoRotate: panelConfig.autoRotate,
+    primaryClockLabel: row.primaryClockLabel ?? DEFAULT_USER_PROFILE.primaryClockLabel,
+    primaryClockTimezone: row.primaryClockTimezone ?? row.weatherTimezone ?? DEFAULT_USER_PROFILE.primaryClockTimezone,
+    secondaryClocks: secondaryClocks.length > 0 ? secondaryClocks : DEFAULT_USER_PROFILE.secondaryClocks,
   })
 }
 
@@ -127,6 +169,14 @@ export async function updateUserProfile(userId: string, patch: UserProfilePatch)
       pomodoroLongBreakSeconds: next.pomodoroLongBreakSeconds,
       themePreset: next.themePreset,
       accentPreset: next.accentPreset,
+      layoutPreset: next.layoutPreset,
+      dockPanelOrder: next.dockPanelOrder,
+      dockHiddenPanelIds: next.dockHiddenPanelIds,
+      dockInitialPanelId: next.dockInitialPanelId,
+      dockAutoRotate: next.dockAutoRotate,
+      primaryClockLabel: next.primaryClockLabel,
+      primaryClockTimezone: next.primaryClockTimezone,
+      secondaryClocks: next.secondaryClocks,
       updatedAt: sql`NOW()`,
     })
     .onConflictDoUpdate({
@@ -149,6 +199,14 @@ export async function updateUserProfile(userId: string, patch: UserProfilePatch)
         pomodoroLongBreakSeconds: next.pomodoroLongBreakSeconds,
         themePreset: next.themePreset,
         accentPreset: next.accentPreset,
+        layoutPreset: next.layoutPreset,
+        dockPanelOrder: next.dockPanelOrder,
+        dockHiddenPanelIds: next.dockHiddenPanelIds,
+        dockInitialPanelId: next.dockInitialPanelId,
+        dockAutoRotate: next.dockAutoRotate,
+        primaryClockLabel: next.primaryClockLabel,
+        primaryClockTimezone: next.primaryClockTimezone,
+        secondaryClocks: next.secondaryClocks,
         updatedAt: sql`NOW()`,
       },
     })

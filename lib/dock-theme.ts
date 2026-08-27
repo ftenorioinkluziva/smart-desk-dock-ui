@@ -1,17 +1,21 @@
 export const DOCK_THEME_IDS = ["cockpit", "blue-hour", "warm-desk", "paper-light"] as const
 export const DOCK_ACCENT_IDS = ["green", "cyan", "blue", "amber", "magenta"] as const
+export const DOCK_LAYOUT_IDS = ["balanced", "compact", "focus"] as const
 
 export type DockThemeId = (typeof DOCK_THEME_IDS)[number]
 export type DockAccentId = (typeof DOCK_ACCENT_IDS)[number]
+export type DockLayoutId = (typeof DOCK_LAYOUT_IDS)[number]
 
 export type DockAppearance = {
   themePreset: DockThemeId
   accentPreset: DockAccentId
+  layoutPreset: DockLayoutId
 }
 
 export const DEFAULT_DOCK_APPEARANCE: DockAppearance = {
   themePreset: "cockpit",
   accentPreset: "green",
+  layoutPreset: "balanced",
 }
 
 export const DOCK_APPEARANCE_STORAGE_KEY = "focus-dock:appearance:v1"
@@ -77,12 +81,22 @@ export const DOCK_ACCENTS: Array<{ id: DockAccentId; label: string; color: strin
   { id: "magenta", label: "Magenta", color: "oklch(0.68 0.2 330)" },
 ]
 
+export const DOCK_LAYOUTS: Array<{ id: DockLayoutId; label: string; description: string }> = [
+  { id: "balanced", label: "Equilibrado", description: "Leitura completa" },
+  { id: "compact", label: "Compacto", description: "Mais conteúdo" },
+  { id: "focus", label: "Foco", description: "Hora e próximo passo" },
+]
+
 export function isDockThemeId(value: unknown): value is DockThemeId {
   return typeof value === "string" && DOCK_THEME_IDS.includes(value as DockThemeId)
 }
 
 export function isDockAccentId(value: unknown): value is DockAccentId {
   return typeof value === "string" && DOCK_ACCENT_IDS.includes(value as DockAccentId)
+}
+
+export function isDockLayoutId(value: unknown): value is DockLayoutId {
+  return typeof value === "string" && DOCK_LAYOUT_IDS.includes(value as DockLayoutId)
 }
 
 export function normalizeDockAppearance(value: unknown): DockAppearance {
@@ -96,5 +110,8 @@ export function normalizeDockAppearance(value: unknown): DockAppearance {
     accentPreset: isDockAccentId(candidate.accentPreset)
       ? candidate.accentPreset
       : DEFAULT_DOCK_APPEARANCE.accentPreset,
+    layoutPreset: isDockLayoutId(candidate.layoutPreset)
+      ? candidate.layoutPreset
+      : DEFAULT_DOCK_APPEARANCE.layoutPreset,
   }
 }

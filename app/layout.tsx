@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { DockThemeProvider } from '@/components/dock-theme-provider'
 import { DockPanelProvider } from '@/components/dock-panel-provider'
 import { DockRuntimeProvider } from '@/components/dock-runtime-provider'
+import { UserProfileProvider } from '@/components/user-profile-provider'
 import {
   DEFAULT_DOCK_APPEARANCE,
   DOCK_ACCENT_IDS,
@@ -82,11 +83,13 @@ export default function RootLayout({
         <Script id="dock-theme-init" strategy="beforeInteractive">
           {dockThemeInitScript}
         </Script>
-        <DockThemeProvider>
-          <DockPanelProvider>
-            <DockRuntimeProvider>{children}</DockRuntimeProvider>
-          </DockPanelProvider>
-        </DockThemeProvider>
+        <UserProfileProvider>
+          <DockThemeProvider>
+            <DockPanelProvider>
+              <DockRuntimeProvider>{children}</DockRuntimeProvider>
+            </DockPanelProvider>
+          </DockThemeProvider>
+        </UserProfileProvider>
       </body>
     </html>
   )

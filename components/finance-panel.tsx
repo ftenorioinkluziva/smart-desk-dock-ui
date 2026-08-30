@@ -240,8 +240,8 @@ export function FinancePanel() {
   const remainingFundCount = Math.max(0, summary.funds.length - 2)
 
   return (
-    <section aria-labelledby="finance-heading" className="dock-px flex h-full w-full items-center overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)] pb-[clamp(1rem,3vh,1.8rem)]">
-      <section className="relative grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)_auto] gap-[clamp(0.4rem,1.2vh,0.75rem)]">
+    <section aria-labelledby="finance-heading" className="dock-px flex h-full min-h-0 w-full items-center overflow-hidden py-[clamp(0.45rem,1.4vh,0.95rem)] pb-[clamp(1rem,3vh,1.8rem)]">
+      <section className="relative grid h-full min-h-0 w-full min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-[clamp(0.3rem,0.9vh,0.55rem)] overflow-hidden">
         <h2 id="finance-heading" className="sr-only">Finanças</h2>
 
         <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border/25 pb-[clamp(0.35rem,1vh,0.6rem)]">
@@ -258,8 +258,8 @@ export function FinancePanel() {
           </div>
         </header>
 
-        <div className="grid min-h-0 w-full grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-[clamp(0.65rem,2vw,1.2rem)]">
-        <div className="flex min-w-0 flex-col justify-center gap-[clamp(0.55rem,1.6vh,0.9rem)]">
+        <div className="grid min-h-0 min-w-0 w-full grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-[clamp(0.65rem,2vw,1.2rem)] overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-col justify-center gap-[clamp(0.45rem,1.2vh,0.75rem)] overflow-hidden">
           {dataCaveat && (
             <div className="flex items-center gap-1.5 text-[clamp(0.56rem,1.3vw,0.66rem)] text-destructive/80">
               <AlertTriangle className="size-3 shrink-0" />
@@ -271,7 +271,7 @@ export function FinancePanel() {
             <div className="text-[clamp(0.62rem,1.45vw,0.72rem)] font-medium uppercase tracking-normal text-muted-foreground">
               Patrimônio atual
             </div>
-            <div className="mt-1 truncate text-[clamp(2.2rem,7vw,4.2rem)] font-semibold leading-none tracking-normal">
+            <div className="mt-1 whitespace-nowrap text-[clamp(2rem,6.2vw,3.8rem)] font-semibold leading-none tracking-normal">
               {isLoading ? "..." : formatCurrency(summary.totalValue)}
             </div>
             <div className={`mt-2 flex items-center gap-1.5 text-[clamp(0.9rem,2.2vw,1.15rem)] font-medium ${gainPositive ? "text-accent" : "text-destructive"}`}>
@@ -296,22 +296,22 @@ export function FinancePanel() {
                 <Banknote className="size-3.5" />
                 <span>Caixa</span>
               </div>
-              <div className="mt-1 truncate font-mono text-[clamp(0.9rem,2.2vw,1.15rem)] font-semibold">
-                {formatCurrency(summary.cashBalance)}
+              <div className="mt-1 whitespace-nowrap font-mono text-[clamp(0.72rem,1.7vw,0.92rem)] font-semibold">
+                {formatCompactCurrency(summary.cashBalance)}
               </div>
             </div>
             <div className="rounded-lg border border-border/35 bg-secondary/25 px-[clamp(0.55rem,1.4vw,0.8rem)] py-[clamp(0.45rem,1.1vh,0.65rem)]">
               <div className="text-[clamp(0.58rem,1.35vw,0.68rem)] text-muted-foreground">Investido</div>
-              <div className="mt-1 truncate font-mono text-[clamp(0.8rem,1.9vw,1rem)] font-semibold">
+              <div className="mt-1 whitespace-nowrap font-mono text-[clamp(0.72rem,1.7vw,0.92rem)] font-semibold">
                 {formatCompactCurrency(investedValue)}
               </div>
             </div>
             <div className="rounded-lg border border-border/35 bg-secondary/25 px-[clamp(0.55rem,1.4vw,0.8rem)] py-[clamp(0.45rem,1.1vh,0.65rem)]">
               <div className="text-[clamp(0.58rem,1.35vw,0.68rem)] text-muted-foreground">Ativos</div>
-              <div className="mt-1 truncate font-mono text-[clamp(0.8rem,1.9vw,1rem)] font-semibold">
-                {positionLabel}
+              <div className="mt-1 whitespace-nowrap font-mono text-[clamp(0.82rem,1.9vw,1rem)] font-semibold">
+                {summary.positionCount}
               </div>
-              <div className="truncate text-[clamp(0.48rem,1.05vw,0.56rem)] text-muted-foreground">{fundLabel}</div>
+              <div className="truncate text-[clamp(0.48rem,1.05vw,0.56rem)] text-muted-foreground">{positionLabel} · {fundLabel}</div>
             </div>
           </div>
 
@@ -325,40 +325,41 @@ export function FinancePanel() {
           </div>
         </div>
 
-        <div className="min-h-0 min-w-0 rounded-lg border border-border/35 bg-secondary/20 p-[clamp(0.5rem,1.25vw,0.75rem)]">
-            <div className="mb-[clamp(0.45rem,1.3vh,0.7rem)]">
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-border/35 bg-secondary/20 p-[clamp(0.45rem,1.1vw,0.65rem)]">
+            <div className="mb-[clamp(0.3rem,0.8vh,0.5rem)] shrink-0">
               <h3 className="text-[clamp(0.72rem,1.75vw,0.9rem)] font-semibold">Alocação por ativo</h3>
               <div className="text-[clamp(0.58rem,1.35vw,0.68rem)] text-muted-foreground">
                 {hasError ? "Falha ao carregar dados financeiros" : "Atual · alvo · resultado"}
               </div>
             </div>
-            <div className="min-w-0 space-y-[clamp(0.35rem,1vh,0.5rem)] overflow-hidden pr-1">
+            <div className="min-h-0 min-w-0 flex-1 space-y-[clamp(0.15rem,0.5vh,0.25rem)] overflow-hidden pr-1">
               {visibleAssets.map((asset) => (
                 <div
                   key={asset.id}
-                  className="min-w-0 rounded-md border border-border/15 bg-background/45 px-[clamp(0.45rem,1.2vw,0.65rem)] py-[clamp(0.35rem,0.95vh,0.5rem)]"
+                  className="min-w-0 rounded-md border border-border/15 bg-background/45 px-[clamp(0.4rem,1vw,0.55rem)] py-[clamp(0.18rem,0.6vh,0.3rem)]"
+                  title={`${asset.ticker}: ${formatCurrency(asset.currentValue)}, ${formatPercentage(asset.percentage)}, ${formatSignedCurrency(asset.gain)}`}
                 >
                   <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 items-baseline gap-2">
-                        <span className="truncate font-mono text-[clamp(0.7rem,1.65vw,0.84rem)] font-semibold">{asset.ticker}</span>
-                        <span className="shrink-0 text-[clamp(0.5rem,1.1vw,0.58rem)] text-muted-foreground">qtd {formatQuantity(asset.shares)}</span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="truncate font-mono text-[clamp(0.7rem,1.65vw,0.84rem)] font-semibold">{asset.ticker}</span>
+                      <span className="shrink-0 text-[clamp(0.5rem,1.1vw,0.58rem)] text-muted-foreground">qtd {formatQuantity(asset.shares)}</span>
+                    </div>
+                    <div className="min-w-[5.7rem] shrink-0 whitespace-nowrap text-right font-mono text-[clamp(0.58rem,1.25vw,0.68rem)] font-semibold">
+                      {formatCompactCurrency(asset.currentValue)} <span>{formatPercentage(asset.percentage)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                         <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, Math.max(0, asset.percentage))}%` }} />
                       </div>
-                      <div className="mt-1 truncate text-[clamp(0.5rem,1.1vw,0.58rem)] text-muted-foreground">
-                        alvo {formatPercentage(asset.targetPercentage)}
-                      </div>
                     </div>
-                    <div className="min-w-[5.7rem] shrink-0 text-right font-mono">
-                      <div className="text-[clamp(0.64rem,1.45vw,0.74rem)] font-semibold">
-                        {formatCurrency(asset.currentValue)} <span>{formatPercentage(asset.percentage)}</span>
-                      </div>
-                      <span className={`font-mono text-[clamp(0.58rem,1.35vw,0.68rem)] ${asset.gain >= 0 ? "text-accent" : "text-destructive"}`}>
-                        {formatSignedCurrency(asset.gain)}
-                      </span>
-                    </div>
+                    <span className="shrink-0 text-[clamp(0.5rem,1.1vw,0.58rem)] text-muted-foreground">
+                      alvo {formatPercentage(asset.targetPercentage)}
+                    </span>
+                    <span className={`shrink-0 font-mono text-[clamp(0.52rem,1.15vw,0.62rem)] ${asset.gain >= 0 ? "text-accent" : "text-destructive"}`}>
+                      {formatSignedCurrency(asset.gain)}
+                    </span>
                   </div>
                 </div>
               ))}

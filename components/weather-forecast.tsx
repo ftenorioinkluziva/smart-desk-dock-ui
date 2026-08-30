@@ -95,7 +95,7 @@ export function WeatherForecast() {
   const isLoaded = !!weather
 
   return (
-    <section aria-labelledby="weather-heading" className="flex items-center h-full w-full dock-px gap-[clamp(0.75rem,2.5vw,1.5rem)]">
+    <section aria-labelledby="weather-heading" className="relative flex min-w-0 items-center h-full w-full overflow-hidden dock-px gap-[clamp(0.75rem,2.5vw,1.5rem)]">
       <h2 id="weather-heading" className="sr-only">Clima</h2>
 
       <div className="absolute top-[calc(var(--dock-pad-y)+0.15rem)] right-[calc(var(--dock-pad-x)+var(--dock-safe-right))] text-muted-foreground/55" style={{ fontSize: "clamp(0.48rem,1.2vw,0.58rem)" }}>

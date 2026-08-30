@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Bell, BriefcaseBusiness, Check, ChevronDown, ChevronUp, Clock3, Eye, EyeOff, KeyRound, LayoutDashboard, LogOut, Palette, RefreshCw, Search, Settings, Volume2, Vibrate, X } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
-import { readSelectedCalendarIds, writeSelectedCalendarIds } from "@/lib/calendar-settings"
+import { writeSelectedCalendarIds } from "@/lib/calendar-settings"
 import { isWithinNightMode, readNightModeSettings, writeNightModeSettings, type NightModeSettings } from "@/lib/dock-settings"
 import { DOCK_ACCENTS, DOCK_LAYOUTS, DOCK_THEMES } from "@/lib/dock-theme"
 import { useDockTheme } from "@/components/dock-theme-provider"
 import { DOCK_PANEL_DEFINITIONS, useDockPanels } from "@/components/dock-panel-provider"
 import { useDockRuntime } from "@/components/dock-runtime-provider"
+import { useUserProfile } from "@/components/user-profile-provider"
 import type { DockPanelId } from "@/lib/dock-panels"
 import { clearFocusDockLocalState } from "@/lib/user-cache"
 import {
@@ -16,6 +17,8 @@ import {
   financeLoginInputSchema,
   homeAssistantEntityCatalogApiResponseSchema,
   homeAssistantIntegrationStatusSchema,
+  type UserProfile,
+  type UserProfilePatch,
   type HomeAssistantEntityCatalogEntry,
   type FinanceAuthUser,
 } from "@/lib/operations/contracts"
@@ -50,33 +53,6 @@ type CalendarListResponse = {
   mock?: boolean
 }
 
-type ProfileResponse = {
-  profile: {
-    weatherLat: number
-    weatherLon: number
-    weatherTimezone: string
-    weatherLocation: string
-    googleCalendarIds: string[]
-    googleCalendarTimezone: string
-    homeAssistantEntityIds: string[]
-    nightModeEnabled: boolean
-    nightModeStart: string
-    nightModeEnd: string
-    productivityAlertPreference: ProductivityAlertPreference
-    productivityNotificationEnabled: boolean
-    pomodoroFocusSeconds: number
-    pomodoroShortBreakSeconds: number
-    pomodoroLongBreakSeconds: number
-    dockPanelOrder: DockPanelId[]
-    dockHiddenPanelIds: DockPanelId[]
-    dockInitialPanelId: DockPanelId
-    dockAutoRotate: boolean
-    primaryClockLabel: string
-    primaryClockTimezone: string
-    secondaryClocks: Array<{ label: string; timezone: string }>
-  }
-}
-
 type HomeAssistantStatus = {
   configured: boolean
   hasUrl: boolean
@@ -97,10 +73,15 @@ const POMODORO_DURATION_FIELDS: Array<{ mode: PomodoroMode; label: string }> = [
 ]
 
 const SETTINGS_FIELD_LABEL_CLASS = "mb-1 block text-muted-foreground uppercase tracking-[0.08em]"
-const SETTINGS_INPUT_CLASS = "min-w-0 w-full rounded-md border border-border/50 bg-background px-2 py-1 text-[clamp(0.66rem,1.5vw,0.76rem)] text-foreground outline-none placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
+const SETTINGS_INPUT_CLASS = "min-h-9 min-w-0 w-full rounded-lg border border-border/50 bg-background px-2.5 py-2 text-[clamp(0.66rem,1.5vw,0.76rem)] leading-none text-foreground outline-none placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25"
+const SETTINGS_SECTION_CLASS = "rounded-xl border border-border/35 bg-secondary/20 p-[clamp(0.7rem,1.35vh,1rem)]"
+const SETTINGS_SECTION_TITLE_CLASS = "mb-2 flex items-center gap-1.5 text-[clamp(0.75rem,1.75vw,0.9rem)] font-medium leading-tight text-foreground"
+const SETTINGS_ACTION_CLASS = "inline-flex min-h-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/60 px-3 py-1.5 text-[clamp(0.64rem,1.4vw,0.74rem)] font-medium text-foreground transition-[background-color,color,transform] duration-150 active:scale-[0.96] hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+const SETTINGS_ICON_BUTTON_CLASS = "flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,color,transform] duration-150 active:scale-[0.96] hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 
 export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean }) {
   const { data: session } = authClient.useSession()
+  const { profile, hasProfileData, updateProfile } = useUserProfile()
   const { appearance, setAccent, setLayout, setTheme } = useDockTheme()
   const { config: dockPanelConfig, setPanelVisibility, movePanel, setInitialPanel, setAutoRotate } = useDockPanels()
   const { events: runtimeEvents, refreshDataSource } = useDockRuntime()
@@ -142,13 +123,9 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
   const panelRef = useRef<HTMLDivElement>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const patchProfile = useCallback(async (patch: Record<string, unknown>) => {
-    await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    }).catch(() => {})
-  }, [])
+  const patchProfile = useCallback((patch: UserProfilePatch) => {
+    updateProfile(patch)
+  }, [updateProfile])
 
   const patchHomeAssistant = useCallback((body: Record<string, unknown>) => {
     const run = homeAssistantPatchQueueRef.current.then(async () => {
@@ -184,37 +161,32 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
     return run
   }, [refreshDataSource])
 
-  const fetchProfile = useCallback(async () => {
-    const response = await fetch("/api/profile")
-    if (!response.ok) return
-    const data = await response.json() as ProfileResponse
-    const profile = data.profile
-
-    setWeatherLocation(profile.weatherLocation)
-    setWeatherLat(String(profile.weatherLat))
-    setWeatherLon(String(profile.weatherLon))
-    setWeatherTimezone(profile.weatherTimezone)
+  const applyProfile = useCallback((nextProfile: UserProfile) => {
+    setWeatherLocation(nextProfile.weatherLocation)
+    setWeatherLat(String(nextProfile.weatherLat))
+    setWeatherLon(String(nextProfile.weatherLon))
+    setWeatherTimezone(nextProfile.weatherTimezone)
     setNightModeSettings((current) => ({
-      enabled: profile.nightModeEnabled,
-      start: profile.nightModeStart,
-      end: profile.nightModeEnd,
+      enabled: nextProfile.nightModeEnabled,
+      start: nextProfile.nightModeStart,
+      end: nextProfile.nightModeEnd,
       manualActive: current.manualActive,
       lowPowerWithNightMode: current.lowPowerWithNightMode,
     }))
     setAlertSettings({
-      preference: profile.productivityAlertPreference,
-      notificationEnabled: profile.productivityNotificationEnabled,
+      preference: nextProfile.productivityAlertPreference,
+      notificationEnabled: nextProfile.productivityNotificationEnabled,
     })
     setPomodoroDurations({
-      "focus": profile.pomodoroFocusSeconds,
-      "short-break": profile.pomodoroShortBreakSeconds,
-      "long-break": profile.pomodoroLongBreakSeconds,
+      "focus": nextProfile.pomodoroFocusSeconds,
+      "short-break": nextProfile.pomodoroShortBreakSeconds,
+      "long-break": nextProfile.pomodoroLongBreakSeconds,
     })
-    setSelectedCalendarIds(profile.googleCalendarIds)
-    setHomeAssistantEntityIds(profile.homeAssistantEntityIds.join(","))
-    setPrimaryClockLabel(profile.primaryClockLabel)
-    setPrimaryClockTimezone(profile.primaryClockTimezone)
-    setSecondaryClocks(profile.secondaryClocks)
+    setSelectedCalendarIds(nextProfile.googleCalendarIds)
+    setHomeAssistantEntityIds(nextProfile.homeAssistantEntityIds.join(","))
+    setPrimaryClockLabel(nextProfile.primaryClockLabel)
+    setPrimaryClockTimezone(nextProfile.primaryClockTimezone)
+    setSecondaryClocks(nextProfile.secondaryClocks)
   }, [])
 
   const fetchIntegrationStatuses = useCallback(async () => {
@@ -291,9 +263,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
       const data = await response.json() as CalendarListResponse
       setCalendars(data.calendars)
 
-      const stored = readSelectedCalendarIds()
-      if (stored.length > 0) {
-        setSelectedCalendarIds(stored)
+      if (profile.googleCalendarIds.length > 0) {
+        setSelectedCalendarIds(profile.googleCalendarIds)
         return
       }
 
@@ -302,23 +273,24 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
       setSelectedCalendarIds(fallback)
       if (fallback.length > 0) {
         window.setTimeout(() => writeSelectedCalendarIds(fallback), 0)
+        patchProfile({ googleCalendarIds: fallback })
       }
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [patchProfile, profile.googleCalendarIds])
 
   useEffect(() => {
     if (isOpen) {
-      setNightModeSettings(readNightModeSettings())
-      setAlertSettings(readProductivityAlertSettings())
-      setPomodoroDurations(readPomodoroDurations())
       setNotificationPermission(getNotificationPermission())
-      fetchProfile()
-      fetchIntegrationStatuses()
-      fetchCalendars()
+      void fetchIntegrationStatuses()
+      void fetchCalendars()
     }
-  }, [fetchCalendars, fetchIntegrationStatuses, fetchProfile, isOpen])
+  }, [fetchCalendars, fetchIntegrationStatuses, isOpen])
+
+  useEffect(() => {
+    if (isOpen && hasProfileData) applyProfile(profile)
+  }, [applyProfile, hasProfileData, isOpen, profile])
 
   useEffect(() => {
     if (isOpen && homeAssistantStatus?.configured) void fetchHomeAssistantCatalog()
@@ -573,41 +545,49 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
     <>
       {showTrigger && (
         <button
+          type="button"
           onClick={() => setIsOpen(true)}
-          className="absolute right-[calc(var(--dock-pad-x)+var(--dock-safe-right))] bottom-[calc(var(--dock-pad-y)+var(--dock-safe-bottom)+clamp(2.65rem,6.6vh,3.2rem))] z-20 flex size-[clamp(1.7rem,4vw,2.1rem)] items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-secondary/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className={`${SETTINGS_ICON_BUTTON_CLASS} text-muted-foreground/70`}
           aria-label="Configurações"
         >
-          <Settings className="size-[clamp(0.9rem,2vw,1.1rem)]" />
+          <Settings className="size-4" />
         </button>
       )}
 
       {isOpen && (
         <div
-          className="absolute inset-0 z-30 flex items-start justify-end bg-background/35 backdrop-blur-[2px] p-[calc(var(--dock-pad-y)+0.25rem)]"
+          className="absolute inset-0 z-30 flex items-stretch justify-end bg-background/75 p-[calc(var(--dock-pad-y)+0.25rem)]"
           onKeyDown={(e) => { if (e.key === "Escape") setIsOpen(false) }}
           onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false) }}
         >
-          <div ref={panelRef} className="w-[min(20rem,92vw)] rounded-xl border border-border/50 bg-background/95 p-3 shadow-2xl">
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-heading"
+            className="flex h-full min-w-0 w-[min(28rem,calc(100vw-1rem))] flex-col rounded-xl border border-border/55 bg-card px-[clamp(0.75rem,2vw,1rem)] py-[clamp(0.7rem,1.5vh,0.95rem)] text-card-foreground"
+          >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="font-medium text-foreground" style={{ fontSize: "clamp(0.82rem,2vw,1rem)" }}>
+                <div id="settings-heading" className="text-[clamp(0.9rem,2vw,1rem)] font-medium leading-tight text-foreground">
                   Configurações
                 </div>
-                <div className="text-muted-foreground" style={{ fontSize: "clamp(0.62rem,1.5vw,0.75rem)" }}>
+                <div className="mt-0.5 text-[clamp(0.66rem,1.5vw,0.75rem)] leading-snug text-muted-foreground">
                   Dock e agenda
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                className={SETTINGS_ICON_BUTTON_CLASS}
                 aria-label="Fechar configurações"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <div className="mt-3 flex max-h-[calc(100dvh-6.5rem)] flex-col gap-1 overflow-y-auto">
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+            <div className="mt-3 min-h-0 flex-1 flex flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
+              <section className={SETTINGS_SECTION_CLASS}>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
@@ -623,7 +603,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                       if (session?.user?.id) clearFocusDockLocalState(session.user.id)
                       void authClient.signOut()
                     }}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    className={`${SETTINGS_ICON_BUTTON_CLASS} size-9`}
                     aria-label="Sair"
                   >
                     <LogOut className="size-3.5" />
@@ -631,8 +611,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   <LayoutDashboard className="size-3.5 text-muted-foreground" />
                   Painéis do dock
                 </div>
@@ -696,7 +676,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                   <select
                     value={dockPanelConfig.initialPanelId}
                     onChange={(event) => setInitialPanel(event.target.value as DockPanelId)}
-                    className="mt-1 w-full rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                    className={`mt-1 ${SETTINGS_INPUT_CLASS}`}
                   >
                     {dockPanelConfig.panelOrder.filter((panelId) => !dockPanelConfig.hiddenPanelIds.includes(panelId)).map((panelId) => (
                       <option key={panelId} value={panelId}>{DOCK_PANEL_DEFINITIONS.find((item) => item.id === panelId)?.label ?? panelId}</option>
@@ -705,8 +685,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 </label>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   <Palette className="size-3.5 text-muted-foreground" />
                   Aparência
                 </div>
@@ -816,8 +796,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   Clima
                 </div>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-2">
@@ -843,8 +823,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   <Clock3 className="size-3.5 text-muted-foreground" />
                   Relógios do Today
                 </div>
@@ -883,8 +863,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   <KeyRound className="size-3.5 text-muted-foreground" />
                   OpenAI
                   <span className="text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
@@ -896,16 +876,16 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                     type="password"
                     value={openAiKey}
                     onChange={(event) => setOpenAiKey(event.target.value)}
-                    className="min-w-0 flex-1 rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                    className={`${SETTINGS_INPUT_CLASS} flex-1`}
                     placeholder="OpenAI API key"
                   />
-                  <button type="button" onClick={saveOpenAiKey} className="rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground">Salvar</button>
-                  {openAiConfigured && <button type="button" onClick={clearOpenAiKey} className="rounded-lg border border-border/40 px-2 py-1 text-muted-foreground">Limpar</button>}
+                  <button type="button" onClick={saveOpenAiKey} className={SETTINGS_ACTION_CLASS}>Salvar</button>
+                  {openAiConfigured && <button type="button" onClick={clearOpenAiKey} className={`${SETTINGS_ACTION_CLASS} border-border/40 bg-transparent text-muted-foreground hover:bg-secondary/40`}>Limpar</button>}
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   Spotify
                 </div>
                 <div className="flex items-center justify-between gap-2">
@@ -917,15 +897,15 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                         : "Conta Spotify não conectada"}
                   </div>
                   {spotifyStatus?.connected ? (
-                    <button type="button" onClick={disconnectSpotify} className="shrink-0 rounded-lg border border-border/40 px-2 py-1 text-muted-foreground">Desconectar</button>
+                    <button type="button" onClick={disconnectSpotify} className={`${SETTINGS_ACTION_CLASS} shrink-0 border-border/40 bg-transparent text-muted-foreground hover:bg-secondary/40`}>Desconectar</button>
                   ) : (
-                    <a href="/api/spotify/auth/start" className="shrink-0 rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground">Conectar</a>
+                    <a href="/api/spotify/auth/start" className={`${SETTINGS_ACTION_CLASS} shrink-0`}>Conectar</a>
                   )}
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   <BriefcaseBusiness className="size-3.5 text-muted-foreground" />
                   Paridade de Risco
                   <span className="text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
@@ -938,7 +918,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                     <div className="min-w-0 truncate text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
                       Conectado: {financeUser.name ?? financeUser.email}
                     </div>
-                    <button type="button" onClick={() => void disconnectFinance()} className="shrink-0 rounded-lg border border-border/40 px-2 py-1 text-muted-foreground">
+                    <button type="button" onClick={() => void disconnectFinance()} className={`${SETTINGS_ACTION_CLASS} shrink-0 border-border/40 bg-transparent text-muted-foreground hover:bg-secondary/40`}>
                       Desconectar
                     </button>
                   </div>
@@ -949,7 +929,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                       type="email"
                       value={financeEmail}
                       onChange={(event) => setFinanceEmail(event.target.value)}
-                      className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                      className={SETTINGS_INPUT_CLASS}
                       placeholder="Email do Paridade Risco"
                       autoComplete="email"
                       required
@@ -959,12 +939,12 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                       type="password"
                       value={financePassword}
                       onChange={(event) => setFinancePassword(event.target.value)}
-                      className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                      className={SETTINGS_INPUT_CLASS}
                       placeholder="Senha do Paridade Risco"
                       autoComplete="current-password"
                       required
                     />
-                    <button type="submit" disabled={financeAuthLoading} className="justify-self-start rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground disabled:opacity-50">
+                    <button type="submit" disabled={financeAuthLoading} className={`${SETTINGS_ACTION_CLASS} justify-self-start`}>
                       {financeAuthLoading ? "Entrando..." : "Entrar"}
                     </button>
                   </form>
@@ -980,16 +960,16 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 )}
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   Home Assistant
                 </div>
                 <div className="mb-1 text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
                   {homeAssistantStatus?.configured ? "Configurado" : "Pendente"}
                 </div>
                 <div className="grid grid-cols-1 gap-1.5">
-                  <input value={homeAssistantUrl} onChange={(event) => setHomeAssistantUrl(event.target.value)} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder={homeAssistantStatus?.hasUrl ? "URL configurada" : "Home Assistant URL"} />
-                  <input type="password" value={homeAssistantToken} onChange={(event) => setHomeAssistantToken(event.target.value)} className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring" placeholder={homeAssistantStatus?.hasToken ? "Token configurado" : "Token"} />
+                  <input value={homeAssistantUrl} onChange={(event) => setHomeAssistantUrl(event.target.value)} className={SETTINGS_INPUT_CLASS} placeholder={homeAssistantStatus?.hasUrl ? "URL configurada" : "Home Assistant URL"} />
+                  <input type="password" value={homeAssistantToken} onChange={(event) => setHomeAssistantToken(event.target.value)} className={SETTINGS_INPUT_CLASS} placeholder={homeAssistantStatus?.hasToken ? "Token configurado" : "Token"} />
                   {homeAssistantStatus?.configured ? (
                     <div className="mt-1">
                       <div className="mb-1 flex items-center justify-between gap-2 text-muted-foreground" style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}>
@@ -1081,8 +1061,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                     </div>
                   )}
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={saveHomeAssistantSettings} className="rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground">Salvar</button>
-                    {homeAssistantStatus?.configured && <button type="button" onClick={clearHomeAssistantSettings} className="rounded-lg border border-border/40 px-2 py-1 text-muted-foreground">Limpar</button>}
+                    <button type="button" onClick={saveHomeAssistantSettings} className={SETTINGS_ACTION_CLASS}>Salvar</button>
+                    {homeAssistantStatus?.configured && <button type="button" onClick={clearHomeAssistantSettings} className={`${SETTINGS_ACTION_CLASS} border-border/40 bg-transparent text-muted-foreground hover:bg-secondary/40`}>Limpar</button>}
                   </div>
                   {homeAssistantError && (
                     <p role="alert" className="mt-1 text-destructive/90" style={{ fontSize: "clamp(0.58rem,1.35vw,0.68rem)" }}>
@@ -1092,8 +1072,8 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
-                <div className="mb-2 flex items-center gap-1.5 text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.84rem)" }}>
+              <section className={SETTINGS_SECTION_CLASS}>
+                <div className={SETTINGS_SECTION_TITLE_CLASS}>
                   <Clock3 className="size-3.5 text-muted-foreground" />
                   Produtividade
                 </div>
@@ -1110,7 +1090,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                         inputMode="numeric"
                         value={Math.round(pomodoroDurations[field.mode] / 60)}
                         onChange={(event) => updatePomodoroDuration(field.mode, event.target.value)}
-                         className="rounded-md border border-border/50 bg-background px-2 py-1 text-center text-foreground outline-none focus-visible:border-ring"
+                         className={`${SETTINGS_INPUT_CLASS} text-center`}
                          aria-label={`Duração de ${field.label.toLowerCase()} em minutos`}
                       />
                     </label>
@@ -1163,7 +1143,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                     {audioStatus !== "unsupported" && (
                       <button
                         onClick={() => void activateProductivityAudio()}
-                        className="shrink-0 rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                        className={`${SETTINGS_ACTION_CLASS} shrink-0`}
                         style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}
                       >
                         {audioStatus === "ready" ? "Testar" : "Ativar e testar"}
@@ -1193,7 +1173,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                   {alertSettings.notificationEnabled && notificationPermission === "granted" ? (
                     <button
                       onClick={disableBrowserNotifications}
-                      className="shrink-0 rounded-lg border border-border/40 bg-secondary/40 px-2 py-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      className={`${SETTINGS_ACTION_CLASS} shrink-0 border-border/40 bg-secondary/40 text-muted-foreground hover:text-foreground`}
                       style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}
                     >
                       Desativar
@@ -1202,7 +1182,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                     <button
                       onClick={enableBrowserNotifications}
                       disabled={notificationPermission === "unsupported" || notificationPermission === "denied"}
-                      className="shrink-0 rounded-lg border border-border/50 bg-secondary/60 px-2 py-1 text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-45"
+                      className={`${SETTINGS_ACTION_CLASS} shrink-0 disabled:opacity-45`}
                       style={{ fontSize: "clamp(0.56rem,1.35vw,0.66rem)" }}
                     >
                       Ativar
@@ -1211,7 +1191,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                 </div>
               </section>
 
-              <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+              <section className={SETTINGS_SECTION_CLASS}>
                 <label className="flex items-center justify-between gap-3">
                   <span className="text-foreground" style={{ fontSize: "clamp(0.7rem,1.75vw,0.86rem)" }}>
                     Modo noturno automático
@@ -1276,7 +1256,7 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                       type="time"
                       value={nightModeSettings.start}
                       onChange={(event) => updateNightModeSettings({ ...nightModeSettings, start: event.target.value })}
-                       className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                    className={SETTINGS_INPUT_CLASS}
                      />
                    </label>
                    <label className="flex flex-col gap-1 text-muted-foreground" style={{ fontSize: "clamp(0.58rem,1.45vw,0.7rem)" }}>
@@ -1285,14 +1265,14 @@ export function SettingsPanel({ showTrigger = true }: { showTrigger?: boolean })
                        type="time"
                        value={nightModeSettings.end}
                        onChange={(event) => updateNightModeSettings({ ...nightModeSettings, end: event.target.value })}
-                       className="rounded-md border border-border/50 bg-background px-2 py-1 text-foreground outline-none focus-visible:border-ring"
+                       className={SETTINGS_INPUT_CLASS}
                     />
                   </label>
                 </div>
               </section>
 
               {runtimeEvents.length > 0 && (
-                <section className="mb-2 rounded-lg border border-border/35 bg-secondary/20 p-2">
+                <section className={SETTINGS_SECTION_CLASS}>
                   <div className="mb-1 flex items-center gap-1.5 text-muted-foreground" style={{ fontSize: "clamp(0.6rem,1.5vw,0.72rem)" }}>
                     <Bell className="size-3" />
                     <span className="uppercase tracking-[0.12em]">Sinais recentes</span>

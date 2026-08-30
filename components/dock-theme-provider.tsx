@@ -1,7 +1,7 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { authClient } from "@/lib/auth-client"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useUserProfile } from "@/components/user-profile-provider"
 import {
   DEFAULT_DOCK_APPEARANCE,
   DOCK_APPEARANCE_STORAGE_KEY,
@@ -44,51 +44,39 @@ function cacheAppearance(appearance: DockAppearance) {
   }
 }
 
-async function persistAppearance(patch: Partial<DockAppearance>) {
-  await fetch("/api/profile", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  }).catch(() => {})
-}
-
 export function DockThemeProvider({ children }: { children: ReactNode }) {
-  const { data: session } = authClient.useSession()
+  const { profile, userId, hasProfileData, updateProfile } = useUserProfile()
   const [appearance, setAppearance] = useState<DockAppearance>(DEFAULT_DOCK_APPEARANCE)
-  const interactionVersionRef = useRef(0)
 
   const setTheme = useCallback((themePreset: DockThemeId) => {
-    interactionVersionRef.current += 1
     setAppearance((current) => {
       const next = { ...current, themePreset }
       applyAppearance(next)
       cacheAppearance(next)
-      void persistAppearance({ themePreset })
       return next
     })
-  }, [])
+    updateProfile({ themePreset })
+  }, [updateProfile])
 
   const setAccent = useCallback((accentPreset: DockAccentId) => {
-    interactionVersionRef.current += 1
     setAppearance((current) => {
       const next = { ...current, accentPreset }
       applyAppearance(next)
       cacheAppearance(next)
-      void persistAppearance({ accentPreset })
       return next
     })
-  }, [])
+    updateProfile({ accentPreset })
+  }, [updateProfile])
 
   const setLayout = useCallback((layoutPreset: DockLayoutId) => {
-    interactionVersionRef.current += 1
     setAppearance((current) => {
       const next = { ...current, layoutPreset }
       applyAppearance(next)
       cacheAppearance(next)
-      void persistAppearance({ layoutPreset })
       return next
     })
-  }, [])
+    updateProfile({ layoutPreset })
+  }, [updateProfile])
 
   useEffect(() => {
     try {
@@ -101,27 +89,18 @@ export function DockThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!session?.user?.id) return
-
-    let cancelled = false
-    const interactionVersion = interactionVersionRef.current
-
-    async function syncProfile() {
-      const response = await fetch("/api/profile").catch(() => null)
-      if (!response?.ok || cancelled) return
-
-      const data = await response.json() as { profile?: unknown }
-      if (cancelled || !data.profile || interactionVersion !== interactionVersionRef.current) return
-
-      const next = normalizeDockAppearance(data.profile)
-      setAppearance(next)
-      applyAppearance(next)
-      cacheAppearance(next)
+    if (!userId) {
+      setAppearance(DEFAULT_DOCK_APPEARANCE)
+      applyAppearance(DEFAULT_DOCK_APPEARANCE)
+      return
     }
+    if (!hasProfileData) return
 
-    void syncProfile()
-    return () => { cancelled = true }
-  }, [session?.user?.id])
+    const next = normalizeDockAppearance(profile)
+    setAppearance(next)
+    applyAppearance(next)
+    cacheAppearance(next)
+  }, [hasProfileData, profile, userId])
 
   const value = useMemo(() => ({ appearance, setTheme, setAccent, setLayout }), [appearance, setAccent, setLayout, setTheme])
 

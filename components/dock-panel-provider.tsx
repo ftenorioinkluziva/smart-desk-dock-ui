@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { authClient } from "@/lib/auth-client"
+import { useUserProfile } from "@/components/user-profile-provider"
 import {
   DEFAULT_DOCK_PANEL_CONFIG,
   DOCK_PANEL_DEFINITIONS,
@@ -22,57 +22,35 @@ type DockPanelContextValue = {
 
 const DockPanelContext = createContext<DockPanelContextValue | null>(null)
 
-async function persistPanelConfig(config: DockPanelConfig) {
-  await fetch("/api/profile", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      dockPanelOrder: config.panelOrder,
-      dockHiddenPanelIds: config.hiddenPanelIds,
-      dockInitialPanelId: config.initialPanelId,
-      dockAutoRotate: config.autoRotate,
-    }),
-  }).catch(() => {})
-}
-
 export function DockPanelProvider({ children }: { children: ReactNode }) {
-  const { data: session } = authClient.useSession()
+  const { profile, userId, hasProfileData, updateProfile } = useUserProfile()
   const [config, setConfig] = useState<DockPanelConfig>(DEFAULT_DOCK_PANEL_CONFIG)
 
   useEffect(() => {
-    if (!session?.user?.id) {
+    if (!userId) {
       setConfig(DEFAULT_DOCK_PANEL_CONFIG)
       return
     }
 
-    let cancelled = false
-    async function loadProfile() {
-      const response = await fetch("/api/profile").catch(() => null)
-      if (!response?.ok || cancelled) return
-      const data = await response.json() as { profile?: {
-        dockPanelOrder?: unknown
-        dockHiddenPanelIds?: unknown
-        dockInitialPanelId?: unknown
-        dockAutoRotate?: unknown
-      } }
-      if (cancelled) return
-      setConfig(normalizeDockPanelConfig({
-        panelOrder: data.profile?.dockPanelOrder,
-        hiddenPanelIds: data.profile?.dockHiddenPanelIds,
-        initialPanelId: data.profile?.dockInitialPanelId,
-        autoRotate: data.profile?.dockAutoRotate,
-      }))
-    }
-
-    void loadProfile()
-    return () => { cancelled = true }
-  }, [session?.user?.id])
+    if (!hasProfileData) return
+    setConfig(normalizeDockPanelConfig({
+      panelOrder: profile.dockPanelOrder,
+      hiddenPanelIds: profile.dockHiddenPanelIds,
+      initialPanelId: profile.dockInitialPanelId,
+      autoRotate: profile.dockAutoRotate,
+    }))
+  }, [hasProfileData, profile, userId])
 
   const updateConfig = useCallback((nextValue: DockPanelConfig) => {
     const next = normalizeDockPanelConfig(nextValue)
     setConfig(next)
-    void persistPanelConfig(next)
-  }, [])
+    updateProfile({
+      dockPanelOrder: next.panelOrder,
+      dockHiddenPanelIds: next.hiddenPanelIds,
+      dockInitialPanelId: next.initialPanelId,
+      dockAutoRotate: next.autoRotate,
+    })
+  }, [updateProfile])
 
   const setPanelVisibility = useCallback((panelId: DockPanelId, visible: boolean) => {
     updateConfig({

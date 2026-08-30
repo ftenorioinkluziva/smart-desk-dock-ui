@@ -165,7 +165,9 @@ export default function Page() {
       <div
         className={`h-dvh w-dvw overflow-hidden relative flex flex-col dock-py ${nightDockActive ? "night-dock-surface bg-background" : "bg-background"}`}
       >
-        <SettingsPanel showTrigger />
+        <header className="flex h-[var(--dock-chrome-size)] shrink-0 items-center justify-end dock-px">
+          <SettingsPanel showTrigger />
+        </header>
 
         {nightDockActive ? (
           <main className="flex min-h-0 flex-1 items-center justify-center">

@@ -94,6 +94,7 @@ function UpcomingCommitment() {
   const isLoading = source.isLoading && !source.data
   const isUnauthorized = source.state.status === "unauthorized"
   const hasError = source.state.status === "error"
+  const visibleUpcomingEvents = upcomingEvents.slice(0, 2)
 
   return (
     <section aria-labelledby="focus-agenda-heading" className="flex h-full min-h-0 min-w-0 flex-col rounded-xl border border-border/35 bg-secondary/20 px-[clamp(0.65rem,1.55vw,0.95rem)] py-[clamp(0.5rem,1.15vh,0.7rem)]">
@@ -125,12 +126,11 @@ function UpcomingCommitment() {
         </div>
       ) : upcomingEvents.length > 0 ? (
         <div
-          className="dock-list-scroll mt-1.5 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
-          tabIndex={0}
+          className="mt-1.5 min-h-0 flex-1 overflow-hidden pr-1"
           aria-label="Lista de próximos compromissos"
         >
           <div className="flex flex-col">
-            {upcomingEvents.map((event, index) => (
+            {visibleUpcomingEvents.map((event, index) => (
               <article key={event.id} className="min-w-0 border-b border-border/20 py-1.5 first:pt-0 last:border-b-0 last:pb-0">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -147,6 +147,11 @@ function UpcomingCommitment() {
                 </div>
               </article>
             ))}
+            {upcomingEvents.length > visibleUpcomingEvents.length && (
+              <span className="pt-0.5 text-muted-foreground/50" style={{ fontSize: "clamp(0.58rem,1.35vw,0.68rem)" }}>
+                +{upcomingEvents.length - visibleUpcomingEvents.length} compromissos hoje
+              </span>
+            )}
           </div>
         </div>
       ) : (

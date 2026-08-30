@@ -122,7 +122,7 @@ export function TodayTasks({ variant = "summary", panelId = "today" }: TodayTask
     }
   }
 
-  const visibleTasks = isSummary ? tasks.slice(0, 3) : tasks
+  const visibleTasks = isSummary ? tasks.slice(0, 3) : tasks.slice(0, 4)
 
   return (
     <section
@@ -190,8 +190,8 @@ export function TodayTasks({ variant = "summary", panelId = "today" }: TodayTask
         )
       ) : visibleTasks.length > 0 ? (
         <div
-          className={`dock-list-scroll mt-1.5 min-h-0 flex flex-col gap-0.5 overscroll-contain pr-1 ${isSummary ? "" : "flex-1 overflow-y-auto"}`}
-          tabIndex={isSummary ? undefined : 0}
+          className={`mt-1.5 min-h-0 flex flex-col gap-0.5 ${isSummary ? "" : "flex-1 overflow-hidden"}`}
+          tabIndex={undefined}
           aria-label={isSummary ? undefined : "Lista de tarefas do foco"}
         >
           {visibleTasks.map((task) => {
@@ -237,8 +237,8 @@ export function TodayTasks({ variant = "summary", panelId = "today" }: TodayTask
               </div>
             )
           })}
-          {isSummary && tasks.length > visibleTasks.length && (
-            <span className="pt-0.5 text-muted-foreground/50" style={{ fontSize: "clamp(0.6rem,1.5vw,0.7rem)" }}>
+          {tasks.length > visibleTasks.length && (
+            <span className="shrink-0 pt-0.5 text-muted-foreground/50" style={{ fontSize: "clamp(0.6rem,1.5vw,0.7rem)" }}>
               +{tasks.length - visibleTasks.length} tarefas no Google Tasks
             </span>
           )}

@@ -39,6 +39,12 @@ const MODE_LABELS: Record<PomodoroMode, string> = {
   "long-break": "Pausa Longa",
 }
 
+const MODE_SHORT_LABELS: Record<PomodoroMode, string> = {
+  "focus": "Foco",
+  "short-break": "Pausa",
+  "long-break": "Longa",
+}
+
 const TAB_LABELS: Record<Tab, string> = {
   "pomodoro": "Pomodoro",
   "timer": "Timer",
@@ -96,18 +102,18 @@ function ControlButton({
   variant?: "primary" | "secondary" | "alert"
   icon?: React.ReactNode
 }) {
-  const base = "flex items-center justify-center gap-2 w-full rounded-2xl font-medium transition-transform duration-150 active:scale-[0.96] select-none"
+  const base = "flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl px-2 font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.96] select-none"
   const py = "py-[clamp(0.45rem,1.3vh,0.7rem)]"
   const size = "text-[clamp(0.65rem,1.9vw,0.85rem)]"
 
   const variants = {
-    primary:   "bg-foreground text-background shadow-[0_1px_4px_rgba(0,0,0,0.6)] hover:bg-foreground/90",
+    primary:   "bg-foreground text-background hover:bg-foreground/90 hover:shadow-[0_1px_4px_rgba(0,0,0,0.6)]",
     secondary: "bg-secondary/70 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary",
-    alert:     "bg-accent/90 text-accent-foreground shadow-[0_1px_4px_rgba(0,0,0,0.4)] hover:bg-accent",
+    alert:     "bg-accent/90 text-accent-foreground hover:bg-accent hover:shadow-[0_1px_4px_rgba(0,0,0,0.4)]",
   }
 
   return (
-    <button onClick={onClick} aria-label={label} className={`${base} ${py} ${size} ${variants[variant]} focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1`}>
+    <button type="button" onClick={onClick} aria-label={label} className={`${base} ${py} ${size} ${variants[variant]} focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1`}>
       {icon && <span className="flex items-center [&>svg]:size-3.5">{icon}</span>}
       {label}
     </button>
@@ -374,10 +380,10 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
 
   const mins = Math.floor(totalSeconds / 60).toString().padStart(2, "0")
   const secs = (totalSeconds % 60).toString().padStart(2, "0")
-  const arcColor = isAlertVisible ? "text-destructive" : mode === "focus" ? "text-accent" : "text-chart-2"
+  const arcColor = isAlertVisible ? "text-destructive" : mode === "focus" ? "text-accent" : "text-accent/70"
 
   return (
-    <div className="relative grid h-full min-h-0 w-full items-center gap-[clamp(0.65rem,1.8vw,1.2rem)]" style={{ gridTemplateColumns: "minmax(0,1fr) 1px clamp(13rem,34%,17rem)" }}>
+    <div className="relative grid h-full min-h-0 w-full min-w-0 items-center gap-[clamp(0.65rem,1.8vw,1.2rem)]" style={{ gridTemplateColumns: "minmax(0,1fr) 1px clamp(13rem,34%,17rem)" }}>
       <h3 className="sr-only absolute">Pomodoro</h3>
 
       <FocusPlanningPanel />
@@ -385,7 +391,7 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
       <Divider />
 
       {/* Right: timer, mode, sessions and controls */}
-      <div className="flex min-h-0 flex-col items-center justify-center gap-[clamp(0.45rem,1.3vh,0.8rem)]">
+      <div className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-[clamp(0.35rem,1vh,0.65rem)]">
         <div className="relative flex items-center justify-center">
           {isAlertVisible && (
             <div className="absolute -inset-3 rounded-full animate-productivity-complete pointer-events-none">
@@ -409,7 +415,7 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
 
           <div className="absolute flex flex-col items-center">
             <span
-              className={`font-extralight tabular-nums font-mono leading-none ${isAlertVisible ? "text-destructive" : "text-foreground"}`}
+              className={`font-medium tabular-nums font-mono leading-none ${isAlertVisible ? "text-destructive" : "text-foreground"}`}
               style={{ fontSize: "clamp(1.8rem,5.8vw,3rem)" }}
             >
               {mins}:{secs}
@@ -422,27 +428,28 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
             </span>
           </div>
         </div>
-        <div className="flex w-full flex-col gap-[clamp(0.35rem,1vh,0.6rem)]">
+        <div className="flex w-full min-w-0 flex-col gap-[clamp(0.3rem,0.8vh,0.5rem)]">
 
           {/* Mode selector */}
           {!isAlertVisible ? (
-            <div className="grid grid-cols-1 gap-[clamp(0.18rem,0.5vh,0.3rem)]">
+            <div className="grid grid-cols-3 gap-[clamp(0.18rem,0.5vw,0.3rem)]">
               {(Object.keys(durations) as PomodoroMode[]).map((m) => (
                 <button
                   key={m}
+                  type="button"
                   onClick={() => switchMode(m)}
-                  className={`flex items-center justify-between gap-2 px-[clamp(0.45rem,1.2vw,0.65rem)] py-[clamp(0.26rem,0.7vh,0.38rem)] rounded-xl font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] ${
+                  className={`flex min-h-[clamp(2.75rem,8vh,3.35rem)] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-center font-medium transition-[background-color,color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] ${
                     mode === m
                       ? "bg-secondary/80 text-foreground border border-border/60"
                       : "text-muted-foreground hover:text-foreground/80 hover:bg-secondary/35"
                   }`}
                   style={{ fontSize: "clamp(0.55rem,1.5vw,0.72rem)" }}
                 >
-                  <span className="flex items-center gap-1.5">
-                    {m === "focus" ? <Brain className="size-2.5 shrink-0" /> : <Coffee className="size-2.5 shrink-0" />}
-                    {MODE_LABELS[m]}
+                  <span className="flex min-w-0 items-center gap-1">
+                    {m === "focus" ? <Brain className="size-3 shrink-0" /> : <Coffee className="size-3 shrink-0" />}
+                    <span className="truncate">{MODE_SHORT_LABELS[m]}</span>
                   </span>
-                  <span className="font-mono text-muted-foreground/75">{Math.round(durations[m] / 60)}m</span>
+                  <span className="font-mono text-muted-foreground/75">{Math.round(durations[m] / 60)} min</span>
                 </button>
               ))}
             </div>
@@ -470,7 +477,7 @@ function PomodoroView({ command }: { command: ProductivityControlDetail | null }
           </div>
 
           {/* Controls */}
-          <div className="flex flex-col gap-[clamp(0.25rem,0.7vh,0.4rem)]">
+          <div className="grid grid-cols-2 gap-[clamp(0.25rem,0.7vw,0.4rem)]">
             {isAlertVisible ? (
               <>
                 <ControlButton

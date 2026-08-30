@@ -209,12 +209,12 @@ export function HomeAssistantPanel() {
   }
 
   return (
-    <section aria-labelledby="ha-heading" className="flex h-full w-full dock-px items-center overflow-hidden">
+    <section aria-labelledby="ha-heading" className="flex h-full min-h-0 w-full dock-px items-center overflow-hidden pb-[clamp(0.85rem,3vh,1.35rem)]">
       <h2 id="ha-heading" className="sr-only">Casa Inteligente</h2>
-      <section className="grid w-full min-w-0 grid-cols-3 gap-[clamp(0.45rem,1.3vw,0.85rem)]">
+      <section className="grid h-full min-h-0 w-full min-w-0 grid-cols-3 grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-[clamp(0.3rem,0.9vh,0.55rem)]">
         {visibleEntities.length > 0 && (
-          <div className="col-span-3 flex min-h-5 items-center justify-between gap-2 px-1 text-muted-foreground" aria-live="polite">
-            <span className={hasError ? "text-destructive" : ""} style={{ fontSize: "clamp(0.55rem,1.35vw,0.68rem)" }}>
+          <div className="col-span-3 flex min-h-5 min-w-0 items-center justify-between gap-2 px-1 text-muted-foreground" aria-live="polite">
+            <span className={`min-w-0 truncate ${hasError ? "text-destructive" : ""}`} style={{ fontSize: "clamp(0.55rem,1.35vw,0.68rem)" }}>
               {hasError
                 ? "Comunicação indisponível · mostrando último estado"
                 : isRefreshing
@@ -236,7 +236,7 @@ export function HomeAssistantPanel() {
 
         {isLoading && visibleEntities.length === 0 && (
           Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-[clamp(7rem,42vh,10rem)] rounded-lg border border-border/30 bg-secondary/20" />
+            <div key={index} className="h-full min-h-0 rounded-lg border border-border/30 bg-secondary/20" />
           ))
         )}
 
@@ -268,15 +268,16 @@ export function HomeAssistantPanel() {
           return (
             <div
               key={entity.entityId}
-              className={`flex min-h-[clamp(7rem,42vh,10rem)] min-w-0 flex-col rounded-lg border px-[clamp(0.6rem,1.4vw,0.9rem)] py-[clamp(0.55rem,1.3vh,0.8rem)] ${
+              className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border px-[clamp(0.6rem,1.4vw,0.9rem)] py-[clamp(0.4rem,1vh,0.6rem)] ${
                 active ? "border-accent/45 bg-accent/10" : unavailable ? "border-destructive/25 bg-destructive/5" : "border-border/35 bg-secondary/20"
               }`}
             >
               <button
                 onClick={() => entity.domain !== "cover" && handleEntityPress(entity)}
                 disabled={isMock || pending || !entity.controllable || entity.domain === "cover"}
-                className="flex min-w-0 flex-1 flex-col items-start text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm disabled:opacity-60"
+                className="flex min-h-0 min-w-0 flex-1 flex-col items-start overflow-hidden rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:opacity-60"
                 aria-label={`Controlar ${getEntityDisplayName(entity)}`}
+                title={getEntityDisplayName(entity)}
               >
                 <div className="flex w-full items-center justify-between gap-2">
                   <EntityIcon entity={entity} active={active} />
@@ -284,7 +285,7 @@ export function HomeAssistantPanel() {
                     {unavailable ? "indisponível" : DOMAIN_LABELS[entity.domain] ?? entity.domain}
                   </span>
                 </div>
-                <div className="mt-2 line-clamp-2 min-w-0 font-semibold leading-tight text-foreground" style={{ fontSize: "clamp(0.92rem,2.3vw,1.2rem)" }}>
+                <div className="mt-1.5 line-clamp-2 min-w-0 font-semibold leading-tight text-foreground" style={{ fontSize: "clamp(0.92rem,2.3vw,1.2rem)" }}>
                   {getEntityDisplayName(entity)}
                 </div>
                 <div className="mt-auto font-mono text-muted-foreground/70" style={{ fontSize: "clamp(0.58rem,1.45vw,0.72rem)" }}>
@@ -293,8 +294,8 @@ export function HomeAssistantPanel() {
               </button>
 
               {entity.supportsBrightness && (
-                <div className="mt-2">
-                  <div className="mb-1 font-mono text-muted-foreground/70" style={{ fontSize: "clamp(0.52rem,1.35vw,0.66rem)" }}>
+                <div className="mt-1">
+                  <div className="mb-0.5 font-mono text-muted-foreground/70" style={{ fontSize: "clamp(0.52rem,1.35vw,0.66rem)" }}>
                     {brightnessValue}%
                   </div>
                   <input
@@ -310,7 +311,7 @@ export function HomeAssistantPanel() {
               )}
 
               {entity.domain === "cover" && (
-                <div className="mt-2 grid grid-cols-3 gap-1.5">
+                <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => handleCoverCommand(entity, "open_cover")}
                     disabled={isMock || unavailable || Boolean(pendingEntityId)}
@@ -339,7 +340,7 @@ export function HomeAssistantPanel() {
               )}
 
               {entity.supportsColor && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <div className="mt-1 flex flex-wrap gap-1">
                   {LIGHT_COLOR_PRESETS.map((preset) => (
                     <button
                       key={preset.label}
